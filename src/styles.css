@@ -293,6 +293,157 @@ main {
 .standings-copy b { color: var(--gold); }
 .standings-card > svg { width: 20px; color: var(--gold); }
 
+.programme-view { padding-bottom: 8px; }
+
+.page-intro { padding: 0 4px 20px; }
+.page-intro h1 {
+  margin: 4px 0 9px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: clamp(2.15rem, 9vw, 3.15rem);
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+}
+.page-intro > p:last-child { margin: 0; color: var(--muted); line-height: 1.5; }
+
+.day-switcher {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 9px;
+  margin-bottom: 17px;
+}
+.day-switcher button {
+  display: grid;
+  min-height: 62px;
+  gap: 2px;
+  place-content: center;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  color: var(--muted);
+  background: rgba(10, 33, 72, 0.7);
+  font-weight: 850;
+}
+.day-switcher button small {
+  font-size: 0.66rem;
+  font-weight: 750;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.day-switcher button.active {
+  border-color: var(--gold);
+  color: #102042;
+  background: linear-gradient(135deg, var(--gold-soft), var(--gold));
+  box-shadow: 0 9px 22px rgba(245, 195, 82, 0.17);
+}
+
+.day-overview {
+  padding: 19px;
+  border: 1px solid rgba(190, 205, 232, 0.35);
+  border-radius: 23px;
+  background:
+    radial-gradient(circle at 92% 8%, rgba(245, 195, 82, 0.14), transparent 8rem),
+    linear-gradient(145deg, rgba(12, 42, 88, 0.95), rgba(6, 26, 58, 0.98));
+  box-shadow: var(--shadow);
+}
+.day-overview-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.day-overview-heading p {
+  margin: 0 0 5px;
+  color: var(--gold);
+  font-size: 0.72rem;
+  font-weight: 850;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.day-overview-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 1.55rem; line-height: 1.12; }
+.day-overview-heading svg { width: 25px; flex: 0 0 auto; color: var(--gold); }
+.day-overview > p { margin: 13px 0 0; color: var(--muted); line-height: 1.5; }
+
+.programme-list {
+  position: relative;
+  display: grid;
+  gap: 11px;
+  margin: 20px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.programme-list::before {
+  position: absolute;
+  top: 19px;
+  bottom: 19px;
+  left: 30px;
+  width: 2px;
+  content: "";
+  background: linear-gradient(var(--gold), rgba(151, 176, 218, 0.25));
+}
+.programme-list li {
+  position: relative;
+  display: grid;
+  grid-template-columns: 60px 1fr;
+  gap: 11px;
+  align-items: start;
+}
+.programme-list time {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-height: 42px;
+  place-items: center;
+  border: 2px solid var(--gold);
+  border-radius: 13px;
+  color: var(--gold-soft);
+  background: var(--navy-900);
+  font-size: 0.8rem;
+  font-weight: 900;
+}
+.programme-activity {
+  min-width: 0;
+  padding: 15px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: rgba(10, 33, 72, 0.76);
+}
+.activity-category {
+  display: inline-block;
+  margin-bottom: 7px;
+  color: var(--gold);
+  font-size: 0.65rem;
+  font-weight: 900;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+}
+.programme-activity h3 { margin: 0; font-size: 1rem; line-height: 1.28; }
+.programme-activity p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  line-height: 1.3;
+}
+.programme-activity p svg { width: 15px; height: 15px; flex: 0 0 auto; color: var(--gold); }
+.programme-activity a {
+  display: inline-flex;
+  min-height: 44px;
+  align-items: center;
+  gap: 7px;
+  margin-top: 8px;
+  color: var(--gold-soft);
+  font-size: 0.82rem;
+  font-weight: 850;
+  text-decoration: none;
+}
+.programme-activity a svg { width: 15px; height: 15px; }
+.programme-note {
+  margin: 18px 3px 0;
+  padding: 13px 15px;
+  border-left: 3px solid var(--gold);
+  border-radius: 0 12px 12px 0;
+  color: var(--muted);
+  background: rgba(10, 33, 72, 0.6);
+  font-size: 0.82rem;
+  line-height: 1.45;
+}
+
 .placeholder-view {
   display: grid;
   min-height: 60dvh;
