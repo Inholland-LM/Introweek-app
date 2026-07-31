@@ -1,0 +1,12 @@
+{
+  "name": "Introweek LM 2026",
+  "short_name": "Introweek",
+  "description": "Jouw persoonlijke begeleider tijdens de Introweek LM 2026.",
+  "start_url": "/Introweek-app/",
+  "scope": "/Introweek-app/",
+  "display": "standalone",
+  "background_color": "#061631",
+  "theme_color": "#071a3d",
+  "lang": "nl",
+  "icons": []
+}
