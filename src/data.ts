@@ -39,6 +39,15 @@ export type RouteDay = {
   stops: RouteStop[]
 }
 
+export type Standing = {
+  rank: number
+  classCode: string
+  country: string
+  flag: string
+  points: number
+  isOwn?: boolean
+}
+
 const routes = {
   inholland: 'https://maps.app.goo.gl/c28qCsxH5BxArCxX9',
   deDuif: 'https://maps.app.goo.gl/TzDtQjuwy45XLf9S7',
@@ -131,6 +140,17 @@ export const routeDays: RouteDay[] = [
       { number: 5, time: '18:00', title: 'Kokomo Amsterdam', address: 'Zuiderzeeweg 11 A', routeUrl: routes.kokomo, x: '26%', y: '82%' },
     ],
   },
+]
+
+export const standings: Standing[] = [
+  { rank: 1, classCode: 'LM1C', country: 'Canada', flag: '🇨🇦', points: 205 },
+  { rank: 2, classCode: 'LM1A', country: 'Australië', flag: '🇦🇺', points: 180, isOwn: true },
+  { rank: 3, classCode: 'LM1F', country: 'Frankrijk', flag: '🇫🇷', points: 172 },
+  { rank: 4, classCode: 'LM1B', country: 'Brazilië', flag: '🇧🇷', points: 160 },
+  { rank: 5, classCode: 'LM1G', country: 'Griekenland', flag: '🇬🇷', points: 149 },
+  { rank: 6, classCode: 'LM1D', country: 'Denemarken', flag: '🇩🇰', points: 138 },
+  { rank: 7, classCode: 'LM1E', country: 'Estland', flag: '🇪🇪', points: 124 },
+  { rank: 8, classCode: 'LM1H', country: 'Hongarije', flag: '🇭🇺', points: 110 },
 ]
 
 export const mapUrl = routes.deDuif
