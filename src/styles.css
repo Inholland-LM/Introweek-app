@@ -34,8 +34,10 @@ button { color: inherit; }
 
 .app-shell {
   position: relative;
+  display: flex;
+  height: 100dvh;
   width: min(100%, 540px);
-  min-height: 100dvh;
+  flex-direction: column;
   margin: 0 auto;
   overflow: hidden;
   background: linear-gradient(180deg, rgba(7, 26, 61, 0.98), rgba(4, 17, 38, 0.99));
@@ -58,6 +60,7 @@ button { color: inherit; }
 .topbar {
   position: relative;
   z-index: 2;
+  flex: 0 0 auto;
   padding: max(18px, env(safe-area-inset-top)) 22px 14px;
   border-bottom: 1px solid rgba(245, 195, 82, 0.44);
   background: rgba(5, 20, 47, 0.82);
@@ -121,7 +124,12 @@ button { color: inherit; }
 main {
   position: relative;
   z-index: 1;
-  padding: 28px 18px calc(112px + env(safe-area-inset-bottom));
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 28px 18px 28px;
+  scrollbar-gutter: stable;
 }
 
 .welcome { padding: 0 4px 22px; }
@@ -317,19 +325,16 @@ main {
 }
 
 .bottom-nav {
-  position: fixed;
+  position: relative;
   z-index: 5;
-  right: 0;
-  bottom: 0;
-  left: 0;
   display: grid;
-  width: min(100%, 540px);
+  width: 100%;
+  flex: 0 0 auto;
   grid-template-columns: repeat(5, 1fr);
-  margin: 0 auto;
   padding: 9px 8px max(9px, env(safe-area-inset-bottom));
-  border-top: 1px solid rgba(155, 178, 215, 0.24);
-  background: rgba(4, 17, 38, 0.94);
-  backdrop-filter: blur(20px);
+  border-top: 1px solid rgba(245, 195, 82, 0.32);
+  background: #041126;
+  box-shadow: 0 -12px 28px rgba(0, 5, 20, 0.28);
 }
 .bottom-nav button {
   position: relative;
@@ -360,8 +365,8 @@ main {
 
 @media (min-width: 700px) {
   body { padding: 30px 0; }
-  .app-shell { min-height: calc(100dvh - 60px); border-radius: 34px; }
-  .bottom-nav { bottom: 30px; border-radius: 0 0 34px 34px; }
+  .app-shell { height: calc(100dvh - 60px); border-radius: 34px; }
+  .bottom-nav { border-radius: 0 0 34px 34px; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
