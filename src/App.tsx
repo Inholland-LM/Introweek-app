@@ -5,12 +5,13 @@ import {
   ChevronRight,
   Clock3,
   Ellipsis,
+  LocateFixed,
   Map,
   MapPin,
   Navigation,
   Trophy,
 } from 'lucide-react'
-import { mapUrl, programmeDays, today, type ProgrammeDay } from './data'
+import { mapUrl, programmeDays, routeDays, today, type ProgrammeDay, type RouteDay } from './data'
 
 const navItems = [
   { label: 'Vandaag', icon: Clock3 },
@@ -85,11 +86,82 @@ function ProgrammeView() {
   )
 }
 
-function PlaceholderView({ active, onBack }: { active: Exclude<NavLabel, 'Vandaag' | 'Programma'>; onBack: () => void }) {
+function MapView() {
+  const [selectedDayId, setSelectedDayId] = useState<RouteDay['id']>('woensdag')
+  const selectedDay = routeDays.find((day) => day.id === selectedDayId) ?? routeDays[1]
+
+  return (
+    <section className="map-view" aria-labelledby="map-title">
+      <div className="page-intro">
+        <p className="eyebrow">Jouw locaties</p>
+        <h1 id="map-title">Op pad in Amsterdam</h1>
+        <p>Bekijk je route zonder zware online kaart. Open Google Maps alleen wanneer je echt wilt navigeren.</p>
+      </div>
+
+      <div className="day-switcher" role="tablist" aria-label="Kies een route per dag">
+        {routeDays.map((day) => (
+          <button
+            key={day.id}
+            role="tab"
+            aria-selected={selectedDay.id === day.id}
+            className={selectedDay.id === day.id ? 'active' : ''}
+            onClick={() => setSelectedDayId(day.id)}
+          >
+            <span>{day.shortLabel}</span>
+            <small>aug</small>
+          </button>
+        ))}
+      </div>
+
+      <div className="route-canvas" aria-label={`Schematische route voor ${selectedDay.shortLabel}`}>
+        <div className="route-grid" aria-hidden="true" />
+        <div className="route-water" aria-hidden="true" />
+        <span className="route-city-label" aria-hidden="true">AMSTERDAM</span>
+        {selectedDay.stops.map((stop) => (
+          <span
+            key={`${selectedDay.id}-${stop.number}`}
+            className="map-marker"
+            style={{ left: stop.x, top: stop.y }}
+            aria-hidden="true"
+          >
+            <b>{stop.number}</b>
+          </span>
+        ))}
+      </div>
+
+      <div className="route-heading">
+        <div>
+          <p className="eyebrow">Jouw route</p>
+          <h2>{selectedDay.label}</h2>
+        </div>
+        <LocateFixed aria-hidden="true" />
+      </div>
+
+      <ol className="route-list">
+        {selectedDay.stops.map((stop) => (
+          <li key={`${selectedDay.id}-${stop.number}-${stop.title}`}>
+            <span className="route-number">{stop.number}</span>
+            <div className="route-stop-copy">
+              <time>{stop.time}</time>
+              <h3>{stop.title}</h3>
+              <p>{stop.address}</p>
+            </div>
+            <a href={stop.routeUrl} target="_blank" rel="noreferrer" aria-label={`Route naar ${stop.title} openen`}>
+              <Navigation aria-hidden="true" />
+            </a>
+          </li>
+        ))}
+      </ol>
+
+      <p className="programme-note">De schematische kaart gebruikt geen mobiele data. Alleen ‘Route openen’ start Google Maps.</p>
+    </section>
+  )
+}
+
+function PlaceholderView({ active, onBack }: { active: Exclude<NavLabel, 'Vandaag' | 'Programma' | 'Kaart'>; onBack: () => void }) {
   return (
     <section className="placeholder-view" aria-live="polite">
       <span className="placeholder-icon" aria-hidden="true">
-        {active === 'Kaart' && <Map />}
         {active === 'Strijd' && <Trophy />}
         {active === 'Meer' && <Ellipsis />}
       </span>
@@ -175,7 +247,9 @@ function App() {
 
         {active === 'Programma' && <ProgrammeView />}
 
-        {active !== 'Vandaag' && active !== 'Programma' && (
+        {active === 'Kaart' && <MapView />}
+
+        {active !== 'Vandaag' && active !== 'Programma' && active !== 'Kaart' && (
           <PlaceholderView active={active} onBack={() => setActive('Vandaag')} />
         )}
       </main>
