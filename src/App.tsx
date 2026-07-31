@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import {
   Bell,
+  BadgePercent,
   CalendarDays,
   Camera,
+  CheckCircle2,
   ChevronRight,
+  CircleHelp,
   Clock3,
   Compass,
   Ellipsis,
@@ -11,7 +14,10 @@ import {
   Map,
   MapPin,
   Navigation,
+  Settings,
+  ShieldCheck,
   Sparkles,
+  UserRound,
   Trophy,
 } from 'lucide-react'
 import { mapUrl, programmeDays, routeDays, standings, today, type ProgrammeDay, type RouteDay } from './data'
@@ -25,6 +31,7 @@ const navItems = [
 ] as const
 
 type NavLabel = (typeof navItems)[number]['label']
+type MoreSectionId = 'notifications' | 'practical' | 'discounts' | 'pov' | 'help' | 'settings'
 
 function ProgrammeView() {
   const [selectedDayId, setSelectedDayId] = useState<ProgrammeDay['id']>('woensdag')
@@ -227,22 +234,121 @@ function CompetitionView() {
   )
 }
 
-function PlaceholderView({ active, onBack }: { active: Exclude<NavLabel, 'Vandaag' | 'Programma' | 'Kaart' | 'Strijd'>; onBack: () => void }) {
+function MoreView({ selected, onSelect }: { selected: MoreSectionId; onSelect: (section: MoreSectionId) => void }) {
+  const [notificationPreview, setNotificationPreview] = useState(true)
+  const [largeText, setLargeText] = useState(false)
+  const sections = [
+    { id: 'notifications' as const, label: 'Meldingen', detail: '2 nieuw', icon: Bell },
+    { id: 'practical' as const, label: 'Praktisch', detail: 'Alles bij de hand', icon: CheckCircle2 },
+    { id: 'discounts' as const, label: 'Kortingen', detail: 'Met je polsbandje', icon: BadgePercent },
+    { id: 'pov' as const, label: 'POV-foto’s', detail: 'Verdien punten', icon: Camera },
+    { id: 'help' as const, label: 'Contact & hulp', detail: 'Snel iemand vinden', icon: CircleHelp },
+    { id: 'settings' as const, label: 'Instellingen', detail: 'Meldingen & tekst', icon: Settings },
+  ]
+
   return (
-    <section className="placeholder-view" aria-live="polite">
-      <span className="placeholder-icon" aria-hidden="true">
-        {active === 'Meer' && <Ellipsis />}
-      </span>
-      <p className="eyebrow">Binnenkort beschikbaar</p>
-      <h1>{active}</h1>
-      <p>Dit onderdeel krijgt in de volgende bouwstap zijn volledige inhoud.</p>
-      <button className="secondary-button" onClick={onBack}>Terug naar vandaag</button>
+    <section className={`more-view${largeText ? ' large-text' : ''}`} aria-labelledby="more-title">
+      <div className="page-intro">
+        <p className="eyebrow">Jouw introweek</p>
+        <h1 id="more-title">Meer</h1>
+        <p>Berichten, praktische informatie en persoonlijke instellingen op één plek.</p>
+      </div>
+
+      <article className="profile-card">
+        <span className="profile-avatar" aria-hidden="true"><UserRound /></span>
+        <span className="profile-copy">
+          <small>Ingelogd als</small>
+          <strong>Sofia</strong>
+          <span>Student · LM1A · Australië 🇦🇺</span>
+        </span>
+        <ShieldCheck aria-label="Profiel gekoppeld" />
+      </article>
+
+      <div className="more-menu" aria-label="Informatieonderdelen">
+        {sections.map(({ id, label, detail, icon: Icon }) => (
+          <button key={id} className={selected === id ? 'active' : ''} onClick={() => onSelect(id)}>
+            <span className="more-menu-icon"><Icon aria-hidden="true" /></span>
+            <span><strong>{label}</strong><small>{detail}</small></span>
+            <ChevronRight aria-hidden="true" />
+          </button>
+        ))}
+      </div>
+
+      <div className="more-panel" aria-live="polite">
+        {selected === 'notifications' && (
+          <>
+            <div className="more-panel-heading"><div><p className="eyebrow">Berichten</p><h2>Meldingen</h2></div><span className="panel-count">2 nieuw</span></div>
+            <ul className="notification-list">
+              <li className="unread"><span className="notification-time">14:10</span><div><strong>Nog 20 minuten!</strong><p>Rond jullie lunch af en ga richting Sportcentrum De Pijp.</p></div></li>
+              <li className="unread"><span className="notification-time">11:55</span><div><strong>Reminder POV</strong><p>Vergeet de categorieën voor jullie foto’s niet.</p></div></li>
+              <li><span className="notification-time">Gisteren</span><div><strong>Programma dag 2 staat klaar</strong><p>Bekijk je tijden, locaties en benodigdheden.</p></div></li>
+            </ul>
+          </>
+        )}
+
+        {selected === 'practical' && (
+          <>
+            <div className="more-panel-heading"><div><p className="eyebrow">Goed voorbereid</p><h2>Praktische informatie</h2></div><CheckCircle2 aria-hidden="true" /></div>
+            <ul className="check-list">
+              <li><CheckCircle2 aria-hidden="true" /><span><strong>Polsbandje</strong>Draag het de hele introweek voor toegang en kortingen.</span></li>
+              <li><CheckCircle2 aria-hidden="true" /><span><strong>Neem mee</strong>Opgeladen telefoon, powerbank, water en bescherming tegen het weer.</span></li>
+              <li><CheckCircle2 aria-hidden="true" /><span><strong>Ben je later?</strong>Stuur je naam, reden en verwachte aankomsttijd in de klassenapp.</span></li>
+            </ul>
+          </>
+        )}
+
+        {selected === 'discounts' && (
+          <>
+            <div className="more-panel-heading"><div><p className="eyebrow">Studentendeals</p><h2>Kortingen</h2></div><BadgePercent aria-hidden="true" /></div>
+            <div className="info-callout"><strong>Houd je polsbandje om</strong><p>Daarmee bewijs je bij deelnemende locaties dat je recht hebt op de introweekkorting.</p></div>
+            <p className="panel-footnote">Het definitieve overzicht van locaties en voorwaarden wordt later veilig in de app ingelezen.</p>
+          </>
+        )}
+
+        {selected === 'pov' && (
+          <>
+            <div className="more-panel-heading"><div><p className="eyebrow">Voor je land</p><h2>POV-foto’s</h2></div><Camera aria-hidden="true" /></div>
+            <ol className="step-list">
+              <li><span>1</span><p><strong>Bekijk de categorieën</strong>Kies samen welke momenten jullie willen vastleggen.</p></li>
+              <li><span>2</span><p><strong>Maak iets unieks</strong>De leukste, grappigste en origineelste foto’s verdienen punten.</p></li>
+              <li><span>3</span><p><strong>Upload via jullie klassenlink</strong>De definitieve link wordt aan het profiel van de klas gekoppeld.</p></li>
+            </ol>
+          </>
+        )}
+
+        {selected === 'help' && (
+          <>
+            <div className="more-panel-heading"><div><p className="eyebrow">We staan klaar</p><h2>Contact & hulp</h2></div><CircleHelp aria-hidden="true" /></div>
+            <div className="contact-list">
+              <article><strong>Jouw buddy’s</strong><span>De namen en contactknoppen volgen uit de Excel-import.</span></article>
+              <article><strong>Jouw PO’er</strong><span>Wordt automatisch gekoppeld aan LM1A.</span></article>
+              <article><strong>Klassenapp</strong><span>Gebruik de appgroep voor vragen, vertragingen en contact met je klas.</span></article>
+            </div>
+            <p className="emergency-note"><strong>Spoed?</strong> Bel bij een noodsituatie altijd 112.</p>
+          </>
+        )}
+
+        {selected === 'settings' && (
+          <>
+            <div className="more-panel-heading"><div><p className="eyebrow">Persoonlijk</p><h2>Instellingen</h2></div><Settings aria-hidden="true" /></div>
+            <div className="settings-list">
+              <button role="switch" aria-checked={notificationPreview} onClick={() => setNotificationPreview((value) => !value)}>
+                <span><strong>Pushmeldingen</strong><small>Voorbeeldinstelling; toestemming volgt later</small></span><i className={notificationPreview ? 'toggle active' : 'toggle'}><b /></i>
+              </button>
+              <button role="switch" aria-checked={largeText} onClick={() => setLargeText((value) => !value)}>
+                <span><strong>Grotere tekst</strong><small>Vergroot de informatie in dit onderdeel</small></span><i className={largeText ? 'toggle active' : 'toggle'}><b /></i>
+              </button>
+            </div>
+          </>
+        )}
+      </div>
     </section>
   )
 }
 
 function App() {
   const [active, setActive] = useState<NavLabel>('Vandaag')
+  const [moreSection, setMoreSection] = useState<MoreSectionId>('notifications')
 
   return (
     <div className="app-shell">
@@ -254,7 +360,7 @@ function App() {
             <span className="flag" aria-label="Vlag van Australië">🇦🇺</span>
             <span>LM1A · Australië</span>
           </div>
-          <button className="icon-button notification" aria-label="Meldingen openen">
+          <button className="icon-button notification" aria-label="Meldingen openen" onClick={() => { setMoreSection('notifications'); setActive('Meer') }}>
             <Bell aria-hidden="true" />
             <span className="notification-dot" />
           </button>
@@ -319,9 +425,7 @@ function App() {
 
         {active === 'Strijd' && <CompetitionView />}
 
-        {active !== 'Vandaag' && active !== 'Programma' && active !== 'Kaart' && active !== 'Strijd' && (
-          <PlaceholderView active={active} onBack={() => setActive('Vandaag')} />
-        )}
+        {active === 'Meer' && <MoreView selected={moreSection} onSelect={setMoreSection} />}
       </main>
 
       <nav className="bottom-nav" aria-label="Hoofdnavigatie">
