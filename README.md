@@ -1,2 +1,2 @@
-# open-dag-app
-Interactieve app voor de Open Dag
+# Introweek-app
+Interactieve app voor de Introweek
