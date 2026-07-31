@@ -4,13 +4,20 @@
 
 Een bevoegde organisator uploadt een nieuwe versie van het deelnemersbestand. De app vergelijkt die versie met de laatst geaccepteerde import, toont alle mutaties en verwerkt ze pas na expliciete bevestiging.
 
-## Benodigde vaste sleutel
+## Vaste sleutels per rol
 
-Iedere persoon moet een stabiele unieke sleutel hebben, bij voorkeur het student- of personeelsnummer. Een e-mailadres kan als tweede controle dienen, maar een naam is niet uniek genoeg.
+De beschikbare brongegevens zijn voldoende om personen betrouwbaar te herkennen:
+
+- voor studenten en buddy's is `studentnummer` de primaire externe sleutel;
+- hun e-mailadres is een aanvullende unieke controle en mag veranderen zonder dat een nieuw persoon ontstaat;
+- voor docenten en PO'ers is het genormaliseerde e-mailadres de primaire externe sleutel;
+- een naam wordt uitsluitend als weergavenaam gebruikt en nooit als unieke sleutel.
+
+Bij de eerste import krijgt iedere persoon daarnaast een interne, onveranderlijke `persoon_id`. E-mailadressen worden voor vergelijking getrimd en naar kleine letters omgezet. Dubbele studentnummers, dubbele e-mailadressen of conflicterende rollen blokkeren de import en worden eerst aan de beheerder getoond.
 
 Minimale kolommen:
 
-- `persoon_id`
+- `studentnummer` (verplicht voor studenten en buddy's)
 - `voornaam`
 - `tussenvoegsel`
 - `achternaam`
@@ -20,6 +27,8 @@ Minimale kolommen:
 - `actief`
 
 De definitieve kolomnamen worden afgestemd op het bestaande Excelbestand. De importeur accepteert daarna steeds hetzelfde sjabloon.
+
+Als het e-mailadres van een docent wijzigt, vraagt de app eenmalig om te bevestigen aan welke bestaande docent het nieuwe adres gekoppeld moet worden. Daarmee voorkomen we dat één docent per ongeluk tweemaal wordt aangemaakt.
 
 ## Veilige importstroom
 
