@@ -2,16 +2,19 @@ import { useState } from 'react'
 import {
   Bell,
   CalendarDays,
+  Camera,
   ChevronRight,
   Clock3,
+  Compass,
   Ellipsis,
   LocateFixed,
   Map,
   MapPin,
   Navigation,
+  Sparkles,
   Trophy,
 } from 'lucide-react'
-import { mapUrl, programmeDays, routeDays, today, type ProgrammeDay, type RouteDay } from './data'
+import { mapUrl, programmeDays, routeDays, standings, today, type ProgrammeDay, type RouteDay } from './data'
 
 const navItems = [
   { label: 'Vandaag', icon: Clock3 },
@@ -158,11 +161,76 @@ function MapView() {
   )
 }
 
-function PlaceholderView({ active, onBack }: { active: Exclude<NavLabel, 'Vandaag' | 'Programma' | 'Kaart'>; onBack: () => void }) {
+function CompetitionView() {
+  const leader = standings[0]
+  const ownTeam = standings.find((team) => team.isOwn) ?? standings[1]
+  const difference = leader.points - ownTeam.points
+
+  return (
+    <section className="competition-view" aria-labelledby="competition-title">
+      <div className="page-intro">
+        <p className="eyebrow">De landenstrijd</p>
+        <h1 id="competition-title">Samen voor Australië</h1>
+        <p>Iedere opdracht telt. Werk samen met LM1A en klim naar de eerste plaats.</p>
+      </div>
+
+      <article className="team-hero">
+        <div className="team-hero-flag" aria-hidden="true">🇦🇺</div>
+        <div className="team-hero-copy">
+          <span>Jouw land · LM1A</span>
+          <strong>2e plaats</strong>
+          <p><b>{ownTeam.points}</b> punten · nog <b>{difference}</b> tot de koploper</p>
+        </div>
+        <Trophy aria-hidden="true" />
+      </article>
+
+      <div className="score-meta">
+        <span><i className="status-pulse" /> Voorbeeldstand</span>
+        <small>De livekoppeling volgt later</small>
+      </div>
+
+      <ol className="leaderboard" aria-label="Klassement van de landenstrijd">
+        {standings.map((team) => (
+          <li key={team.classCode} className={team.isOwn ? 'own-team' : ''}>
+            <span className="standing-rank">{team.rank}</span>
+            <span className="standing-flag" aria-hidden="true">{team.flag}</span>
+            <span className="standing-team">
+              <strong>{team.country}</strong>
+              <small>{team.classCode}{team.isOwn ? ' · jouw klas' : ''}</small>
+              <span className="score-track" aria-hidden="true">
+                <i style={{ width: `${Math.round((team.points / leader.points) * 100)}%` }} />
+              </span>
+            </span>
+            <span className="standing-points"><b>{team.points}</b><small>punten</small></span>
+          </li>
+        ))}
+      </ol>
+
+      <section className="points-section" aria-labelledby="points-title">
+        <div className="route-heading">
+          <div>
+            <p className="eyebrow">Pak die punten</p>
+            <h2 id="points-title">Kansen voor je klas</h2>
+          </div>
+          <Sparkles aria-hidden="true" />
+        </div>
+        <div className="points-grid">
+          <article><Camera aria-hidden="true" /><div><strong>POV-foto’s</strong><span>Creatief, grappig en uniek</span></div></article>
+          <article><Compass aria-hidden="true" /><div><strong>Experiences</strong><span>Samenwerken en presteren</span></div></article>
+          <article><Map aria-hidden="true" /><div><strong>City Game</strong><span>Opdrachten door Amsterdam</span></div></article>
+          <article><Trophy aria-hidden="true" /><div><strong>Bonuspunten</strong><span>Let op verrassingsacties</span></div></article>
+        </div>
+      </section>
+
+      <p className="programme-note">Een nieuwe stand wordt later alleen opgehaald na een echte puntenwijziging. Er komt geen continue polling.</p>
+    </section>
+  )
+}
+
+function PlaceholderView({ active, onBack }: { active: Exclude<NavLabel, 'Vandaag' | 'Programma' | 'Kaart' | 'Strijd'>; onBack: () => void }) {
   return (
     <section className="placeholder-view" aria-live="polite">
       <span className="placeholder-icon" aria-hidden="true">
-        {active === 'Strijd' && <Trophy />}
         {active === 'Meer' && <Ellipsis />}
       </span>
       <p className="eyebrow">Binnenkort beschikbaar</p>
@@ -249,7 +317,9 @@ function App() {
 
         {active === 'Kaart' && <MapView />}
 
-        {active !== 'Vandaag' && active !== 'Programma' && active !== 'Kaart' && (
+        {active === 'Strijd' && <CompetitionView />}
+
+        {active !== 'Vandaag' && active !== 'Programma' && active !== 'Kaart' && active !== 'Strijd' && (
           <PlaceholderView active={active} onBack={() => setActive('Vandaag')} />
         )}
       </main>

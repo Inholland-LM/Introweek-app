@@ -555,6 +555,115 @@ main {
 }
 .route-list a svg { width: 20px; height: 20px; }
 
+.competition-view { padding-bottom: 8px; }
+.team-hero {
+  position: relative;
+  display: grid;
+  min-height: 126px;
+  grid-template-columns: 68px 1fr auto;
+  gap: 14px;
+  align-items: center;
+  overflow: hidden;
+  padding: 19px;
+  border: 1px solid rgba(245, 195, 82, 0.55);
+  border-radius: 25px;
+  background:
+    radial-gradient(circle at 90% 15%, rgba(245, 195, 82, 0.22), transparent 9rem),
+    linear-gradient(145deg, #0e3470, #081d41);
+  box-shadow: var(--shadow);
+}
+.team-hero::after {
+  position: absolute;
+  right: -35px;
+  bottom: -54px;
+  width: 150px;
+  height: 150px;
+  border: 1px solid rgba(245, 195, 82, 0.14);
+  border-radius: 50%;
+  content: "";
+  box-shadow: 0 0 0 18px rgba(245, 195, 82, 0.04);
+}
+.team-hero-flag {
+  display: grid;
+  width: 66px;
+  height: 66px;
+  place-items: center;
+  border: 2px solid var(--gold);
+  border-radius: 50%;
+  background: var(--navy-900);
+  font-size: 2rem;
+}
+.team-hero-copy { position: relative; z-index: 1; display: grid; gap: 4px; }
+.team-hero-copy > span { color: var(--gold-soft); font-size: 0.67rem; font-weight: 900; letter-spacing: 0.08em; text-transform: uppercase; }
+.team-hero-copy > strong { font-family: Georgia, "Times New Roman", serif; font-size: 1.62rem; }
+.team-hero-copy p { margin: 0; color: var(--muted); font-size: 0.8rem; line-height: 1.35; }
+.team-hero-copy p b { color: var(--gold); }
+.team-hero > svg { position: relative; z-index: 1; width: 26px; color: var(--gold); }
+
+.score-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 17px 4px 11px;
+  color: var(--muted);
+}
+.score-meta span { display: flex; align-items: center; gap: 7px; font-size: 0.73rem; font-weight: 800; }
+.score-meta small { font-size: 0.68rem; }
+.status-pulse {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 0 4px rgba(245, 195, 82, 0.13);
+}
+
+.leaderboard { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.leaderboard li {
+  display: grid;
+  min-height: 72px;
+  grid-template-columns: 24px 38px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: rgba(10, 33, 72, 0.7);
+}
+.leaderboard li.own-team {
+  border-color: rgba(245, 195, 82, 0.75);
+  background: linear-gradient(100deg, rgba(245, 195, 82, 0.16), rgba(10, 33, 72, 0.88));
+  box-shadow: 0 8px 24px rgba(0, 5, 20, 0.2);
+}
+.standing-rank { color: var(--muted); text-align: center; font-size: 0.8rem; font-weight: 900; }
+.own-team .standing-rank { color: var(--gold); }
+.standing-flag { font-size: 1.55rem; }
+.standing-team { display: grid; min-width: 0; gap: 2px; }
+.standing-team strong { overflow: hidden; font-size: 0.88rem; text-overflow: ellipsis; white-space: nowrap; }
+.standing-team small { color: var(--muted); font-size: 0.67rem; }
+.score-track { display: block; height: 3px; margin-top: 5px; overflow: hidden; border-radius: 99px; background: rgba(151, 176, 218, 0.17); }
+.score-track i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #a8c0eb, var(--gold)); }
+.standing-points { display: grid; min-width: 42px; gap: 0; text-align: right; }
+.standing-points b { color: var(--gold-soft); font-size: 0.92rem; }
+.standing-points small { color: var(--muted); font-size: 0.58rem; }
+
+.points-section { margin-top: 27px; }
+.points-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; }
+.points-grid article {
+  display: flex;
+  min-height: 88px;
+  gap: 10px;
+  align-items: flex-start;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 17px;
+  background: rgba(10, 33, 72, 0.7);
+}
+.points-grid article > svg { width: 20px; height: 20px; flex: 0 0 auto; color: var(--gold); }
+.points-grid article div { display: grid; gap: 5px; }
+.points-grid strong { font-size: 0.82rem; line-height: 1.2; }
+.points-grid span { color: var(--muted); font-size: 0.68rem; line-height: 1.35; }
+
 .placeholder-view {
   display: grid;
   min-height: 60dvh;
