@@ -10,7 +10,7 @@ import {
   Navigation,
   Trophy,
 } from 'lucide-react'
-import { mapUrl, today } from './data'
+import { mapUrl, programmeDays, today, type ProgrammeDay } from './data'
 
 const navItems = [
   { label: 'Vandaag', icon: Clock3 },
@@ -20,8 +20,89 @@ const navItems = [
   { label: 'Meer', icon: Ellipsis },
 ] as const
 
+type NavLabel = (typeof navItems)[number]['label']
+
+function ProgrammeView() {
+  const [selectedDayId, setSelectedDayId] = useState<ProgrammeDay['id']>('woensdag')
+  const selectedDay = programmeDays.find((day) => day.id === selectedDayId) ?? programmeDays[1]
+
+  return (
+    <section className="programme-view" aria-labelledby="programme-title">
+      <div className="page-intro">
+        <p className="eyebrow">Persoonlijk voor LM1A</p>
+        <h1 id="programme-title">Jouw programma</h1>
+        <p>Alle tijden, locaties en routes voor jouw klas overzichtelijk bij elkaar.</p>
+      </div>
+
+      <div className="day-switcher" role="tablist" aria-label="Kies een introductiedag">
+        {programmeDays.map((day) => (
+          <button
+            key={day.id}
+            role="tab"
+            aria-selected={selectedDay.id === day.id}
+            className={selectedDay.id === day.id ? 'active' : ''}
+            onClick={() => setSelectedDayId(day.id)}
+          >
+            <span>{day.shortLabel}</span>
+            <small>aug</small>
+          </button>
+        ))}
+      </div>
+
+      <article className="day-overview">
+        <div className="day-overview-heading">
+          <div>
+            <p>{selectedDay.date}</p>
+            <h2>{selectedDay.title}</h2>
+          </div>
+          <CalendarDays aria-hidden="true" />
+        </div>
+        <p>{selectedDay.summary}</p>
+      </article>
+
+      <ol className="programme-list">
+        {selectedDay.items.map((item) => (
+          <li key={`${selectedDay.id}-${item.time}-${item.title}`}>
+            <time>{item.time}</time>
+            <div className="programme-activity">
+              <span className="activity-category">{item.category}</span>
+              <h3>{item.title}</h3>
+              {item.location && (
+                <p><MapPin aria-hidden="true" />{item.location}</p>
+              )}
+              {item.routeUrl && (
+                <a href={item.routeUrl} target="_blank" rel="noreferrer">
+                  <Navigation aria-hidden="true" /> Route openen
+                </a>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+
+      <p className="programme-note">Wijzigt er iets? Dan verschijnt de actuele informatie automatisch bovenaan.</p>
+    </section>
+  )
+}
+
+function PlaceholderView({ active, onBack }: { active: Exclude<NavLabel, 'Vandaag' | 'Programma'>; onBack: () => void }) {
+  return (
+    <section className="placeholder-view" aria-live="polite">
+      <span className="placeholder-icon" aria-hidden="true">
+        {active === 'Kaart' && <Map />}
+        {active === 'Strijd' && <Trophy />}
+        {active === 'Meer' && <Ellipsis />}
+      </span>
+      <p className="eyebrow">Binnenkort beschikbaar</p>
+      <h1>{active}</h1>
+      <p>Dit onderdeel krijgt in de volgende bouwstap zijn volledige inhoud.</p>
+      <button className="secondary-button" onClick={onBack}>Terug naar vandaag</button>
+    </section>
+  )
+}
+
 function App() {
-  const [active, setActive] = useState<(typeof navItems)[number]['label']>('Vandaag')
+  const [active, setActive] = useState<NavLabel>('Vandaag')
 
   return (
     <div className="app-shell">
@@ -41,7 +122,7 @@ function App() {
       </header>
 
       <main>
-        {active === 'Vandaag' ? (
+        {active === 'Vandaag' && (
           <>
             <section className="welcome" aria-labelledby="welcome-title">
               <p className="eyebrow">Introdag 2 · woensdag 26 augustus</p>
@@ -90,19 +171,12 @@ function App() {
               <ChevronRight aria-hidden="true" />
             </button>
           </>
-        ) : (
-          <section className="placeholder-view" aria-live="polite">
-            <span className="placeholder-icon" aria-hidden="true">
-              {active === 'Programma' && <CalendarDays />}
-              {active === 'Kaart' && <Map />}
-              {active === 'Strijd' && <Trophy />}
-              {active === 'Meer' && <Ellipsis />}
-            </span>
-            <p className="eyebrow">Binnenkort beschikbaar</p>
-            <h1>{active}</h1>
-            <p>Dit onderdeel krijgt in de volgende bouwstap zijn volledige inhoud.</p>
-            <button className="secondary-button" onClick={() => setActive('Vandaag')}>Terug naar vandaag</button>
-          </section>
+        )}
+
+        {active === 'Programma' && <ProgrammeView />}
+
+        {active !== 'Vandaag' && active !== 'Programma' && (
+          <PlaceholderView active={active} onBack={() => setActive('Vandaag')} />
         )}
       </main>
 
