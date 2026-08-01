@@ -342,6 +342,12 @@ function MoreView({ selected, onSelect }: { selected: MoreSectionId; onSelect: (
           </>
         )}
       </div>
+
+      <footer className="institutional-signature">
+        <span className="signature-brand"><b>LM</b><i>=</i><strong>AMSTERDAM</strong></span>
+        <span>Een initiatief van Leisure &amp; Events Management Amsterdam</span>
+        <small>Hogeschool Inholland</small>
+      </footer>
     </section>
   )
 }
@@ -354,7 +360,10 @@ function App() {
     <div className="app-shell">
       <div className="map-texture" aria-hidden="true" />
       <header className="topbar">
-        <div className="brand">Introweek LM 2026</div>
+        <div className="brand-lockup" aria-label="LM Amsterdam, Intro 2026">
+          <span className="brand-mark"><b>LM</b><i>=</i><strong>AMSTERDAM</strong></span>
+          <span className="brand-edition">Intro 2026</span>
+        </div>
         <div className="identity-row">
           <div className="identity">
             <span className="flag" aria-label="Vlag van Australië">🇦🇺</span>

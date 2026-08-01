@@ -67,13 +67,34 @@ button { color: inherit; }
   backdrop-filter: blur(18px);
 }
 
-.brand {
+.brand-lockup {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
   margin-bottom: 14px;
-  text-align: center;
+}
+
+.brand-mark, .signature-brand {
+  display: inline-flex;
+  align-items: baseline;
+  color: #f8f4e9;
+  line-height: 1;
+  letter-spacing: -0.025em;
+}
+
+.brand-mark b, .signature-brand b { font-size: 1.12rem; font-weight: 950; }
+.brand-mark i, .signature-brand i { margin: 0 4px; color: var(--gold); font-style: normal; font-weight: 950; }
+.brand-mark strong, .signature-brand strong { font-size: 0.82rem; font-weight: 760; letter-spacing: 0.08em; }
+.brand-edition {
+  padding: 6px 9px;
+  border: 1px solid rgba(245, 195, 82, 0.38);
+  border-radius: 999px;
   color: var(--gold-soft);
-  font-size: 0.78rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
 }
 
@@ -802,6 +823,21 @@ main {
 .toggle b { position: absolute; top: 3px; left: 3px; width: 19px; height: 19px; border-radius: 50%; background: #c5d1e9; transition: transform 160ms ease; }
 .toggle.active { background: var(--gold); }
 .toggle.active b { background: #102042; transform: translateX(19px); }
+
+.institutional-signature {
+  display: grid;
+  justify-items: center;
+  gap: 7px;
+  margin: 24px 2px 4px;
+  padding: 22px 14px 4px;
+  border-top: 1px solid rgba(245, 195, 82, 0.28);
+  text-align: center;
+}
+.signature-brand { margin-bottom: 2px; }
+.signature-brand b { font-size: 1rem; }
+.signature-brand strong { font-size: 0.74rem; }
+.institutional-signature > span:not(.signature-brand) { color: var(--muted); font-size: 0.7rem; line-height: 1.4; }
+.institutional-signature small { color: var(--gold-soft); font-size: 0.66rem; font-weight: 750; letter-spacing: 0.04em; }
 
 .placeholder-view {
   display: grid;

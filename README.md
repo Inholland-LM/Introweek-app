@@ -1,6 +1,6 @@
-# Introweek-app
+# LMAmsterdam · Intro
 
-Mobiele begeleider voor de Introweek LM 2026.
+Mobiele begeleider voor de introweek van Leisure & Events Management Amsterdam.
 
 ## Uitgangspunten
 
