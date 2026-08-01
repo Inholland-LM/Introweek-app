@@ -28,6 +28,14 @@ Minimale kolommen:
 
 De definitieve kolomnamen worden afgestemd op het bestaande Excelbestand. De importeur accepteert daarna steeds hetzelfde sjabloon.
 
+Het vereenvoudigde sjabloon gebruikt één tabblad `Personen`. Iedere persoon staat precies één keer in het bestand en heeft maximaal één `klascode`. Voor studenten, buddy's en PO'ers is die klascode verplicht; voor organisatoren mag deze leeg blijven.
+
+## Huidige implementatiestap
+
+Een organisator kan het ingevulde `.xlsx`-bestand in de app lokaal laten controleren. De browser controleert het tabblad, de vaste kolomnamen, verplichte velden, rollen, klassen, actieve status en dubbele studentnummers of e-mailadressen. De Excel-lezer wordt pas op aanvraag geladen en het bestand wordt tijdens deze voorvertoning niet naar Supabase verstuurd.
+
+Het opslaan en vergelijken van bevestigde mutaties wordt bewust in een volgende, afzonderlijke stap aangesloten.
+
 ## Veilige importstroom
 
 1. Bestand uploaden in het afgeschermde beheerscherm.

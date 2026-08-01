@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@e965/xlsx':
+        specifier: 0.20.3
+        version: 0.20.3
       '@supabase/supabase-js':
         specifier: ^2.111.0
         version: 2.111.0
@@ -38,6 +41,11 @@ importers:
         version: 7.0.2
 
 packages:
+
+  '@e965/xlsx@0.20.3':
+    resolution: {integrity: sha512-703RN/3OdsRD5mtse2HBX7Um7xwaP9tlswEG6svOtjqokXoX7rJdQj7DyabD2I+xk22RgaIIU+R6BHgkpZGB/w==}
+    engines: {node: '>=0.8'}
+    hasBin: true
 
   '@emnapi/core@2.0.0-alpha.3':
     resolution: {integrity: sha512-AZypUeJ/yByuxyS7BlSNRDOMLMlROYtjYdIAuBmJssVz1UJDSeYxLrdizhXCFYhedC5bqd/ASy8EuNXbVVXp9g==}
@@ -523,6 +531,8 @@ packages:
         optional: true
 
 snapshots:
+
+  '@e965/xlsx@0.20.3': {}
 
   '@emnapi/core@2.0.0-alpha.3':
     dependencies:

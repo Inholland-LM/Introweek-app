@@ -844,6 +844,81 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(245, 195,
 .institutional-signature > span:not(.signature-brand) { color: var(--muted); font-size: 0.7rem; line-height: 1.4; }
 .institutional-signature small { color: var(--gold-soft); font-size: 0.66rem; font-weight: 750; letter-spacing: 0.04em; }
 
+.import-privacy, .import-ready, .import-error, .import-file-name {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+.import-privacy {
+  padding: 13px;
+  border: 1px solid rgba(132, 202, 174, 0.34);
+  border-radius: 15px;
+  background: rgba(27, 93, 72, 0.22);
+}
+.import-privacy svg, .import-ready svg { width: 21px; flex: 0 0 auto; color: #8ee0ba; }
+.import-privacy p, .import-ready p { display: grid; gap: 3px; margin: 0; color: var(--muted); font-size: 0.76rem; line-height: 1.4; }
+.import-privacy strong, .import-ready strong { color: #f7fbff; font-size: 0.83rem; }
+.import-file-button {
+  display: flex;
+  min-height: 52px;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  margin-top: 13px;
+  padding: 12px 14px;
+  border: 1px solid var(--gold);
+  border-radius: 15px;
+  color: #102042;
+  background: linear-gradient(135deg, var(--gold-soft), var(--gold));
+  font-size: 0.82rem;
+  font-weight: 850;
+  cursor: pointer;
+}
+.import-file-button.loading { cursor: wait; opacity: 0.74; }
+.import-file-button svg { width: 20px; }
+.import-file-button input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
+.import-error {
+  margin: 13px 0 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 125, 112, 0.38);
+  border-radius: 14px;
+  color: #ffd2cc;
+  background: rgba(132, 37, 42, 0.22);
+  font-size: 0.77rem;
+  line-height: 1.4;
+}
+.import-error svg { width: 19px; flex: 0 0 auto; color: var(--coral); }
+.import-result { margin-top: 14px; }
+.import-file-name { align-items: center; padding: 0 2px 11px; }
+.import-file-name svg { width: 22px; color: var(--gold); }
+.import-file-name span { display: grid; min-width: 0; gap: 2px; }
+.import-file-name small { color: var(--muted); font-size: 0.66rem; }
+.import-file-name strong { overflow: hidden; font-size: 0.78rem; text-overflow: ellipsis; white-space: nowrap; }
+.import-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.import-summary article {
+  display: grid;
+  min-height: 82px;
+  place-content: center;
+  justify-items: center;
+  padding: 8px 5px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(7, 27, 62, 0.62);
+  text-align: center;
+}
+.import-summary svg { width: 18px; color: var(--gold); }
+.import-summary strong { color: var(--gold-soft); font-size: 1.25rem; }
+.import-summary span { color: var(--muted); font-size: 0.64rem; }
+.import-summary .has-errors strong { color: var(--coral); }
+.import-ready { margin-top: 11px; padding: 13px; border-radius: 14px; background: rgba(27, 93, 72, 0.22); }
+.import-issues { margin-top: 11px; padding: 12px; border-radius: 14px; background: rgba(132, 37, 42, 0.16); }
+.import-issues h3 { display: flex; align-items: center; gap: 7px; margin: 0 0 9px; color: #ffd2cc; font-size: 0.82rem; }
+.import-issues h3 svg { width: 18px; color: var(--coral); }
+.import-issues ul { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.import-issues li { display: grid; grid-template-columns: 48px 1fr; gap: 7px; color: var(--muted); font-size: 0.72rem; }
+.import-issues li b { color: #ffd2cc; }
+.import-issues > p { margin: 9px 0 0; color: #ffd2cc; font-size: 0.72rem; }
+
 .placeholder-view {
   display: grid;
   min-height: 60dvh;

@@ -21,6 +21,7 @@ import {
   Trophy,
 } from 'lucide-react'
 import { mapUrl, programmeDays, routeDays, standings, today, type ProgrammeDay, type RouteDay } from './data'
+import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import { useAppProfile } from './profile'
 
 const navItems = [
@@ -32,7 +33,7 @@ const navItems = [
 ] as const
 
 type NavLabel = (typeof navItems)[number]['label']
-type MoreSectionId = 'notifications' | 'practical' | 'discounts' | 'pov' | 'help' | 'settings'
+type MoreSectionId = 'notifications' | 'practical' | 'discounts' | 'pov' | 'help' | 'settings' | 'import'
 
 function ProgrammeView() {
   const profile = useAppProfile()
@@ -244,7 +245,7 @@ function MoreView({ selected, onSelect }: { selected: MoreSectionId; onSelect: (
   const profile = useAppProfile()
   const [notificationPreview, setNotificationPreview] = useState(true)
   const [largeText, setLargeText] = useState(false)
-  const sections = [
+  const sections: Array<{ id: MoreSectionId; label: string; detail: string; icon: typeof Bell }> = [
     { id: 'notifications' as const, label: 'Meldingen', detail: '2 nieuw', icon: Bell },
     { id: 'practical' as const, label: 'Praktisch', detail: 'Alles bij de hand', icon: CheckCircle2 },
     { id: 'discounts' as const, label: 'Kortingen', detail: 'Met je polsbandje', icon: BadgePercent },
@@ -252,6 +253,9 @@ function MoreView({ selected, onSelect }: { selected: MoreSectionId; onSelect: (
     { id: 'help' as const, label: 'Contact & hulp', detail: 'Snel iemand vinden', icon: CircleHelp },
     { id: 'settings' as const, label: 'Instellingen', detail: 'Meldingen & tekst', icon: Settings },
   ]
+  if (profile.profileType === 'organizer') {
+    sections.push({ id: 'import', label: 'Deelnemers importeren', detail: 'Excel veilig controleren', icon: ShieldCheck })
+  }
 
   return (
     <section className={`more-view${largeText ? ' large-text' : ''}`} aria-labelledby="more-title">
@@ -348,6 +352,8 @@ function MoreView({ selected, onSelect }: { selected: MoreSectionId; onSelect: (
             </div>
           </>
         )}
+
+        {selected === 'import' && profile.profileType === 'organizer' && <ImportPreviewPanel />}
       </div>
 
       <footer className="institutional-signature">
