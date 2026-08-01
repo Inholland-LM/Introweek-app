@@ -17,6 +17,17 @@ De migratie maakt uitsluitend de identiteitsbasis:
 - automatische koppeling op genormaliseerd schoolmailadres;
 - Row Level Security, zodat een student alleen het eigen profiel en de eigen klasrelatie kan ophalen.
 
+## Importvoorvertoning activeren
+
+Voer na de identiteitsbasis ook `supabase/migrations/002_people_import_preview.sql` uit in de SQL Editor. Deze migratie voegt één alleen-lezen databasefunctie toe. Alleen een gekoppeld en actief organisatorprofiel mag die functie gebruiken.
+
+De functie:
+
+- ontvangt uitsluitend de lokaal genormaliseerde rijen, niet het Excelbestand;
+- vergelijkt deze met de actuele profielen en klasrelaties;
+- retourneert alleen totalen en gevonden mutaties;
+- schrijft, activeert of deactiveert nog niets.
+
 Er wordt nog geen inlogscherm getoond en de bestaande demo blijft volledig lokaal werken. De volgende stap is het toevoegen van e-mailinloggen en een test met fictieve accounts, voordat echte persoonsgegevens worden geïmporteerd.
 
 ## E-mailinloggen veilig activeren

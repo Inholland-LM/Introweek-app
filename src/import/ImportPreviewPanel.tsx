@@ -1,11 +1,21 @@
 import { useState, type ChangeEvent } from 'react'
-import { AlertTriangle, CheckCircle2, FileSpreadsheet, ShieldCheck, Upload, UsersRound } from 'lucide-react'
+import { AlertTriangle, ArrowRight, CheckCircle2, FileSpreadsheet, ShieldCheck, Upload, UsersRound } from 'lucide-react'
+import { comparePeopleImport, type ImportComparison, type ImportChangeStatus } from './compareImport'
 import { parseImportWorkbook, type ImportPreview } from './parseWorkbook'
+
+const statusLabels: Record<ImportChangeStatus, string> = {
+  new: 'Nieuw',
+  changed: 'Gewijzigd',
+  conflict: 'Conflict',
+  deactivated: 'Deactiveren',
+}
 
 export function ImportPreviewPanel() {
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [loading, setLoading] = useState(false)
+  const [comparing, setComparing] = useState(false)
   const [error, setError] = useState('')
+  const [comparison, setComparison] = useState<ImportComparison | null>(null)
 
   async function selectFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -15,6 +25,7 @@ export function ImportPreviewPanel() {
     setLoading(true)
     setError('')
     setPreview(null)
+    setComparison(null)
     try {
       setPreview(await parseImportWorkbook(file))
     } catch (reason) {
@@ -30,6 +41,21 @@ export function ImportPreviewPanel() {
   }, {}) ?? {}
   const classCount = new Set(preview?.rows.map((person) => person.classCode).filter(Boolean)).size
   const ready = Boolean(preview && preview.rows.length > 0 && preview.issues.length === 0)
+  const changes = comparison ? [...comparison.changes, ...comparison.deactivations] : []
+
+  async function compareWithCurrentData() {
+    if (!preview || !ready) return
+    setComparing(true)
+    setError('')
+    setComparison(null)
+    try {
+      setComparison(await comparePeopleImport(preview.rows))
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Vergelijken lukt nu niet.')
+    } finally {
+      setComparing(false)
+    }
+  }
 
   return (
     <>
@@ -61,7 +87,12 @@ export function ImportPreviewPanel() {
           </div>
 
           {ready ? (
-            <div className="import-ready"><CheckCircle2 aria-hidden="true" /><p><strong>Klaar voor vergelijking</strong>Studenten {roleCounts.student ?? 0} · buddy’s {roleCounts.buddy ?? 0} · PO’ers {roleCounts.poer ?? 0} · organisatoren {roleCounts.organizer ?? 0}</p></div>
+            <>
+              <div className="import-ready"><CheckCircle2 aria-hidden="true" /><p><strong>Klaar voor vergelijking</strong>Studenten {roleCounts.student ?? 0} · buddy’s {roleCounts.buddy ?? 0} · PO’ers {roleCounts.poer ?? 0} · organisatoren {roleCounts.organizer ?? 0}</p></div>
+              <button className="import-compare-button" onClick={compareWithCurrentData} disabled={comparing}>
+                <span>{comparing ? 'Veilig vergelijken…' : 'Vergelijk met huidige gegevens'}</span><ArrowRight aria-hidden="true" />
+              </button>
+            </>
           ) : (
             <div className="import-issues">
               <h3><AlertTriangle aria-hidden="true" />Los dit eerst op</h3>
@@ -70,7 +101,37 @@ export function ImportPreviewPanel() {
             </div>
           )}
 
-          <p className="panel-footnote">De knop om mutaties te vergelijken en te bevestigen volgt in de volgende beveiligde stap.</p>
+          {comparison && (
+            <section className="comparison-result" aria-labelledby="comparison-title">
+              <div className="comparison-heading"><div><p className="eyebrow">Nog niets gewijzigd</p><h3 id="comparison-title">Gevonden mutaties</h3></div><ShieldCheck aria-hidden="true" /></div>
+              <div className="comparison-counts">
+                <span><b>{comparison.new}</b> nieuw</span>
+                <span><b>{comparison.changed}</b> gewijzigd</span>
+                <span><b>{comparison.deactivated}</b> deactiveren</span>
+                <span className={comparison.conflicts ? 'warning' : ''}><b>{comparison.conflicts}</b> conflicten</span>
+                <span><b>{comparison.unchanged}</b> ongewijzigd</span>
+              </div>
+
+              {changes.length === 0 ? (
+                <div className="comparison-empty"><CheckCircle2 aria-hidden="true" /><p><strong>Alles is actueel</strong>Er zijn geen wijzigingen ten opzichte van de database.</p></div>
+              ) : (
+                <ul className="comparison-list">
+                  {changes.map((change, index) => (
+                    <li key={`${change.status}-${change.profileId ?? change.identifier}-${index}`} className={change.status}>
+                      <span className="comparison-status">{statusLabels[change.status]}</span>
+                      <strong>{change.displayName}</strong>
+                      <small>{change.identifier}{change.classCode ? ` · ${change.classCode}` : ''}</small>
+                      {change.fields.length > 0 && <p>{change.fields.join(' · ')}</p>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+
+              <div className="comparison-stop"><ShieldCheck aria-hidden="true" /><p><strong>Voorvertoning afgerond</strong>Er is niets opgeslagen. Definitief bevestigen bouwen en testen we als aparte vervolgstap.</p></div>
+            </section>
+          )}
+
+          {!comparison && <p className="panel-footnote">Na het vergelijken zie je eerst alle mutaties. Er wordt nog niets opgeslagen.</p>}
         </section>
       )}
     </>
