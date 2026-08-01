@@ -1,7 +1,7 @@
 {
-  "name": "Introweek LM 2026",
-  "short_name": "Introweek",
-  "description": "Jouw persoonlijke begeleider tijdens de Introweek LM 2026.",
+  "name": "LMAmsterdam · Intro 2026",
+  "short_name": "LMAmsterdam",
+  "description": "Jouw persoonlijke begeleider tijdens de introweek van Leisure & Events Management Amsterdam.",
   "start_url": "/Introweek-app/",
   "scope": "/Introweek-app/",
   "display": "standalone",

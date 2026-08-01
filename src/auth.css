@@ -49,6 +49,10 @@
 }
 
 .auth-seal svg { width: 34px; height: 34px; }
+.auth-brand { display: flex; align-items: baseline; justify-content: center; margin-bottom: 12px; color: #f8f4e9; line-height: 1; }
+.auth-brand span { font-size: 1.15rem; font-weight: 950; }
+.auth-brand i { margin: 0 5px; color: #f5c352; font-style: normal; font-weight: 950; }
+.auth-brand strong { font-size: 0.84rem; font-weight: 760; letter-spacing: 0.09em; }
 .auth-eyebrow { margin: 0 0 8px; color: #f5c352; font-size: 0.74rem; font-weight: 900; letter-spacing: 0.13em; text-transform: uppercase; }
 .auth-card h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(2rem, 9vw, 2.85rem); line-height: 1.05; letter-spacing: -0.035em; }
 .auth-intro { margin: 14px auto 25px; color: #adbbd8; line-height: 1.55; }
