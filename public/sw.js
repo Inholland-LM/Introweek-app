@@ -1,4 +1,4 @@
-const CACHE = 'lmamsterdam-shell-v7'
+const CACHE = 'lmamsterdam-shell-v8'
 const SHELL = ['/Introweek-app/']
 
 self.addEventListener('install', (event) => {
