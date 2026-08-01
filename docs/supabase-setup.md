@@ -18,3 +18,17 @@ De migratie maakt uitsluitend de identiteitsbasis:
 - Row Level Security, zodat een student alleen het eigen profiel en de eigen klasrelatie kan ophalen.
 
 Er wordt nog geen inlogscherm getoond en de bestaande demo blijft volledig lokaal werken. De volgende stap is het toevoegen van e-mailinloggen en een test met fictieve accounts, voordat echte persoonsgegevens worden geïmporteerd.
+
+## E-mailinloggen veilig activeren
+
+De inloginterface staat in de code, maar blijft in productie uitgeschakeld totdat de mailvoorziening is ingericht en met fictieve accounts is getest.
+
+Voor ruim 300 deelnemers is de standaard mailserver van Supabase niet geschikt. Stel eerst onder **Authentication → Emails → SMTP Settings** een eigen SMTP-provider in. Pas daarna kan `VITE_AUTH_ENABLED` in GitHub op `true` worden gezet.
+
+Voor een testaccount geldt deze volgorde:
+
+1. voeg eerst een fictief profiel met een genormaliseerd e-mailadres toe aan `public.profiles`;
+2. maak daarna in **Authentication → Users** een gebruiker met exact dat e-mailadres;
+3. de databasetrigger koppelt de twee records automatisch;
+4. pas het Magic Link-sjabloon aan zodat het `{{ .Token }}` toont als zescijferige inlogcode;
+5. controleer na het activeren dat het account uitsluitend het eigen profiel en de eigen klasrelatie kan lezen.
