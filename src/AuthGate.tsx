@@ -2,16 +2,24 @@ import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { ArrowLeft, KeyRound, LogOut, Mail, ShieldCheck } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
+import { demoProfile, ProfileProvider, type AppProfile } from './profile'
 
 type AuthGateProps = {
   children: ReactNode
 }
 
-type Profile = {
+type ProfileRecord = {
   first_name: string
   name_prefix: string | null
   last_name: string
-  profile_type: 'student' | 'buddy' | 'poer' | 'organizer'
+  profile_type: AppProfile['profileType']
+  class_memberships: Array<{
+    classes: {
+      code: string
+      country: string
+      flag: string
+    } | null
+  }>
 }
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true'
@@ -30,7 +38,7 @@ function friendlyError(message: string) {
 
 export function AuthGate({ children }: AuthGateProps) {
   const [session, setSession] = useState<Session | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
+  const [profile, setProfile] = useState<AppProfile | null>(null)
   const [loading, setLoading] = useState(authEnabled)
   const [profileChecked, setProfileChecked] = useState(false)
   const [email, setEmail] = useState('')
@@ -71,11 +79,31 @@ export function AuthGate({ children }: AuthGateProps) {
 
     supabase
       .from('profiles')
-      .select('first_name, name_prefix, last_name, profile_type')
+      .select('first_name, name_prefix, last_name, profile_type, class_memberships(classes(code, country, flag))')
       .maybeSingle()
-      .then(({ data }) => {
+      .then(({ data, error: profileError }) => {
         if (!active) return
-        setProfile(data as Profile | null)
+        const record = data as ProfileRecord | null
+        const classInfo = record?.class_memberships?.[0]?.classes
+          ?? (record?.profile_type === 'organizer'
+            ? { code: 'ORGA', country: 'Organisatie', flag: '🎓' }
+            : null)
+
+        if (profileError || !record || !classInfo) {
+          setProfile(null)
+          setProfileChecked(true)
+          return
+        }
+
+        const displayName = [record.first_name, record.name_prefix, record.last_name].filter(Boolean).join(' ')
+        setProfile({
+          firstName: record.first_name,
+          displayName,
+          profileType: record.profile_type,
+          classCode: classInfo.code,
+          country: classInfo.country,
+          flag: classInfo.flag,
+        })
         setProfileChecked(true)
       })
 
@@ -84,7 +112,7 @@ export function AuthGate({ children }: AuthGateProps) {
     }
   }, [session])
 
-  if (!authEnabled) return children
+  if (!authEnabled) return <ProfileProvider profile={demoProfile}>{children}</ProfileProvider>
 
   if (!isSupabaseConfigured || !supabase) {
     return (
@@ -115,7 +143,7 @@ export function AuthGate({ children }: AuthGateProps) {
     )
   }
 
-  if (session && profile) return children
+  if (session && profile) return <ProfileProvider profile={profile}>{children}</ProfileProvider>
 
   async function requestCode(event: FormEvent) {
     event.preventDefault()

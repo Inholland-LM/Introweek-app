@@ -21,6 +21,7 @@ import {
   Trophy,
 } from 'lucide-react'
 import { mapUrl, programmeDays, routeDays, standings, today, type ProgrammeDay, type RouteDay } from './data'
+import { useAppProfile } from './profile'
 
 const navItems = [
   { label: 'Vandaag', icon: Clock3 },
@@ -34,13 +35,14 @@ type NavLabel = (typeof navItems)[number]['label']
 type MoreSectionId = 'notifications' | 'practical' | 'discounts' | 'pov' | 'help' | 'settings'
 
 function ProgrammeView() {
+  const profile = useAppProfile()
   const [selectedDayId, setSelectedDayId] = useState<ProgrammeDay['id']>('woensdag')
   const selectedDay = programmeDays.find((day) => day.id === selectedDayId) ?? programmeDays[1]
 
   return (
     <section className="programme-view" aria-labelledby="programme-title">
       <div className="page-intro">
-        <p className="eyebrow">Persoonlijk voor LM1A</p>
+        <p className="eyebrow">Persoonlijk voor {profile.classCode}</p>
         <h1 id="programme-title">Jouw programma</h1>
         <p>Alle tijden, locaties en routes voor jouw klas overzichtelijk bij elkaar.</p>
       </div>
@@ -169,23 +171,24 @@ function MapView() {
 }
 
 function CompetitionView() {
+  const profile = useAppProfile()
   const leader = standings[0]
-  const ownTeam = standings.find((team) => team.isOwn) ?? standings[1]
+  const ownTeam = standings.find((team) => team.classCode === profile.classCode) ?? standings[1]
   const difference = leader.points - ownTeam.points
 
   return (
     <section className="competition-view" aria-labelledby="competition-title">
       <div className="page-intro">
         <p className="eyebrow">De landenstrijd</p>
-        <h1 id="competition-title">Samen voor Australië</h1>
-        <p>Iedere opdracht telt. Werk samen met LM1A en klim naar de eerste plaats.</p>
+        <h1 id="competition-title">Samen voor {profile.country}</h1>
+        <p>Iedere opdracht telt. Werk samen met {profile.classCode} en klim naar de eerste plaats.</p>
       </div>
 
       <article className="team-hero">
-        <div className="team-hero-flag" aria-hidden="true">🇦🇺</div>
+        <div className="team-hero-flag" aria-hidden="true">{profile.flag}</div>
         <div className="team-hero-copy">
-          <span>Jouw land · LM1A</span>
-          <strong>2e plaats</strong>
+          <span>Jouw land · {profile.classCode}</span>
+          <strong>{ownTeam.rank}e plaats</strong>
           <p><b>{ownTeam.points}</b> punten · nog <b>{difference}</b> tot de koploper</p>
         </div>
         <Trophy aria-hidden="true" />
@@ -197,20 +200,23 @@ function CompetitionView() {
       </div>
 
       <ol className="leaderboard" aria-label="Klassement van de landenstrijd">
-        {standings.map((team) => (
-          <li key={team.classCode} className={team.isOwn ? 'own-team' : ''}>
-            <span className="standing-rank">{team.rank}</span>
-            <span className="standing-flag" aria-hidden="true">{team.flag}</span>
-            <span className="standing-team">
-              <strong>{team.country}</strong>
-              <small>{team.classCode}{team.isOwn ? ' · jouw klas' : ''}</small>
-              <span className="score-track" aria-hidden="true">
-                <i style={{ width: `${Math.round((team.points / leader.points) * 100)}%` }} />
+        {standings.map((team) => {
+          const isOwnTeam = team.classCode === profile.classCode
+          return (
+            <li key={team.classCode} className={isOwnTeam ? 'own-team' : ''}>
+              <span className="standing-rank">{team.rank}</span>
+              <span className="standing-flag" aria-hidden="true">{team.flag}</span>
+              <span className="standing-team">
+                <strong>{team.country}</strong>
+                <small>{team.classCode}{isOwnTeam ? ' · jouw klas' : ''}</small>
+                <span className="score-track" aria-hidden="true">
+                  <i style={{ width: `${Math.round((team.points / leader.points) * 100)}%` }} />
+                </span>
               </span>
-            </span>
-            <span className="standing-points"><b>{team.points}</b><small>punten</small></span>
-          </li>
-        ))}
+              <span className="standing-points"><b>{team.points}</b><small>punten</small></span>
+            </li>
+          )
+        })}
       </ol>
 
       <section className="points-section" aria-labelledby="points-title">
@@ -235,6 +241,7 @@ function CompetitionView() {
 }
 
 function MoreView({ selected, onSelect }: { selected: MoreSectionId; onSelect: (section: MoreSectionId) => void }) {
+  const profile = useAppProfile()
   const [notificationPreview, setNotificationPreview] = useState(true)
   const [largeText, setLargeText] = useState(false)
   const sections = [
@@ -258,8 +265,8 @@ function MoreView({ selected, onSelect }: { selected: MoreSectionId; onSelect: (
         <span className="profile-avatar" aria-hidden="true"><UserRound /></span>
         <span className="profile-copy">
           <small>Ingelogd als</small>
-          <strong>Sofia</strong>
-          <span>Student · LM1A · Australië 🇦🇺</span>
+          <strong>{profile.displayName}</strong>
+          <span>{profile.profileType === 'student' ? 'Student' : profile.profileType === 'buddy' ? 'Buddy' : profile.profileType === 'poer' ? 'PO’er' : 'Organisator'} · {profile.classCode} · {profile.country} {profile.flag}</span>
         </span>
         <ShieldCheck aria-label="Profiel gekoppeld" />
       </article>
@@ -353,6 +360,8 @@ function MoreView({ selected, onSelect }: { selected: MoreSectionId; onSelect: (
 }
 
 function App() {
+  const profile = useAppProfile()
+  const ownStanding = standings.find((team) => team.classCode === profile.classCode)
   const [active, setActive] = useState<NavLabel>('Vandaag')
   const [moreSection, setMoreSection] = useState<MoreSectionId>('notifications')
 
@@ -366,8 +375,8 @@ function App() {
         </div>
         <div className="identity-row">
           <div className="identity">
-            <span className="flag" aria-label="Vlag van Australië">🇦🇺</span>
-            <span>LM1A · Australië</span>
+            <span className="flag" aria-label={`Vlag van ${profile.country}`}>{profile.flag}</span>
+            <span>{profile.classCode} · {profile.country}</span>
           </div>
           <button className="icon-button notification" aria-label="Meldingen openen" onClick={() => { setMoreSection('notifications'); setActive('Meer') }}>
             <Bell aria-hidden="true" />
@@ -381,7 +390,7 @@ function App() {
           <>
             <section className="welcome" aria-labelledby="welcome-title">
               <p className="eyebrow">Introdag 2 · woensdag 26 augustus</p>
-              <h1 id="welcome-title">Goedemorgen, Sofia</h1>
+              <h1 id="welcome-title">Goedemorgen, {profile.firstName}</h1>
               <p className="welcome-copy">Alles wat je vandaag nodig hebt, staat hier voor je klaar.</p>
             </section>
 
@@ -421,8 +430,8 @@ function App() {
             </section>
 
             <button className="standings-card" onClick={() => setActive('Strijd')}>
-              <span className="rank-medallion"><span aria-hidden="true">🇦🇺</span><b>2</b></span>
-              <span className="standings-copy"><strong>Landenstrijd</strong><span>Australië staat <b>2e</b> · <b>180</b> punten</span></span>
+              <span className="rank-medallion"><span aria-hidden="true">{profile.flag}</span><b>{ownStanding?.rank ?? 2}</b></span>
+              <span className="standings-copy"><strong>Landenstrijd</strong><span>{profile.country} staat <b>{ownStanding?.rank ?? 2}e</b> · <b>{ownStanding?.points ?? 180}</b> punten</span></span>
               <ChevronRight aria-hidden="true" />
             </button>
           </>
