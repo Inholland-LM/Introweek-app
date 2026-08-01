@@ -980,6 +980,61 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(245, 195,
 .comparison-stop svg { color: var(--gold); }
 .comparison-empty p, .comparison-stop p { display: grid; gap: 3px; margin: 0; color: var(--muted); font-size: 0.7rem; line-height: 1.4; }
 .comparison-empty strong, .comparison-stop strong { color: #f7fbff; font-size: 0.77rem; }
+.comparison-blocked {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 10px 0 0;
+  padding: 11px;
+  border-radius: 12px;
+  color: #ffd2cc;
+  background: rgba(132, 37, 42, 0.2);
+  font-size: 0.7rem;
+  line-height: 1.4;
+}
+.comparison-blocked svg { width: 18px; flex: 0 0 auto; color: var(--coral); }
+.import-apply-button {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 11px;
+  padding: 0 14px;
+  border: 0;
+  border-radius: 14px;
+  color: #102042;
+  background: linear-gradient(135deg, var(--gold-soft), var(--gold));
+  font-size: 0.79rem;
+  font-weight: 880;
+}
+.import-confirm {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 9px;
+  margin-top: 11px;
+  padding: 13px;
+  border: 1px solid rgba(255, 125, 112, 0.48);
+  border-radius: 14px;
+  background: rgba(132, 37, 42, 0.18);
+}
+.import-confirm > svg { width: 20px; color: var(--coral); }
+.import-confirm p { display: grid; gap: 3px; margin: 0; color: var(--muted); font-size: 0.7rem; line-height: 1.42; }
+.import-confirm p strong { color: #ffd2cc; font-size: 0.78rem; }
+.import-confirm > div { display: grid; grid-column: 1 / -1; grid-template-columns: 1fr 1.45fr; gap: 8px; }
+.import-confirm button { min-height: 42px; padding: 7px; border: 1px solid var(--line); border-radius: 11px; background: rgba(7, 27, 62, 0.72); font-size: 0.67rem; font-weight: 800; }
+.import-confirm button.confirm { border-color: var(--gold); color: #102042; background: var(--gold); }
+.import-confirm button:disabled { cursor: wait; opacity: 0.62; }
+.import-applied {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid rgba(142, 224, 186, 0.42);
+  border-radius: 14px;
+  background: rgba(27, 93, 72, 0.26);
+}
+.import-applied svg { width: 21px; flex: 0 0 auto; color: #8ee0ba; }
+.import-applied p { display: grid; gap: 3px; margin: 0; color: var(--muted); font-size: 0.7rem; line-height: 1.42; }
+.import-applied strong { color: #f7fbff; font-size: 0.79rem; }
 
 .placeholder-view {
   display: grid;

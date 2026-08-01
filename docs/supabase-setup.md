@@ -28,6 +28,19 @@ De functie:
 - retourneert alleen totalen en gevonden mutaties;
 - schrijft, activeert of deactiveert nog niets.
 
+## Definitieve import activeren
+
+Voer pas na migratie 002 ook `supabase/migrations/003_apply_people_import.sql` uit. Deze migratie voegt de expliciete tweede bevestigingsstap toe.
+
+Bij definitief verwerken:
+
+- wordt gecontroleerd of de database sinds de voorvertoning niet is gewijzigd;
+- worden profielen en één klasrelatie per persoon in één transactie bijgewerkt;
+- worden ontbrekende personen gedeactiveerd, nooit verwijderd;
+- wordt een auditregel zonder Excelbestand of volledige persoonsgegevens opgeslagen;
+- krijgen de student en betrokken buddy's en PO'ers een gerichte melding bij een klaswijziging;
+- wordt bij iedere fout de volledige transactie teruggedraaid.
+
 Er wordt nog geen inlogscherm getoond en de bestaande demo blijft volledig lokaal werken. De volgende stap is het toevoegen van e-mailinloggen en een test met fictieve accounts, voordat echte persoonsgegevens worden geïmporteerd.
 
 ## E-mailinloggen veilig activeren

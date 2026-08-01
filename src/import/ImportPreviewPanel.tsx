@@ -1,6 +1,6 @@
 import { useState, type ChangeEvent } from 'react'
 import { AlertTriangle, ArrowRight, CheckCircle2, FileSpreadsheet, ShieldCheck, Upload, UsersRound } from 'lucide-react'
-import { comparePeopleImport, type ImportComparison, type ImportChangeStatus } from './compareImport'
+import { applyPeopleImport, comparePeopleImport, type AppliedImport, type ImportComparison, type ImportChangeStatus } from './compareImport'
 import { parseImportWorkbook, type ImportPreview } from './parseWorkbook'
 
 const statusLabels: Record<ImportChangeStatus, string> = {
@@ -14,8 +14,11 @@ export function ImportPreviewPanel() {
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [loading, setLoading] = useState(false)
   const [comparing, setComparing] = useState(false)
+  const [confirming, setConfirming] = useState(false)
+  const [applying, setApplying] = useState(false)
   const [error, setError] = useState('')
   const [comparison, setComparison] = useState<ImportComparison | null>(null)
+  const [appliedImport, setAppliedImport] = useState<AppliedImport | null>(null)
 
   async function selectFile(event: ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0]
@@ -26,6 +29,8 @@ export function ImportPreviewPanel() {
     setError('')
     setPreview(null)
     setComparison(null)
+    setConfirming(false)
+    setAppliedImport(null)
     try {
       setPreview(await parseImportWorkbook(file))
     } catch (reason) {
@@ -48,12 +53,30 @@ export function ImportPreviewPanel() {
     setComparing(true)
     setError('')
     setComparison(null)
+    setConfirming(false)
+    setAppliedImport(null)
     try {
       setComparison(await comparePeopleImport(preview.rows))
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Vergelijken lukt nu niet.')
     } finally {
       setComparing(false)
+    }
+  }
+
+  async function applyConfirmedImport() {
+    if (!preview || !comparison || comparison.conflicts > 0) return
+    setApplying(true)
+    setError('')
+    try {
+      const result = await applyPeopleImport(preview.rows, comparison.stateVersion)
+      setComparison(result)
+      setAppliedImport(result)
+      setConfirming(false)
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Verwerken lukt nu niet.')
+    } finally {
+      setApplying(false)
     }
   }
 
@@ -89,8 +112,8 @@ export function ImportPreviewPanel() {
           {ready ? (
             <>
               <div className="import-ready"><CheckCircle2 aria-hidden="true" /><p><strong>Klaar voor vergelijking</strong>Studenten {roleCounts.student ?? 0} · buddy’s {roleCounts.buddy ?? 0} · PO’ers {roleCounts.poer ?? 0} · organisatoren {roleCounts.organizer ?? 0}</p></div>
-              <button className="import-compare-button" onClick={compareWithCurrentData} disabled={comparing}>
-                <span>{comparing ? 'Veilig vergelijken…' : 'Vergelijk met huidige gegevens'}</span><ArrowRight aria-hidden="true" />
+              <button className="import-compare-button" onClick={compareWithCurrentData} disabled={comparing || applying}>
+                <span>{comparing ? 'Veilig vergelijken…' : comparison ? 'Vergelijk opnieuw' : 'Vergelijk met huidige gegevens'}</span><ArrowRight aria-hidden="true" />
               </button>
             </>
           ) : (
@@ -127,7 +150,35 @@ export function ImportPreviewPanel() {
                 </ul>
               )}
 
-              <div className="comparison-stop"><ShieldCheck aria-hidden="true" /><p><strong>Voorvertoning afgerond</strong>Er is niets opgeslagen. Definitief bevestigen bouwen en testen we als aparte vervolgstap.</p></div>
+              {!appliedImport && <div className="comparison-stop"><ShieldCheck aria-hidden="true" /><p><strong>Controlepunt</strong>Bekijk de mutaties zorgvuldig. Tot je de tweede bevestigingsknop gebruikt, is er niets opgeslagen.</p></div>}
+
+              {!appliedImport && comparison.conflicts > 0 && (
+                <p className="comparison-blocked"><AlertTriangle aria-hidden="true" />Los eerst alle conflicten in Excel op en vergelijk het bestand daarna opnieuw.</p>
+              )}
+
+              {!appliedImport && comparison.conflicts === 0 && !confirming && (
+                <button className="import-apply-button" onClick={() => setConfirming(true)}>
+                  Controleer en verwerk definitief
+                </button>
+              )}
+
+              {!appliedImport && comparison.conflicts === 0 && confirming && (
+                <div className="import-confirm">
+                  <AlertTriangle aria-hidden="true" />
+                  <p><strong>Weet je het zeker?</strong>Hiermee worden {comparison.new + comparison.changed} personen toegevoegd of aangepast en {comparison.deactivated} personen gedeactiveerd. Alles gebeurt in één transactie.</p>
+                  <div>
+                    <button onClick={() => setConfirming(false)} disabled={applying}>Annuleren</button>
+                    <button className="confirm" onClick={applyConfirmedImport} disabled={applying}>{applying ? 'Verwerken…' : 'Ja, definitief verwerken'}</button>
+                  </div>
+                </div>
+              )}
+
+              {appliedImport && (
+                <div className="import-applied" role="status">
+                  <CheckCircle2 aria-hidden="true" />
+                  <p><strong>Import volledig verwerkt</strong>Importnummer {appliedImport.importId.slice(0, 8)}. Profielen, klassen, auditlog en gerichte meldingen zijn samen opgeslagen.</p>
+                </div>
+              )}
             </section>
           )}
 

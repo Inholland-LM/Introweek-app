@@ -23,6 +23,12 @@ export type ImportComparison = {
   changes: ImportChange[]
   deactivations: ImportChange[]
   generatedAt: string
+  stateVersion: string
+}
+
+export type AppliedImport = ImportComparison & {
+  importId: string
+  appliedAt: string
 }
 
 export async function comparePeopleImport(rows: ImportPerson[]) {
@@ -38,4 +44,24 @@ export async function comparePeopleImport(rows: ImportPerson[]) {
   }
 
   return data as ImportComparison
+}
+
+export async function applyPeopleImport(rows: ImportPerson[], stateVersion: string) {
+  if (!supabase) throw new Error('De beveiligde databaseverbinding is nog niet geconfigureerd.')
+
+  const { data, error } = await supabase.rpc('apply_people_import', {
+    import_rows: rows,
+    expected_state_version: stateVersion,
+  })
+
+  if (error) {
+    if (error.code === '42501') throw new Error('Alleen een actieve organisator mag deelnemers verwerken.')
+    if (error.code === '40001') throw new Error('De gegevens zijn intussen gewijzigd. Vergelijk het bestand opnieuw voordat je bevestigt.')
+    if (error.code === 'PGRST202' || error.message.includes('apply_people_import')) {
+      throw new Error('Definitief verwerken is nog niet in Supabase geactiveerd.')
+    }
+    throw new Error('Verwerken is niet gelukt. Er is niets gewijzigd; probeer het later opnieuw.')
+  }
+
+  return data as AppliedImport
 }
