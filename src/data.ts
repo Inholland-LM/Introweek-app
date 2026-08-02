@@ -28,8 +28,8 @@ export type RouteStop = {
   title: string
   address: string
   routeUrl: string
-  x: string
-  y: string
+  latitude: number
+  longitude: number
 }
 
 export type RouteDay = {
@@ -115,8 +115,8 @@ export const routeDays: RouteDay[] = [
     shortLabel: 'Di 25',
     label: 'Welkom & Baggerbeest',
     stops: [
-      { number: 1, time: '13:00', title: 'Inholland Amsterdam', address: 'Pina Bauschplein 4', routeUrl: routes.inholland, x: '68%', y: '32%' },
-      { number: 2, time: '16:15', title: 'Baggerbeest', address: 'Sluisbuurt, Amsterdam', routeUrl: 'https://maps.google.com/?q=Baggerbeest+Amsterdam', x: '36%', y: '67%' },
+      { number: 1, time: '13:00', title: 'Inholland Amsterdam', address: 'Pina Bauschplein 4', routeUrl: routes.inholland, latitude: 52.3762305, longitude: 4.9600170 },
+      { number: 2, time: '16:15', title: 'Baggerbeest', address: 'Rudi van Dantzigstraat 1', routeUrl: 'https://maps.google.com/?q=Baggerbeest+Amsterdam', latitude: 52.3731473, longitude: 4.9604610 },
     ],
   },
   {
@@ -124,8 +124,8 @@ export const routeDays: RouteDay[] = [
     shortLabel: 'Wo 26',
     label: 'Experiences door Amsterdam',
     stops: [
-      { number: 1, time: '11:45', title: 'De Duif', address: 'Prinsengracht 756', routeUrl: routes.deDuif, x: '33%', y: '28%' },
-      { number: 2, time: '14:30', title: 'Sportcentrum De Pijp', address: 'Lizzy Ansinghstraat 88', routeUrl: routes.sportcentrum, x: '68%', y: '69%' },
+      { number: 1, time: '11:45', title: 'De Duif', address: 'Prinsengracht 756', routeUrl: routes.deDuif, latitude: 52.3614502, longitude: 4.8966973 },
+      { number: 2, time: '14:30', title: 'Sportcentrum De Pijp', address: 'Lizzy Ansinghstraat 88', routeUrl: routes.sportcentrum, latitude: 52.3496503, longitude: 4.8937569 },
     ],
   },
   {
@@ -133,11 +133,11 @@ export const routeDays: RouteDay[] = [
     shortLabel: 'Do 27',
     label: 'City Game & finale',
     stops: [
-      { number: 1, time: '10:45', title: 'NDSM-werf', address: 'NDSM-Kade 4', routeUrl: routes.ndsm, x: '21%', y: '20%' },
-      { number: 2, time: '12:30', title: 'ENTR', address: 'Oosterdokskade 131b', routeUrl: routes.entr, x: '72%', y: '32%' },
-      { number: 3, time: '14:00', title: 'Nieuwmarkt', address: 'Nieuwmarkt 4', routeUrl: routes.nieuwmarkt, x: '51%', y: '53%' },
-      { number: 4, time: '15:00', title: 'Inholland Amsterdam', address: 'Pina Bauschplein 4', routeUrl: routes.inholland, x: '76%', y: '76%' },
-      { number: 5, time: '18:00', title: 'Kokomo Amsterdam', address: 'Zuiderzeeweg 11 A', routeUrl: routes.kokomo, x: '26%', y: '82%' },
+      { number: 1, time: '10:45', title: 'NDSM-werf', address: 'NDSM-Kade 4', routeUrl: routes.ndsm, latitude: 52.4015014, longitude: 4.8918164 },
+      { number: 2, time: '12:30', title: 'ENTR', address: 'Oosterdokskade 131b', routeUrl: routes.entr, latitude: 52.3760492, longitude: 4.9073278 },
+      { number: 3, time: '14:00', title: 'Nieuwmarkt', address: 'Nieuwmarkt 4', routeUrl: routes.nieuwmarkt, latitude: 52.3727736, longitude: 4.9003436 },
+      { number: 4, time: '15:00', title: 'Inholland Amsterdam', address: 'Pina Bauschplein 4', routeUrl: routes.inholland, latitude: 52.3762305, longitude: 4.9600170 },
+      { number: 5, time: '18:00', title: 'Kokomo Amsterdam', address: 'Zuiderzeeweg 11 A', routeUrl: routes.kokomo, latitude: 52.3703067, longitude: 4.9637664 },
     ],
   },
 ]
