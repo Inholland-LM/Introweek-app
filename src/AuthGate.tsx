@@ -188,8 +188,8 @@ export function AuthGate({ children }: AuthGateProps) {
       <div className="auth-map" aria-hidden="true" />
       <section className="auth-card" aria-labelledby="auth-title">
         <div className="auth-seal"><ShieldCheck aria-hidden="true" /></div>
-        <div className="auth-brand" aria-label="LM Amsterdam">
-          <span>LM</span><i>=</i><strong>AMSTERDAM</strong>
+        <div className="auth-brand" aria-label="LM = YOU">
+          <span>LM</span><i>=</i><strong>YOU</strong>
         </div>
         <p className="auth-eyebrow">Intro 2026</p>
         <h1 id="auth-title">Jouw introweek</h1>
@@ -264,8 +264,8 @@ function AuthMessage({ title, children }: { title: string; children: ReactNode }
     <div className="auth-shell">
       <section className="auth-card auth-message" aria-live="polite">
         <div className="auth-seal"><ShieldCheck aria-hidden="true" /></div>
-        <div className="auth-brand" aria-label="LM Amsterdam">
-          <span>LM</span><i>=</i><strong>AMSTERDAM</strong>
+        <div className="auth-brand" aria-label="LM = YOU">
+          <span>LM</span><i>=</i><strong>YOU</strong>
         </div>
         <h1>{title}</h1>
         <div className="auth-intro">{children}</div>

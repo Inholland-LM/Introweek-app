@@ -447,7 +447,7 @@ function MoreView({
       </div>
 
       <footer className="institutional-signature">
-        <span className="signature-brand"><b>LM</b><i>=</i><strong>AMSTERDAM</strong></span>
+        <span className="signature-brand"><b>LM</b><i>=</i><strong>YOU</strong></span>
         <span>Een initiatief van Leisure &amp; Events Management Amsterdam</span>
         <small>Hogeschool Inholland</small>
       </footer>
@@ -472,8 +472,8 @@ function App() {
     <div className="app-shell">
       <div className="map-texture" aria-hidden="true" />
       <header className="topbar">
-        <div className="brand-lockup" aria-label="LM Amsterdam, Intro 2026">
-          <span className="brand-mark"><b>LM</b><i>=</i><strong>AMSTERDAM</strong></span>
+        <div className="brand-lockup" aria-label="LM = YOU, Intro 2026">
+          <span className="brand-mark"><b>LM</b><i>=</i><strong>YOU</strong></span>
           <span className="brand-edition">Intro 2026</span>
         </div>
         <div className="identity-row">
