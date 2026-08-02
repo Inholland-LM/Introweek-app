@@ -41,6 +41,22 @@ Bij definitief verwerken:
 - krijgen de student en betrokken buddy's en PO'ers een gerichte melding bij een klaswijziging;
 - wordt bij iedere fout de volledige transactie teruggedraaid.
 
+Voer op een installatie waarop migratie 003 al eerder is uitgevoerd vervolgens ook
+`supabase/migrations/004_fix_people_import_item_alias.sql` uit. Deze gerichte
+correctie voorkomt het naamconflict dat door de rollback-smoketest is gevonden.
+
+## Persoonlijke meldingen activeren
+
+Voer daarna `supabase/migrations/005_publish_personal_notifications.sql` uit.
+Hiermee worden alleen nieuw aangemaakte meldingen via Realtime beschikbaar. Row
+Level Security blijft afdwingen dat iedere gebruiker uitsluitend de eigen
+meldingen ontvangt.
+
+De app haalt bij het openen maximaal twintig eigen meldingen op. Daarna worden
+alleen nieuwe rijen voor het ingelogde profiel doorgestuurd. Er is dus geen
+agressieve polling en het dataverbruik blijft ook met ruim 300 deelnemers
+beheersbaar.
+
 Er wordt nog geen inlogscherm getoond en de bestaande demo blijft volledig lokaal werken. De volgende stap is het toevoegen van e-mailinloggen en een test met fictieve accounts, voordat echte persoonsgegevens worden geïmporteerd.
 
 ## E-mailinloggen veilig activeren

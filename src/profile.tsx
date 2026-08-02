@@ -1,6 +1,7 @@
 import { createContext, useContext, type ReactNode } from 'react'
 
 export type AppProfile = {
+  id: string | null
   firstName: string
   displayName: string
   profileType: 'student' | 'buddy' | 'poer' | 'organizer'
@@ -10,6 +11,7 @@ export type AppProfile = {
 }
 
 export const demoProfile: AppProfile = {
+  id: null,
   firstName: 'Sofia',
   displayName: 'Sofia',
   profileType: 'student',

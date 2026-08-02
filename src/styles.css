@@ -773,19 +773,54 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(245, 195,
 .notification-list, .check-list, .step-list { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; }
 .notification-list li {
   position: relative;
-  display: grid;
-  grid-template-columns: 54px 1fr;
-  gap: 10px;
-  padding: 13px;
+  overflow: hidden;
   border: 1px solid rgba(151, 176, 218, 0.18);
   border-radius: 15px;
   background: rgba(10, 33, 72, 0.7);
 }
 .notification-list li.unread { border-color: rgba(245, 195, 82, 0.42); }
 .notification-list li.unread::after { position: absolute; top: 12px; right: 12px; width: 7px; height: 7px; border-radius: 50%; content: ""; background: var(--coral); }
+.notification-item {
+  display: grid;
+  width: 100%;
+  grid-template-columns: 54px 1fr;
+  gap: 10px;
+  padding: 13px;
+  text-align: left;
+  border: 0;
+  background: transparent;
+}
+.notification-item:focus-visible { outline: 2px solid var(--gold); outline-offset: -3px; }
 .notification-time { color: var(--gold); font-size: 0.68rem; font-weight: 850; }
 .notification-list strong { display: block; padding-right: 9px; font-size: 0.83em; }
-.notification-list p { margin: 5px 0 0; color: var(--muted); font-size: 0.72em; line-height: 1.4; }
+.notification-copy > span { display: block; margin-top: 5px; color: var(--muted); font-size: 0.72em; line-height: 1.4; }
+.notification-heading-actions { display: grid; justify-items: end; gap: 7px; }
+.notification-heading-actions button, .notification-state button {
+  padding: 0;
+  color: var(--gold-soft);
+  border: 0;
+  background: transparent;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.notification-state {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 20px 14px;
+  color: var(--muted);
+  text-align: center;
+  border: 1px dashed rgba(151, 176, 218, 0.24);
+  border-radius: 15px;
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+.notification-state svg { width: 22px; color: var(--gold); }
+.notification-state strong { color: #f8f4e9; font-size: 0.84rem; }
+.notification-state p { margin: 0; }
+.notification-error { color: #ffd2ce; border-color: rgba(255, 125, 112, 0.3); background: rgba(255, 125, 112, 0.06); }
 
 .check-list li { display: flex; gap: 11px; padding: 13px; border-radius: 15px; background: rgba(10, 33, 72, 0.7); }
 .check-list li > svg { width: 19px; height: 19px; flex: 0 0 auto; color: var(--gold); }

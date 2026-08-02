@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { mapUrl, programmeDays, routeDays, standings, today, type ProgrammeDay, type RouteDay } from './data'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
+import { type AppNotification, useNotifications } from './notifications'
 import { useAppProfile } from './profile'
 
 const navItems = [
@@ -241,12 +242,56 @@ function CompetitionView() {
   )
 }
 
-function MoreView({ selected, onSelect }: { selected: MoreSectionId; onSelect: (section: MoreSectionId) => void }) {
+type MoreViewProps = {
+  selected: MoreSectionId
+  onSelect: (section: MoreSectionId) => void
+  notifications: AppNotification[]
+  unreadCount: number
+  notificationsLoading: boolean
+  notificationsError: string
+  onRefreshNotifications: () => void
+  onMarkNotificationRead: (notificationId: string) => void
+  onMarkAllNotificationsRead: () => void
+}
+
+function formatNotificationTime(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+
+  const now = new Date()
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime()
+  const startOfNotificationDay = new Date(date.getFullYear(), date.getMonth(), date.getDate()).getTime()
+  const dayDifference = Math.round((startOfToday - startOfNotificationDay) / 86_400_000)
+
+  if (dayDifference === 0) {
+    return new Intl.DateTimeFormat('nl-NL', { hour: '2-digit', minute: '2-digit' }).format(date)
+  }
+  if (dayDifference === 1) return 'Gisteren'
+
+  return new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'short' }).format(date)
+}
+
+function MoreView({
+  selected,
+  onSelect,
+  notifications,
+  unreadCount,
+  notificationsLoading,
+  notificationsError,
+  onRefreshNotifications,
+  onMarkNotificationRead,
+  onMarkAllNotificationsRead,
+}: MoreViewProps) {
   const profile = useAppProfile()
   const [notificationPreview, setNotificationPreview] = useState(true)
   const [largeText, setLargeText] = useState(false)
   const sections: Array<{ id: MoreSectionId; label: string; detail: string; icon: typeof Bell }> = [
-    { id: 'notifications' as const, label: 'Meldingen', detail: '2 nieuw', icon: Bell },
+    {
+      id: 'notifications' as const,
+      label: 'Meldingen',
+      detail: unreadCount > 0 ? `${unreadCount} nieuw` : 'Alles gelezen',
+      icon: Bell,
+    },
     { id: 'practical' as const, label: 'Praktisch', detail: 'Alles bij de hand', icon: CheckCircle2 },
     { id: 'discounts' as const, label: 'Kortingen', detail: 'Met je polsbandje', icon: BadgePercent },
     { id: 'pov' as const, label: 'POV-foto’s', detail: 'Verdien punten', icon: Camera },
@@ -288,12 +333,57 @@ function MoreView({ selected, onSelect }: { selected: MoreSectionId; onSelect: (
       <div className="more-panel" aria-live="polite">
         {selected === 'notifications' && (
           <>
-            <div className="more-panel-heading"><div><p className="eyebrow">Berichten</p><h2>Meldingen</h2></div><span className="panel-count">2 nieuw</span></div>
-            <ul className="notification-list">
-              <li className="unread"><span className="notification-time">14:10</span><div><strong>Nog 20 minuten!</strong><p>Rond jullie lunch af en ga richting Sportcentrum De Pijp.</p></div></li>
-              <li className="unread"><span className="notification-time">11:55</span><div><strong>Reminder POV</strong><p>Vergeet de categorieën voor jullie foto’s niet.</p></div></li>
-              <li><span className="notification-time">Gisteren</span><div><strong>Programma dag 2 staat klaar</strong><p>Bekijk je tijden, locaties en benodigdheden.</p></div></li>
-            </ul>
+            <div className="more-panel-heading notification-heading">
+              <div><p className="eyebrow">Berichten</p><h2>Meldingen</h2></div>
+              <div className="notification-heading-actions">
+                <span className="panel-count">{unreadCount} nieuw</span>
+                {unreadCount > 0 && (
+                  <button type="button" onClick={onMarkAllNotificationsRead}>Alles gelezen</button>
+                )}
+              </div>
+            </div>
+
+            {notificationsError && (
+              <div className="notification-state notification-error" role="alert">
+                <p>{notificationsError}</p>
+                <button type="button" onClick={onRefreshNotifications}>Opnieuw proberen</button>
+              </div>
+            )}
+
+            {notificationsLoading && notifications.length === 0 && (
+              <div className="notification-state" aria-live="polite">Meldingen ophalen…</div>
+            )}
+
+            {!notificationsLoading && !notificationsError && notifications.length === 0 && (
+              <div className="notification-state">
+                <Bell aria-hidden="true" />
+                <strong>Je bent helemaal bij</strong>
+                <span>Nieuwe persoonlijke berichten verschijnen hier.</span>
+              </div>
+            )}
+
+            {notifications.length > 0 && (
+              <ul className="notification-list">
+                {notifications.map((notification) => (
+                  <li key={notification.id} className={notification.readAt ? '' : 'unread'}>
+                    <button
+                      type="button"
+                      className="notification-item"
+                      onClick={() => {
+                        if (!notification.readAt) onMarkNotificationRead(notification.id)
+                      }}
+                      aria-label={`${notification.title}${notification.readAt ? '' : ', markeer als gelezen'}`}
+                    >
+                      <span className="notification-time">{formatNotificationTime(notification.createdAt)}</span>
+                      <span className="notification-copy">
+                        <strong>{notification.title}</strong>
+                        <span>{notification.body}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
           </>
         )}
 
@@ -367,9 +457,16 @@ function MoreView({ selected, onSelect }: { selected: MoreSectionId; onSelect: (
 
 function App() {
   const profile = useAppProfile()
+  const notificationInbox = useNotifications(profile.id)
   const ownStanding = standings.find((team) => team.classCode === profile.classCode)
   const [active, setActive] = useState<NavLabel>('Vandaag')
   const [moreSection, setMoreSection] = useState<MoreSectionId>('notifications')
+
+  function openNotifications() {
+    setMoreSection('notifications')
+    setActive('Meer')
+    void notificationInbox.refresh()
+  }
 
   return (
     <div className="app-shell">
@@ -384,9 +481,15 @@ function App() {
             <span className="flag" aria-label={`Vlag van ${profile.country}`}>{profile.flag}</span>
             <span>{profile.classCode} · {profile.country}</span>
           </div>
-          <button className="icon-button notification" aria-label="Meldingen openen" onClick={() => { setMoreSection('notifications'); setActive('Meer') }}>
+          <button
+            className="icon-button notification"
+            aria-label={notificationInbox.unreadCount > 0
+              ? `${notificationInbox.unreadCount} nieuwe meldingen openen`
+              : 'Meldingen openen'}
+            onClick={openNotifications}
+          >
             <Bell aria-hidden="true" />
-            <span className="notification-dot" />
+            {notificationInbox.unreadCount > 0 && <span className="notification-dot" />}
           </button>
         </div>
       </header>
@@ -449,7 +552,19 @@ function App() {
 
         {active === 'Strijd' && <CompetitionView />}
 
-        {active === 'Meer' && <MoreView selected={moreSection} onSelect={setMoreSection} />}
+        {active === 'Meer' && (
+          <MoreView
+            selected={moreSection}
+            onSelect={setMoreSection}
+            notifications={notificationInbox.notifications}
+            unreadCount={notificationInbox.unreadCount}
+            notificationsLoading={notificationInbox.loading}
+            notificationsError={notificationInbox.error}
+            onRefreshNotifications={() => { void notificationInbox.refresh(true) }}
+            onMarkNotificationRead={(notificationId) => { void notificationInbox.markRead(notificationId) }}
+            onMarkAllNotificationsRead={() => { void notificationInbox.markAllRead() }}
+          />
+        )}
       </main>
 
       <nav className="bottom-nav" aria-label="Hoofdnavigatie">
