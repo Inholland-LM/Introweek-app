@@ -57,7 +57,9 @@ alleen nieuwe rijen voor het ingelogde profiel doorgestuurd. Er is dus geen
 agressieve polling en het dataverbruik blijft ook met ruim 300 deelnemers
 beheersbaar.
 
-Er wordt nog geen inlogscherm getoond en de bestaande demo blijft volledig lokaal werken. De volgende stap is het toevoegen van e-mailinloggen en een test met fictieve accounts, voordat echte persoonsgegevens worden geïmporteerd.
+Het inlogscherm staat klaar, maar `VITE_AUTH_ENABLED` blijft uit totdat SMTP en
+fictieve accounts volledig zijn getest. De actuele activeringsvolgorde en
+terugvalprocedure staan in `docs/auth-rollout.md`.
 
 ## E-mailinloggen veilig activeren
 
