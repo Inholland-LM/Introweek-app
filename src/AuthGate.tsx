@@ -9,6 +9,7 @@ type AuthGateProps = {
 }
 
 type ProfileRecord = {
+  id: string
   first_name: string
   name_prefix: string | null
   last_name: string
@@ -79,7 +80,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
     supabase
       .from('profiles')
-      .select('first_name, name_prefix, last_name, profile_type, class_memberships(classes(code, country, flag))')
+      .select('id, first_name, name_prefix, last_name, profile_type, class_memberships(classes(code, country, flag))')
       .maybeSingle()
       .then(({ data, error: profileError }) => {
         if (!active) return
@@ -97,6 +98,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
         const displayName = [record.first_name, record.name_prefix, record.last_name].filter(Boolean).join(' ')
         setProfile({
+          id: record.id,
           firstName: record.first_name,
           displayName,
           profileType: record.profile_type,

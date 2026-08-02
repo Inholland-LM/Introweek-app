@@ -17,6 +17,46 @@ De migratie maakt uitsluitend de identiteitsbasis:
 - automatische koppeling op genormaliseerd schoolmailadres;
 - Row Level Security, zodat een student alleen het eigen profiel en de eigen klasrelatie kan ophalen.
 
+## Importvoorvertoning activeren
+
+Voer na de identiteitsbasis ook `supabase/migrations/002_people_import_preview.sql` uit in de SQL Editor. Deze migratie voegt één alleen-lezen databasefunctie toe. Alleen een gekoppeld en actief organisatorprofiel mag die functie gebruiken.
+
+De functie:
+
+- ontvangt uitsluitend de lokaal genormaliseerde rijen, niet het Excelbestand;
+- vergelijkt deze met de actuele profielen en klasrelaties;
+- retourneert alleen totalen en gevonden mutaties;
+- schrijft, activeert of deactiveert nog niets.
+
+## Definitieve import activeren
+
+Voer pas na migratie 002 ook `supabase/migrations/003_apply_people_import.sql` uit. Deze migratie voegt de expliciete tweede bevestigingsstap toe.
+
+Bij definitief verwerken:
+
+- wordt gecontroleerd of de database sinds de voorvertoning niet is gewijzigd;
+- worden profielen en één klasrelatie per persoon in één transactie bijgewerkt;
+- worden ontbrekende personen gedeactiveerd, nooit verwijderd;
+- wordt een auditregel zonder Excelbestand of volledige persoonsgegevens opgeslagen;
+- krijgen de student en betrokken buddy's en PO'ers een gerichte melding bij een klaswijziging;
+- wordt bij iedere fout de volledige transactie teruggedraaid.
+
+Voer op een installatie waarop migratie 003 al eerder is uitgevoerd vervolgens ook
+`supabase/migrations/004_fix_people_import_item_alias.sql` uit. Deze gerichte
+correctie voorkomt het naamconflict dat door de rollback-smoketest is gevonden.
+
+## Persoonlijke meldingen activeren
+
+Voer daarna `supabase/migrations/005_publish_personal_notifications.sql` uit.
+Hiermee worden alleen nieuw aangemaakte meldingen via Realtime beschikbaar. Row
+Level Security blijft afdwingen dat iedere gebruiker uitsluitend de eigen
+meldingen ontvangt.
+
+De app haalt bij het openen maximaal twintig eigen meldingen op. Daarna worden
+alleen nieuwe rijen voor het ingelogde profiel doorgestuurd. Er is dus geen
+agressieve polling en het dataverbruik blijft ook met ruim 300 deelnemers
+beheersbaar.
+
 Er wordt nog geen inlogscherm getoond en de bestaande demo blijft volledig lokaal werken. De volgende stap is het toevoegen van e-mailinloggen en een test met fictieve accounts, voordat echte persoonsgegevens worden geïmporteerd.
 
 ## E-mailinloggen veilig activeren
