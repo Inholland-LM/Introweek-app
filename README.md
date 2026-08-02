@@ -1,4 +1,4 @@
-# LMAmsterdam · Intro
+# LM = YOU · Intro
 
 Mobiele begeleider voor de introweek van Leisure & Events Management Amsterdam.
 
