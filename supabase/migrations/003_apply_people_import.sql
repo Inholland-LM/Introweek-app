@@ -427,9 +427,9 @@ begin
     where p.active = true
       and not exists (
         select 1
-        from jsonb_array_elements(import_rows) source(item)
-        where (p.profile_type in ('student', 'buddy') and btrim(item->>'studentNumber') = p.student_number)
-           or (p.profile_type in ('poer', 'organizer') and lower(btrim(item->>'email')) = p.email)
+        from jsonb_array_elements(import_rows) source(imported_item)
+        where (p.profile_type in ('student', 'buddy') and btrim(imported_item->>'studentNumber') = p.student_number)
+           or (p.profile_type in ('poer', 'organizer') and lower(btrim(imported_item->>'email')) = p.email)
       )
   loop
     if missing_profile.profile_type = 'student' and missing_profile.old_class_code is not null then
