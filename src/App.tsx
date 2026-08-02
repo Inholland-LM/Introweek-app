@@ -103,6 +103,11 @@ function ProgrammeView() {
 function MapView() {
   const [selectedDayId, setSelectedDayId] = useState<RouteDay['id']>('woensdag')
   const selectedDay = routeDays.find((day) => day.id === selectedDayId) ?? routeDays[1]
+  const mapBounds = { minLat: 52.335, maxLat: 52.41, minLon: 4.8, maxLon: 5.0 }
+  const markerPosition = (latitude: number, longitude: number) => ({
+    left: `${((longitude - mapBounds.minLon) / (mapBounds.maxLon - mapBounds.minLon)) * 100}%`,
+    top: `${((mapBounds.maxLat - latitude) / (mapBounds.maxLat - mapBounds.minLat)) * 100}%`,
+  })
 
   return (
     <section className="map-view" aria-labelledby="map-title">
@@ -127,21 +132,22 @@ function MapView() {
         ))}
       </div>
 
-      <div className="route-canvas" aria-label={`Schematische route voor ${selectedDay.shortLabel}`}>
-        <div className="route-grid" aria-hidden="true" />
-        <div className="route-water" aria-hidden="true" />
-        <span className="route-city-label" aria-hidden="true">AMSTERDAM</span>
+      <div className="route-canvas" aria-label={`Kaart van Amsterdam met locaties voor ${selectedDay.shortLabel}`}>
+        <img className="route-map" src={`${import.meta.env.BASE_URL}amsterdam-map.svg`} alt="" aria-hidden="true" />
         {selectedDay.stops.map((stop) => (
           <span
             key={`${selectedDay.id}-${stop.number}`}
             className="map-marker"
-            style={{ left: stop.x, top: stop.y }}
+            style={markerPosition(stop.latitude, stop.longitude)}
             aria-hidden="true"
           >
             <b>{stop.number}</b>
           </span>
         ))}
       </div>
+      <a className="map-attribution" href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">
+        © OpenStreetMap-bijdragers · ODbL
+      </a>
 
       <div className="route-heading">
         <div>
@@ -167,7 +173,7 @@ function MapView() {
         ))}
       </ol>
 
-      <p className="programme-note">De schematische kaart gebruikt geen mobiele data. Alleen ‘Route openen’ start Google Maps.</p>
+      <p className="programme-note">Deze kaart staat lokaal in de app en gebruikt onderweg geen extra kaartdata. Alleen ‘Route openen’ start Google Maps.</p>
     </section>
   )
 }
