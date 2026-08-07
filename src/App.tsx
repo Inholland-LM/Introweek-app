@@ -1168,14 +1168,6 @@ function App() {
               </div>
             </div>
 
-            <div className="hero-app-banner">
-              <img src="./hero-banner.jpg" alt="Inholland Introweek 2026" className="hero-banner-img" />
-              <div className="hero-banner-overlay">
-                <span className="hero-banner-tag">LM = YOU · Intro 2026</span>
-                <h2>Inholland Amsterdam Introweek</h2>
-              </div>
-            </div>
-
             <section className="next-card" aria-labelledby="next-title">
               <div className={`card-kicker ${homeProgramme.isCurrentlyActive ? 'is-active' : homeProgramme.introweekCompleted ? 'is-completed' : homeProgramme.nextDay ? 'is-next-day' : ''}`}>
                 {homeProgramme.isCurrentlyActive ? (
