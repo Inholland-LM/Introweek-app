@@ -54,6 +54,14 @@ export function getDefaultIntroDayId(referenceDate = new Date()): ProgrammeDay['
   return 'donderdag'
 }
 
+export type TeamScoreHistory = {
+  id: string
+  title: string
+  points: number
+  category: 'POV-foto' | 'Experience' | 'City Game' | 'Bonus' | 'Vlaggenparade'
+  awardedAt: string
+}
+
 export type Standing = {
   rank: number
   classCode: string
@@ -61,6 +69,7 @@ export type Standing = {
   flag: string
   points: number
   isOwn?: boolean
+  history?: TeamScoreHistory[]
 }
 
 const routes = {
@@ -154,15 +163,66 @@ export const routeDays: RouteDay[] = [
   },
 ]
 
+export const defaultScoreHistories: Record<string, TeamScoreHistory[]> = {
+  LM1C: [
+    { id: 'h-c1', title: 'City Game Challenge NDSM', points: 65, category: 'City Game', awardedAt: 'Donderdag 14:15' },
+    { id: 'h-c2', title: 'Foto-opdracht NDSM-werf (1e prijs)', points: 55, category: 'POV-foto', awardedAt: 'Donderdag 12:30' },
+    { id: 'h-c3', title: 'Experience Het Amsterdams Geluid', points: 45, category: 'Experience', awardedAt: 'Woensdag 15:00' },
+    { id: 'h-c4', title: 'Vlaggenparade Sluisbuurt', points: 40, category: 'Vlaggenparade', awardedAt: 'Dinsdag 16:30' },
+  ],
+  LM1A: [
+    { id: 'h-a1', title: 'Cultural Experiences NDSM', points: 55, category: 'City Game', awardedAt: 'Donderdag 13:45' },
+    { id: 'h-a2', title: 'Sports Experiences De Pijp', points: 45, category: 'Experience', awardedAt: 'Woensdag 15:30' },
+    { id: 'h-a3', title: 'Ontdek de Sluisbuurt klasfoto', points: 45, category: 'POV-foto', awardedAt: 'Dinsdag 15:15' },
+    { id: 'h-a4', title: 'Bonus: Beste teamsfeer', points: 35, category: 'Bonus', awardedAt: 'Dinsdag 17:00' },
+  ],
+  LM1F: [
+    { id: 'h-f1', title: 'VR Experience ENTR', points: 50, category: 'Experience', awardedAt: 'Donderdag 13:00' },
+    { id: 'h-f2', title: 'Creatiefste POV-foto De Duif', points: 42, category: 'POV-foto', awardedAt: 'Woensdag 14:00' },
+    { id: 'h-f3', title: 'Vlaggenparade Enthousiasme', points: 45, category: 'Vlaggenparade', awardedAt: 'Dinsdag 16:20' },
+    { id: 'h-f4', title: 'Welkomstopdracht Sluisbuurt', points: 35, category: 'Bonus', awardedAt: 'Dinsdag 14:00' },
+  ],
+  LM1B: [
+    { id: 'h-b1', title: 'Food & Hospitality Challenge', points: 45, category: 'City Game', awardedAt: 'Donderdag 14:30' },
+    { id: 'h-b2', title: 'Sports Experiences Winnaar', points: 45, category: 'Experience', awardedAt: 'Woensdag 15:45' },
+    { id: 'h-b3', title: 'Sluisbuurt Foto-opdracht', points: 40, category: 'POV-foto', awardedAt: 'Dinsdag 15:00' },
+    { id: 'h-b4', title: 'Landenstrijd Baggerbeest Bonus', points: 30, category: 'Bonus', awardedAt: 'Dinsdag 17:30' },
+  ],
+  LM1G: [
+    { id: 'h-g1', title: 'City Game Nieuwmarkt', points: 44, category: 'City Game', awardedAt: 'Donderdag 14:10' },
+    { id: 'h-g2', title: 'Experience De Duif', points: 40, category: 'Experience', awardedAt: 'Woensdag 13:15' },
+    { id: 'h-g3', title: 'Vlaggenparade Presentation', points: 35, category: 'Vlaggenparade', awardedAt: 'Dinsdag 16:15' },
+    { id: 'h-g4', title: 'POV Foto Inholland', points: 30, category: 'POV-foto', awardedAt: 'Dinsdag 14:30' },
+  ],
+  LM1D: [
+    { id: 'h-d1', title: 'City Game Challenge', points: 40, category: 'City Game', awardedAt: 'Donderdag 13:30' },
+    { id: 'h-d2', title: 'Sports Experiences', points: 38, category: 'Experience', awardedAt: 'Woensdag 15:10' },
+    { id: 'h-d3', title: 'Ontdek de Sluisbuurt', points: 35, category: 'POV-foto', awardedAt: 'Dinsdag 14:45' },
+    { id: 'h-d4', title: 'Sfeerbonus Baggerbeest', points: 25, category: 'Bonus', awardedAt: 'Dinsdag 17:15' },
+  ],
+  LM1E: [
+    { id: 'h-e1', title: 'Cultural Experiences', points: 40, category: 'City Game', awardedAt: 'Donderdag 12:45' },
+    { id: 'h-e2', title: 'Amsterdams Geluid Quiz', points: 34, category: 'Experience', awardedAt: 'Woensdag 12:50' },
+    { id: 'h-e3', title: 'Vlaggenparade', points: 30, category: 'Vlaggenparade', awardedAt: 'Dinsdag 16:10' },
+    { id: 'h-e4', title: 'POV Klasfoto', points: 20, category: 'POV-foto', awardedAt: 'Dinsdag 14:15' },
+  ],
+  LM1H: [
+    { id: 'h-h1', title: 'City Game Start', points: 30, category: 'City Game', awardedAt: 'Donderdag 11:30' },
+    { id: 'h-h2', title: 'Sports Experiences', points: 30, category: 'Experience', awardedAt: 'Woensdag 15:00' },
+    { id: 'h-h3', title: 'Ontdek de Sluisbuurt', points: 30, category: 'POV-foto', awardedAt: 'Dinsdag 14:40' },
+    { id: 'h-h4', title: 'Bonuspunten deelname', points: 20, category: 'Bonus', awardedAt: 'Dinsdag 16:00' },
+  ],
+}
+
 export const standings: Standing[] = [
-  { rank: 1, classCode: 'LM1C', country: 'Canada', flag: '🇨🇦', points: 205 },
-  { rank: 2, classCode: 'LM1A', country: 'Australië', flag: '🇦🇺', points: 180, isOwn: true },
-  { rank: 3, classCode: 'LM1F', country: 'Frankrijk', flag: '🇫🇷', points: 172 },
-  { rank: 4, classCode: 'LM1B', country: 'Brazilië', flag: '🇧🇷', points: 160 },
-  { rank: 5, classCode: 'LM1G', country: 'Griekenland', flag: '🇬🇷', points: 149 },
-  { rank: 6, classCode: 'LM1D', country: 'Denemarken', flag: '🇩🇰', points: 138 },
-  { rank: 7, classCode: 'LM1E', country: 'Estland', flag: '🇪🇪', points: 124 },
-  { rank: 8, classCode: 'LM1H', country: 'Hongarije', flag: '🇭🇺', points: 110 },
+  { rank: 1, classCode: 'LM1C', country: 'Canada', flag: '🇨🇦', points: 205, history: defaultScoreHistories.LM1C },
+  { rank: 2, classCode: 'LM1A', country: 'Australië', flag: '🇦🇺', points: 180, isOwn: true, history: defaultScoreHistories.LM1A },
+  { rank: 3, classCode: 'LM1F', country: 'Frankrijk', flag: '🇫🇷', points: 172, history: defaultScoreHistories.LM1F },
+  { rank: 4, classCode: 'LM1B', country: 'Brazilië', flag: '🇧🇷', points: 160, history: defaultScoreHistories.LM1B },
+  { rank: 5, classCode: 'LM1G', country: 'Griekenland', flag: '🇬🇷', points: 149, history: defaultScoreHistories.LM1G },
+  { rank: 6, classCode: 'LM1D', country: 'Denemarken', flag: '🇩🇰', points: 138, history: defaultScoreHistories.LM1D },
+  { rank: 7, classCode: 'LM1E', country: 'Estland', flag: '🇪🇪', points: 124, history: defaultScoreHistories.LM1E },
+  { rank: 8, classCode: 'LM1H', country: 'Hongarije', flag: '🇭🇺', points: 110, history: defaultScoreHistories.LM1H },
 ]
 
 export const mapUrl = routes.deDuif

@@ -21,8 +21,9 @@ import {
   Sparkles,
   UserRound,
   Trophy,
+  X,
 } from 'lucide-react'
-import { getDefaultIntroDayId, standings, type ProgrammeDay, type RouteDay } from './data'
+import { defaultScoreHistories, getDefaultIntroDayId, standings, type ProgrammeDay, type RouteDay, type Standing, type TeamScoreHistory } from './data'
 import { buildProgrammeDays, buildRouteDays, useMasterContent } from './content'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import { type AppNotification, useNotifications } from './notifications'
@@ -392,6 +393,7 @@ function MapView({ routeDays }: { routeDays: RouteDay[] }) {
 
 function CompetitionView() {
   const profile = useAppProfile()
+  const [selectedTeam, setSelectedTeam] = useState<Standing | null>(null)
   const leader = standings[0]
   const isOrganizer = profile.profileType === 'organizer'
   const ownTeam = standings.find((team) => team.classCode === profile.classCode) ?? standings[1]
@@ -461,7 +463,7 @@ function CompetitionView() {
 
       <div className="score-meta">
         <span><i className="status-pulse" /> Live klassement</span>
-        <small>Punten worden na elke opdracht bijgewerkt</small>
+        <small>💡 Tik op een land voor de exacte puntenopbouw</small>
       </div>
 
       <ol className="leaderboard" aria-label="Klassement van de landenstrijd">
@@ -469,7 +471,14 @@ function CompetitionView() {
           const isOwnTeam = !isOrganizer && team.classCode === profile.classCode
           const medalEmoji = team.rank === 1 ? '🥇' : team.rank === 2 ? '🥈' : team.rank === 3 ? '🥉' : null
           return (
-            <li key={team.classCode} className={`rank-${team.rank} ${isOwnTeam ? 'own-team' : ''}`}>
+            <li
+              key={team.classCode}
+              className={`rank-${team.rank} ${isOwnTeam ? 'own-team' : ''} clickable-team-row`}
+              onClick={() => setSelectedTeam(team)}
+              title={`Klik om puntenopbouw van ${team.country} te bekijken`}
+              role="button"
+              tabIndex={0}
+            >
               <span className="standing-rank-badge" aria-label={`Rang ${team.rank}`}>
                 {medalEmoji ? <span className="medal-icon">{medalEmoji}</span> : <span className="rank-num">{team.rank}</span>}
               </span>
@@ -479,6 +488,7 @@ function CompetitionView() {
               <span className="standing-team">
                 <div className="standing-team-header">
                   <strong>{team.country}</strong>
+                  <ChevronRight className="team-row-arrow" aria-hidden="true" />
                 </div>
                 <small>{team.classCode}</small>
                 <span className="score-track" aria-hidden="true">
@@ -493,6 +503,58 @@ function CompetitionView() {
           )
         })}
       </ol>
+
+      {/* TEAM SCORE BREAKDOWN MODAL */}
+      {selectedTeam && (
+        <div className="modal-overlay" onClick={() => setSelectedTeam(null)}>
+          <div className="modal-card score-history-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <div className="modal-title-with-flag">
+                <CountryFlagIcon country={selectedTeam.country} size={40} />
+                <div>
+                  <h2>{selectedTeam.country} ({selectedTeam.classCode})</h2>
+                  <span className="score-modal-rank-badge">Plaats #{selectedTeam.rank} · <b>{selectedTeam.points} punten</b></span>
+                </div>
+              </div>
+              <button type="button" className="close-button icon-only-btn" onClick={() => setSelectedTeam(null)}>
+                <X aria-hidden="true" />
+              </button>
+            </div>
+
+            <div className="modal-content">
+              <div className="score-history-header">
+                <h3>Puntenhistorie &amp; Opbouw</h3>
+                <p>Overzicht van alle toegekende punten door de organisatie en jury.</p>
+              </div>
+
+              <div className="score-history-list">
+                {(selectedTeam.history ?? defaultScoreHistories[selectedTeam.classCode] ?? []).map((entry: TeamScoreHistory, idx: number) => (
+                  <div key={entry.id || idx} className="score-history-card">
+                    <div className="score-badge-col">
+                      <span className="points-pill">+{entry.points} pt</span>
+                    </div>
+                    <div className="score-info-col">
+                      <strong>{entry.title}</strong>
+                      <div className="score-meta-line">
+                        <span className={`score-cat-tag cat-${entry.category.toLowerCase().replace(/[^a-z]/g, '')}`}>
+                          {entry.category}
+                        </span>
+                        <small>{entry.awardedAt}</small>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="modal-actions">
+              <button type="button" className="secondary-button" onClick={() => setSelectedTeam(null)}>
+                Sluiten
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <section className="points-section" aria-labelledby="points-title">
         <div className="route-heading">

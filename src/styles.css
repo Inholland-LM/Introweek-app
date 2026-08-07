@@ -3391,3 +3391,111 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   height: 14px;
   color: #e3004f;
 }
+
+.clickable-team-row {
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.clickable-team-row:hover,
+.clickable-team-row:focus-visible {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.team-row-arrow {
+  width: 14px;
+  height: 14px;
+  color: #94a3b8;
+  margin-left: 6px;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.modal-title-with-flag {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.score-modal-rank-badge {
+  font-size: 0.8rem;
+  color: #e3004f;
+  font-weight: 750;
+}
+
+.score-history-header {
+  margin-bottom: 14px;
+}
+
+.score-history-header h3 {
+  margin: 0 0 4px;
+  font-size: 1.1rem;
+  color: #111827;
+}
+
+.score-history-header p {
+  margin: 0;
+  font-size: 0.83rem;
+  color: #64748b;
+}
+
+.score-history-list {
+  display: grid;
+  gap: 10px;
+  max-height: 340px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.score-history-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+}
+
+.points-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: #e3004f;
+  color: #ffffff;
+  font-weight: 900;
+  font-size: 0.85rem;
+  white-space: nowrap;
+  box-shadow: 0 3px 10px rgba(227, 0, 79, 0.25);
+}
+
+.score-info-col strong {
+  display: block;
+  font-size: 0.9rem;
+  color: #111827;
+  margin-bottom: 3px;
+}
+
+.score-meta-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.score-cat-tag {
+  font-size: 0.7rem;
+  font-weight: 850;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: #e2e8f0;
+  color: #475569;
+}
+
+.score-cat-tag.cat-povfoto { background: #fce7f3; color: #be185d; }
+.score-cat-tag.cat-experience { background: #dbeafe; color: #1e40af; }
+.score-cat-tag.cat-citygame { background: #fef3c7; color: #92400e; }
+.score-cat-tag.cat-vlaggenparade { background: #dcfce7; color: #166534; }
+.score-cat-tag.cat-bonus { background: #f3e8ff; color: #6b21a8; }

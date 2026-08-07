@@ -28,19 +28,27 @@ const SCHEDULED_READ_STORAGE_PREFIX = 'lm-you-scheduled-read:'
 
 const demoNotifications: AppNotification[] = [
   {
+    id: 'demo-points-award',
+    kind: 'scheduled',
+    title: '🎉 +25 punten toegekend voor Australië!',
+    body: 'Gefeliciteerd! De jury heeft +25 punten aan jullie klas (LM1A) toegekend voor de POV-foto opdracht. Bekijk de nieuwe stand in de Landenstrijd!',
+    createdAt: new Date(Date.now() - 30 * 60 * 1000).toISOString(),
+    readAt: null,
+  },
+  {
+    id: 'demo-rank-alert',
+    kind: 'class_changed',
+    title: '⚠️ Stand gewijzigd in de Landenstrijd',
+    body: 'Canada (LM1C) staat nu op #1. Jullie klas (LM1A) staat op de 2e plaats met 180 punten. Tijd voor de tegenaanval!',
+    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    readAt: null,
+  },
+  {
     id: 'demo-reminder',
     kind: 'class_changed',
     title: 'Nog 20 minuten!',
     body: 'Rond jullie lunch af en ga richting Sportcentrum De Pijp.',
-    createdAt: new Date().toISOString(),
-    readAt: null,
-  },
-  {
-    id: 'demo-pov',
-    kind: 'class_member_arrived',
-    title: 'Reminder POV',
-    body: 'Vergeet de categorieën voor jullie foto’s niet.',
-    createdAt: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+    createdAt: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
     readAt: null,
   },
 ]
