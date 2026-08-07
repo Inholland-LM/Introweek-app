@@ -2,11 +2,24 @@
   "name": "LM = YOU · Intro 2026",
   "short_name": "LM = YOU",
   "description": "Jouw persoonlijke begeleider tijdens de introweek van Leisure & Events Management Amsterdam.",
-  "start_url": "/Introweek-app/",
-  "scope": "/Introweek-app/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#061631",
-  "theme_color": "#071a3d",
+  "background_color": "#111827",
+  "theme_color": "#111827",
   "lang": "nl",
-  "icons": []
+  "icons": [
+    {
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
 }
