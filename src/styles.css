@@ -239,56 +239,6 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
 }
 
-.hero-app-banner {
-  position: relative;
-  width: 100%;
-  height: 140px;
-  border-radius: 20px;
-  overflow: hidden;
-  margin-bottom: 14px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
-  border: 1px solid rgba(227, 0, 79, 0.2);
-}
-
-.hero-banner-img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-
-.hero-banner-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(7, 26, 61, 0.2) 0%, rgba(7, 26, 61, 0.85) 100%);
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  padding: 14px 16px;
-  color: #ffffff;
-}
-
-.hero-banner-tag {
-  font-size: 0.68rem;
-  font-weight: 900;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #e3004f;
-  background: rgba(255, 255, 255, 0.95);
-  padding: 3px 8px;
-  border-radius: 999px;
-  width: fit-content;
-  margin-bottom: 4px;
-}
-
-.hero-banner-overlay h2 {
-  margin: 0;
-  font-size: 1.15rem;
-  font-family: Georgia, "Times New Roman", serif;
-  color: #ffffff;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-}
-
 .card-kicker {
   display: inline-flex;
   align-items: center;
