@@ -39,6 +39,21 @@ export type RouteDay = {
   stops: RouteStop[]
 }
 
+export function getDefaultIntroDayId(referenceDate = new Date()): ProgrammeDay['id'] {
+  const dateParts = new Intl.DateTimeFormat('nl-NL', {
+    timeZone: 'Europe/Amsterdam',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(referenceDate)
+  const part = (type: Intl.DateTimeFormatPartTypes) => dateParts.find((item) => item.type === type)?.value ?? ''
+  const amsterdamDate = `${part('year')}-${part('month')}-${part('day')}`
+
+  if (amsterdamDate <= '2026-08-25') return 'dinsdag'
+  if (amsterdamDate === '2026-08-26') return 'woensdag'
+  return 'donderdag'
+}
+
 export type Standing = {
   rank: number
   classCode: string
@@ -49,7 +64,7 @@ export type Standing = {
 }
 
 const routes = {
-  inholland: 'https://maps.app.goo.gl/c28qCsxH5BxArCxX9',
+  inholland: 'https://www.google.com/maps/search/?api=1&query=Hogeschool+Inholland+Amsterdam+Pina+Bauschplein+4',
   deDuif: 'https://maps.app.goo.gl/TzDtQjuwy45XLf9S7',
   sportcentrum: 'https://maps.app.goo.gl/X5UauhuGxNfmSAwq6',
   ndsm: 'https://maps.app.goo.gl/NWYgPZzJN3uzpzHV6',
@@ -60,7 +75,7 @@ const routes = {
 
 export const today: TimelineItem[] = [
   { time: '11:45', title: 'Het Amsterdams Geluid', location: 'De Duif', state: 'next' },
-  { time: '13:30', title: 'Lunch & verplaatsing', state: 'later' },
+  { time: '13:30', title: 'Lunch & verplaatsing', location: 'Inholland Amsterdam', state: 'later' },
   { time: '14:30', title: 'Sports Experiences', location: 'Sportcentrum De Pijp', state: 'later' },
 ]
 
@@ -74,8 +89,8 @@ export const programmeDays: ProgrammeDay[] = [
     items: [
       { time: '13:00', title: 'Ontvangst eerstejaars', category: 'Welkom', location: 'Inholland Amsterdam', routeUrl: routes.inholland },
       { time: '14:30', title: 'Ontdek de Sluisbuurt', category: 'Foto-opdracht', location: 'Inholland Amsterdam', routeUrl: routes.inholland },
-      { time: '15:00', title: 'Openingsceremonie', category: 'Gezamenlijk', location: 'Balkon tweede verdieping' },
-      { time: '16:00', title: 'Vlaggenparade', category: 'Landenstrijd', location: 'Vertrek vanaf Inholland', routeUrl: routes.inholland },
+      { time: '15:00', title: 'Openingsceremonie', category: 'Gezamenlijk', location: 'Inholland Amsterdam', routeUrl: routes.inholland },
+      { time: '16:00', title: 'Vlaggenparade', category: 'Landenstrijd', location: 'Inholland Amsterdam', routeUrl: routes.inholland },
       { time: '16:15', title: 'Goodiebags, spellen & borrel', category: 'Afsluiting', location: 'Baggerbeest' },
     ],
   },
@@ -87,9 +102,9 @@ export const programmeDays: ProgrammeDay[] = [
     summary: 'LM1A bezoekt vandaag twee belevingsgebieden. Tussendoor reis en lunch je zelfstandig.',
     items: [
       { time: '11:45', title: 'Het Amsterdams Geluid', category: 'Experience', location: 'De Duif', routeUrl: routes.deDuif },
-      { time: '13:30', title: 'Lunch & verplaatsing', category: 'Eigen tijd', location: 'Amsterdam' },
+      { time: '13:30', title: 'Lunch & verplaatsing', category: 'Eigen tijd', location: 'Inholland Amsterdam', routeUrl: routes.inholland },
       { time: '14:30', title: 'Sports Experiences', category: 'Experience', location: 'Sportcentrum De Pijp', routeUrl: routes.sportcentrum },
-      { time: '16:00', title: 'Einde programma & naborrel', category: 'Vrijblijvend', location: 'Locatie volgt' },
+      { time: '16:00', title: 'Einde programma & naborrel', category: 'Vrijblijvend', location: 'Inholland Amsterdam', routeUrl: routes.inholland },
     ],
   },
   {
@@ -99,12 +114,12 @@ export const programmeDays: ProgrammeDay[] = [
     title: 'City Game & finale',
     summary: 'Verzamel de laatste punten, beleef BLEND en vier de winnaar tijdens de eindborrel.',
     items: [
-      { time: '10:45', title: 'Verzamelen bij je PO’er', category: 'Start', location: 'NDSM-Kade 4', routeUrl: routes.ndsm },
+      { time: '10:45', title: 'Verzamelen bij je PO’er', category: 'Start', location: 'NDSM-werf', routeUrl: routes.ndsm },
       { time: '11:00', title: 'Cultural Experiences', category: 'City Game', location: 'NDSM-werf', routeUrl: routes.ndsm },
-      { time: '12:30', title: 'VR Experience', category: 'Experience', location: 'ENTR', routeUrl: routes.entr },
-      { time: '14:00', title: 'Food, Retail & Hospitality', category: 'City Game', location: 'Nieuwmarkt', routeUrl: routes.nieuwmarkt },
+      { time: '12:30', title: 'VR Experience', category: 'Experience', location: 'Inholland Amsterdam', routeUrl: routes.inholland },
+      { time: '14:00', title: 'Food, Retail & Hospitality', category: 'City Game', location: 'Inholland Amsterdam', routeUrl: routes.inholland },
       { time: '15:00', title: 'BLEND-festival', category: 'Festival', location: 'Inholland Amsterdam', routeUrl: routes.inholland },
-      { time: '18:00', title: 'Eindborrel & prijsuitreiking', category: 'Finale', location: 'Kokomo Amsterdam', routeUrl: routes.kokomo },
+      { time: '18:00', title: 'Eindborrel & prijsuitreiking', category: 'Finale', location: 'Inholland Amsterdam', routeUrl: routes.inholland },
     ],
   },
 ]
@@ -115,8 +130,8 @@ export const routeDays: RouteDay[] = [
     shortLabel: 'Di 25',
     label: 'Welkom & Baggerbeest',
     stops: [
-      { number: 1, time: '13:00', title: 'Inholland Amsterdam', address: 'Pina Bauschplein 4', routeUrl: routes.inholland, latitude: 52.3762305, longitude: 4.9600170 },
-      { number: 2, time: '16:15', title: 'Baggerbeest', address: 'Rudi van Dantzigstraat 1', routeUrl: 'https://maps.google.com/?q=Baggerbeest+Amsterdam', latitude: 52.3731473, longitude: 4.9604610 },
+      { number: 1, time: '13:00', title: 'Inholland Amsterdam', address: 'Pina Bauschplein 4', routeUrl: routes.inholland, latitude: 52.3702, longitude: 4.9530 },
+      { number: 2, time: '16:15', title: 'Baggerbeest', address: 'Eef Kamerbeekstraat 1006', routeUrl: 'https://maps.google.com/?q=Baggerbeest+Amsterdam', latitude: 52.3708, longitude: 4.9602 },
     ],
   },
   {
@@ -133,11 +148,8 @@ export const routeDays: RouteDay[] = [
     shortLabel: 'Do 27',
     label: 'City Game & finale',
     stops: [
-      { number: 1, time: '10:45', title: 'NDSM-werf', address: 'NDSM-Kade 4', routeUrl: routes.ndsm, latitude: 52.4015014, longitude: 4.8918164 },
-      { number: 2, time: '12:30', title: 'ENTR', address: 'Oosterdokskade 131b', routeUrl: routes.entr, latitude: 52.3760492, longitude: 4.9073278 },
-      { number: 3, time: '14:00', title: 'Nieuwmarkt', address: 'Nieuwmarkt 4', routeUrl: routes.nieuwmarkt, latitude: 52.3727736, longitude: 4.9003436 },
-      { number: 4, time: '15:00', title: 'Inholland Amsterdam', address: 'Pina Bauschplein 4', routeUrl: routes.inholland, latitude: 52.3762305, longitude: 4.9600170 },
-      { number: 5, time: '18:00', title: 'Kokomo Amsterdam', address: 'Zuiderzeeweg 11 A', routeUrl: routes.kokomo, latitude: 52.3703067, longitude: 4.9637664 },
+      { number: 1, time: '10:45', title: 'NDSM-werf', address: 'NDSM-Plein 1', routeUrl: routes.ndsm, latitude: 52.4005, longitude: 4.8925 },
+      { number: 2, time: '15:00', title: 'Inholland Amsterdam', address: 'Pina Bauschplein 4', routeUrl: routes.inholland, latitude: 52.3702, longitude: 4.9530 },
     ],
   },
 ]

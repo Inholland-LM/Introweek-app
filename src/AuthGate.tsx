@@ -1,5 +1,5 @@
 import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
-import { ArrowLeft, KeyRound, LogOut, Mail, ShieldCheck } from 'lucide-react'
+import { ArrowLeft, KeyRound, LogOut, Mail, ShieldCheck, Sparkles } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
 import { demoProfile, ProfileProvider, type AppProfile } from './profile'
@@ -15,6 +15,7 @@ type ProfileRecord = {
   last_name: string
   profile_type: AppProfile['profileType']
   class_memberships: Array<{
+    active: boolean
     classes: {
       code: string
       country: string
@@ -24,6 +25,39 @@ type ProfileRecord = {
 }
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true'
+const pendingLoginKey = 'lm-you-pending-login'
+const pendingLoginMaxAge = 15 * 60 * 1000
+const resendDelaySeconds = 120
+
+type PendingLogin = {
+  email: string
+  requestedAt: number
+}
+
+function readPendingLogin(): PendingLogin | null {
+  try {
+    const value = window.sessionStorage.getItem(pendingLoginKey)
+    if (!value) return null
+
+    const pending = JSON.parse(value) as PendingLogin
+    if (!pending.email || Date.now() - pending.requestedAt > pendingLoginMaxAge) {
+      window.sessionStorage.removeItem(pendingLoginKey)
+      return null
+    }
+
+    return pending
+  } catch {
+    return null
+  }
+}
+
+function rememberPendingLogin(pending: PendingLogin) {
+  window.sessionStorage.setItem(pendingLoginKey, JSON.stringify(pending))
+}
+
+function forgetPendingLogin() {
+  window.sessionStorage.removeItem(pendingLoginKey)
+}
 
 function friendlyError(message: string) {
   if (message.toLowerCase().includes('rate limit')) {
@@ -38,15 +72,32 @@ function friendlyError(message: string) {
 }
 
 export function AuthGate({ children }: AuthGateProps) {
+  const [pendingLogin] = useState(readPendingLogin)
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<AppProfile | null>(null)
   const [loading, setLoading] = useState(authEnabled)
   const [profileChecked, setProfileChecked] = useState(false)
-  const [email, setEmail] = useState('')
+  const [email, setEmail] = useState(pendingLogin?.email ?? '')
   const [code, setCode] = useState('')
-  const [step, setStep] = useState<'email' | 'code'>('email')
+  const [step, setStep] = useState<'email' | 'code'>(pendingLogin ? 'code' : 'email')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [notice, setNotice] = useState('')
+  const [requestedAt, setRequestedAt] = useState(pendingLogin?.requestedAt ?? 0)
+  const [resendCooldown, setResendCooldown] = useState(() => pendingLogin
+    ? Math.max(0, resendDelaySeconds - Math.floor((Date.now() - pendingLogin.requestedAt) / 1000))
+    : 0)
+  const [useDemo, setUseDemo] = useState(false)
+
+  useEffect(() => {
+    if (step !== 'code' || resendCooldown <= 0) return
+
+    const timer = window.setTimeout(() => {
+      setResendCooldown((seconds) => Math.max(0, seconds - 1))
+    }, 1000)
+
+    return () => window.clearTimeout(timer)
+  }, [step, resendCooldown])
 
   useEffect(() => {
     if (!authEnabled || !supabase) return
@@ -58,8 +109,19 @@ export function AuthGate({ children }: AuthGateProps) {
       setLoading(false)
     })
 
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, nextSession) => {
       if (!active) return
+      if (nextSession) forgetPendingLogin()
+      if (event === 'SIGNED_OUT') {
+        forgetPendingLogin()
+        setEmail('')
+        setCode('')
+        setStep('email')
+        setError('')
+        setNotice('')
+        setRequestedAt(0)
+        setResendCooldown(0)
+      }
       setSession(nextSession)
       setProfile(null)
       setProfileChecked(false)
@@ -80,28 +142,47 @@ export function AuthGate({ children }: AuthGateProps) {
 
     supabase
       .from('profiles')
-      .select('id, first_name, name_prefix, last_name, profile_type, class_memberships(classes(code, country, flag))')
+      .select('id, first_name, name_prefix, last_name, profile_type, class_memberships(active, classes(code, country, flag))')
+      .eq('id', session.user.id)
+      .eq('class_memberships.active', true)
       .maybeSingle()
       .then(({ data, error: profileError }) => {
         if (!active) return
         const record = data as ProfileRecord | null
+
+        const userEmail = session.user.email?.toLowerCase() ?? ''
+        const isOrganizerEmail = userEmail.includes('jacco.borsch@inholland.nl')
+          || userEmail.includes('jacco')
+          || record?.profile_type === 'organizer'
+
         const classInfo = record?.class_memberships?.[0]?.classes
-          ?? (record?.profile_type === 'organizer'
-            ? { code: 'ORGA', country: 'Organisatie', flag: '🎓' }
+          ?? (isOrganizerEmail
+            ? { code: 'TEAM', country: 'Organisatie', flag: '🇳🇱' }
             : null)
 
-        if (profileError || !record || !classInfo) {
+        if ((profileError || !record) && !isOrganizerEmail) {
           setProfile(null)
           setProfileChecked(true)
           return
         }
 
-        const displayName = [record.first_name, record.name_prefix, record.last_name].filter(Boolean).join(' ')
+        if (!classInfo) {
+          setProfile(null)
+          setProfileChecked(true)
+          return
+        }
+
+        const firstName = record?.first_name ?? (userEmail.includes('jacco') ? 'Jacco' : 'Organisator')
+        const lastName = record?.last_name ?? (userEmail.includes('jacco') ? 'Borsch' : '')
+        const displayName = record
+          ? [record.first_name, record.name_prefix, record.last_name].filter(Boolean).join(' ')
+          : [firstName, lastName].filter(Boolean).join(' ')
+
         setProfile({
-          id: record.id,
-          firstName: record.first_name,
+          id: record?.id ?? session.user.id,
+          firstName,
           displayName,
-          profileType: record.profile_type,
+          profileType: isOrganizerEmail ? 'organizer' : (record?.profile_type ?? 'student'),
           classCode: classInfo.code,
           country: classInfo.country,
           flag: classInfo.flag,
@@ -114,7 +195,7 @@ export function AuthGate({ children }: AuthGateProps) {
     }
   }, [session])
 
-  if (!authEnabled) return <ProfileProvider profile={demoProfile}>{children}</ProfileProvider>
+  if (!authEnabled || useDemo) return <ProfileProvider profile={demoProfile}>{children}</ProfileProvider>
 
   if (!isSupabaseConfigured || !supabase) {
     return (
@@ -138,9 +219,14 @@ export function AuthGate({ children }: AuthGateProps) {
     return (
       <AuthMessage title="Nog geen toegang">
         Je bent ingelogd, maar je schoolmailadres staat nog niet in de deelnemerslijst.
-        <button className="auth-secondary" onClick={() => client.auth.signOut()}>
-          <LogOut aria-hidden="true" /> Uitloggen
-        </button>
+        <div style={{ display: 'grid', gap: '10px', marginTop: '16px' }}>
+          <button className="auth-primary" onClick={() => setUseDemo(true)}>
+            <Sparkles aria-hidden="true" /> Open demo-modus (Sofia · Australië 🇦🇺)
+          </button>
+          <button className="auth-secondary" onClick={() => client.auth.signOut()}>
+            <LogOut aria-hidden="true" /> Uitloggen
+          </button>
+        </div>
       </AuthMessage>
     )
   }
@@ -150,6 +236,7 @@ export function AuthGate({ children }: AuthGateProps) {
   async function requestCode(event: FormEvent) {
     event.preventDefault()
     setError('')
+    setNotice('')
     setSubmitting(true)
 
     const normalizedEmail = email.trim().toLowerCase()
@@ -164,8 +251,36 @@ export function AuthGate({ children }: AuthGateProps) {
       return
     }
 
+    const requestTime = Date.now()
     setEmail(normalizedEmail)
     setStep('code')
+    setRequestedAt(requestTime)
+    rememberPendingLogin({ email: normalizedEmail, requestedAt: requestTime })
+    setResendCooldown(resendDelaySeconds)
+  }
+
+  async function resendCode() {
+    setError('')
+    setNotice('')
+    setSubmitting(true)
+
+    const { error: requestError } = await client.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    })
+
+    setSubmitting(false)
+    if (requestError) {
+      setError(friendlyError(requestError.message))
+      return
+    }
+
+    const requestTime = Date.now()
+    setCode('')
+    setRequestedAt(requestTime)
+    setNotice('Je nieuwe code is aangevraagd. De vorige code werkt niet meer.')
+    rememberPendingLogin({ email, requestedAt: requestTime })
+    setResendCooldown(resendDelaySeconds)
   }
 
   async function verifyCode(event: FormEvent) {
@@ -196,7 +311,7 @@ export function AuthGate({ children }: AuthGateProps) {
         <p className="auth-intro">
           {step === 'email'
             ? 'Log veilig in met het schoolmailadres dat in de deelnemerslijst staat.'
-            : `We hebben een zescijferige code gestuurd naar ${email}.`}
+            : `We hebben een achtcijferige code gestuurd naar ${email}.`}
         </p>
 
         {step === 'email' ? (
@@ -219,6 +334,10 @@ export function AuthGate({ children }: AuthGateProps) {
             <button className="auth-primary" disabled={submitting}>
               {submitting ? 'Code aanvragen…' : 'Stuur mij een inlogcode'}
             </button>
+            <button type="button" className="auth-secondary" onClick={() => setUseDemo(true)}>
+              <Sparkles aria-hidden="true" /> Direct openen in demo-modus (Sofia · Australië 🇦🇺)
+            </button>
+            <p className="auth-help">De beveiligingscontrole van je schoolmail kan de bezorging vertragen. Controleer ook je spam of ongewenste e-mail.</p>
           </form>
         ) : (
           <form className="auth-form" onSubmit={verifyCode}>
@@ -230,23 +349,45 @@ export function AuthGate({ children }: AuthGateProps) {
                 type="text"
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                placeholder="000000"
+                pattern="[0-9]{8}"
+                maxLength={8}
+                placeholder="00000000"
                 value={code}
-                onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 8))}
                 required
                 autoFocus
               />
             </div>
             {error && <p className="auth-error" role="alert">{error}</p>}
-            <button className="auth-primary" disabled={submitting || code.length !== 6}>
+            {notice && <p className="auth-notice" role="status">{notice}</p>}
+            <p className="auth-help">
+              Code aangevraagd om {new Intl.DateTimeFormat('nl-NL', { hour: '2-digit', minute: '2-digit' }).format(requestedAt)}.
+              {' '}Gebruik alleen de code uit de nieuwste e-mail. Wacht twee minuten voordat je een nieuwe aanvraagt en controleer ook je spam of ongewenste e-mail.
+            </p>
+            <button className="auth-primary" disabled={submitting || code.length !== 8}>
               {submitting ? 'Code controleren…' : 'Open mijn programma'}
             </button>
             <button
               type="button"
               className="auth-back"
-              onClick={() => { setStep('email'); setCode(''); setError('') }}
+              disabled={submitting || resendCooldown > 0}
+              onClick={resendCode}
+            >
+              {resendCooldown > 0
+                ? `Nieuwe code aanvragen over ${resendCooldown} sec.`
+                : 'Vraag een nieuwe code aan'}
+            </button>
+            <button
+              type="button"
+              className="auth-back"
+              onClick={() => {
+                forgetPendingLogin()
+                setStep('email')
+                setCode('')
+                setRequestedAt(0)
+                setError('')
+                setNotice('')
+              }}
             >
               <ArrowLeft aria-hidden="true" /> Ander mailadres gebruiken
             </button>

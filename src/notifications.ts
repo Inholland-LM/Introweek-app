@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase } from './lib/supabase'
+import { getDueScheduledMessages } from './scheduledMessages'
+import type { ImportRole, MasterContent } from './import/parseWorkbook'
 
 export type AppNotification = {
   id: string
-  kind: 'welcome' | 'class_changed' | 'class_member_arrived' | 'class_member_left'
+  kind: 'welcome' | 'class_changed' | 'class_member_arrived' | 'class_member_left' | 'scheduled'
   title: string
   body: string
   createdAt: string
@@ -22,6 +24,7 @@ type NotificationRecord = {
 const MAX_NOTIFICATIONS = 20
 const MIN_REFRESH_INTERVAL_MS = 5 * 60 * 1000
 const liveNotificationsEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true' && Boolean(supabase)
+const SCHEDULED_READ_STORAGE_PREFIX = 'lm-you-scheduled-read:'
 
 const demoNotifications: AppNotification[] = [
   {
@@ -53,9 +56,43 @@ function mapNotification(record: NotificationRecord): AppNotification {
   }
 }
 
-export function useNotifications(profileId: string | null) {
+function getScheduledReadIds(profileKey: string) {
+  try {
+    const stored = window.localStorage.getItem(`${SCHEDULED_READ_STORAGE_PREFIX}${profileKey}`)
+    const parsed = stored ? JSON.parse(stored) : []
+    return new Set(Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [])
+  } catch {
+    return new Set<string>()
+  }
+}
+
+function saveScheduledReadIds(profileKey: string, ids: Set<string>) {
+  window.localStorage.setItem(`${SCHEDULED_READ_STORAGE_PREFIX}${profileKey}`, JSON.stringify([...ids]))
+}
+
+function mapScheduledNotifications(classCode: string, profileKey: string, profileRole: ImportRole, masterMessages?: MasterContent['messages']): AppNotification[] {
+  const readIds = getScheduledReadIds(profileKey)
+  const messages = masterMessages?.length
+    ? masterMessages.filter((message) => message.active
+      && message.channel === 'in-app'
+      && new Date(message.scheduledAt).getTime() <= Date.now()
+      && (message.classCodes === 'all' || message.classCodes.includes(classCode))
+      && message.roles.includes(profileRole))
+    : getDueScheduledMessages(classCode)
+  return messages.map((message) => ({
+    id: `scheduled:${message.id}`,
+    kind: 'scheduled',
+    title: message.title,
+    body: message.body,
+    createdAt: message.scheduledAt,
+    readAt: readIds.has(message.id) ? message.scheduledAt : null,
+  }))
+}
+
+export function useNotifications(profileId: string | null, classCode: string, profileRole: ImportRole, masterMessages?: MasterContent['messages']) {
+  const profileKey = profileId ?? `demo:${classCode}`
   const [notifications, setNotifications] = useState<AppNotification[]>(
-    liveNotificationsEnabled ? [] : demoNotifications,
+    liveNotificationsEnabled ? [] : [...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages), ...demoNotifications],
   )
   const [loading, setLoading] = useState(liveNotificationsEnabled)
   const [error, setError] = useState('')
@@ -64,7 +101,7 @@ export function useNotifications(profileId: string | null) {
 
   const refresh = useCallback(async (force = false) => {
     if (!liveNotificationsEnabled || !supabase || !profileId) {
-      setNotifications(demoNotifications)
+      setNotifications([...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages), ...demoNotifications])
       setLoading(false)
       return
     }
@@ -83,7 +120,11 @@ export function useNotifications(profileId: string | null) {
       if (fetchError) {
         setError('Meldingen konden niet worden opgehaald. Probeer het later opnieuw.')
       } else {
-        setNotifications(((data ?? []) as NotificationRecord[]).map(mapNotification))
+        const personalNotifications = ((data ?? []) as NotificationRecord[]).map(mapNotification)
+        setNotifications([
+          ...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages),
+          ...personalNotifications,
+        ].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()))
         setError('')
         lastFetchedAt.current = Date.now()
       }
@@ -93,11 +134,24 @@ export function useNotifications(profileId: string | null) {
     requestInFlight.current = request
     await request
     requestInFlight.current = null
-  }, [profileId])
+  }, [classCode, masterMessages, profileId, profileKey, profileRole])
 
   useEffect(() => {
     void refresh(true)
   }, [refresh])
+
+  useEffect(() => {
+    const mergeReleasedMessages = () => {
+      setNotifications((current) => [
+        ...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages),
+        ...current.filter((notification) => notification.kind !== 'scheduled'),
+      ].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()))
+    }
+
+    mergeReleasedMessages()
+    const timer = window.setInterval(mergeReleasedMessages, 60_000)
+    return () => window.clearInterval(timer)
+  }, [classCode, masterMessages, profileKey, profileRole])
 
   useEffect(() => {
     if (!liveNotificationsEnabled || !supabase || !profileId) return
@@ -135,7 +189,21 @@ export function useNotifications(profileId: string | null) {
   }, [profileId, refresh])
 
   const markRead = useCallback(async (notificationId: string) => {
-    if (!liveNotificationsEnabled || !supabase) {
+    setError('')
+    if (notificationId.startsWith('scheduled:')) {
+      const messageId = notificationId.slice('scheduled:'.length)
+      const readIds = getScheduledReadIds(profileKey)
+      readIds.add(messageId)
+      saveScheduledReadIds(profileKey, readIds)
+      setNotifications((current) => current.map((notification) => (
+        notification.id === notificationId
+          ? { ...notification, readAt: new Date().toISOString() }
+          : notification
+      )))
+      return
+    }
+
+    if (!liveNotificationsEnabled || !supabase || notificationId.startsWith('demo-')) {
       setNotifications((current) => current.map((notification) => (
         notification.id === notificationId
           ? { ...notification, readAt: new Date().toISOString() }
@@ -149,18 +217,18 @@ export function useNotifications(profileId: string | null) {
       notification.id === notificationId ? { ...notification, readAt } : notification
     )))
 
-    const { error: updateError } = await supabase
-      .from('notifications')
-      .update({ read_at: readAt })
-      .eq('id', notificationId)
-
-    if (updateError) {
-      setError('De melding kon niet als gelezen worden gemarkeerd.')
-      void refresh(true)
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read_at: readAt })
+        .eq('id', notificationId)
+    } catch {
+      // Keep optimistic read state locally
     }
-  }, [refresh])
+  }, [profileKey])
 
   const markAllRead = useCallback(async () => {
+    setError('')
     const unreadIds = notifications
       .filter((notification) => !notification.readAt)
       .map((notification) => notification.id)
@@ -171,22 +239,43 @@ export function useNotifications(profileId: string | null) {
       notification.readAt ? notification : { ...notification, readAt }
     )))
 
-    if (!liveNotificationsEnabled || !supabase) return
-    const { error: updateError } = await supabase
-      .from('notifications')
-      .update({ read_at: readAt })
-      .in('id', unreadIds)
-
-    if (updateError) {
-      setError('Niet alle meldingen konden als gelezen worden gemarkeerd.')
-      void refresh(true)
+    const scheduledMessageIds = unreadIds
+      .filter((id) => id.startsWith('scheduled:'))
+      .map((id) => id.slice('scheduled:'.length))
+    if (scheduledMessageIds.length > 0) {
+      const readIds = getScheduledReadIds(profileKey)
+      scheduledMessageIds.forEach((id) => readIds.add(id))
+      saveScheduledReadIds(profileKey, readIds)
     }
-  }, [notifications, refresh])
+
+    if (!liveNotificationsEnabled || !supabase) return
+    const databaseIds = unreadIds.filter((id) => !id.startsWith('scheduled:') && !id.startsWith('demo-'))
+    if (databaseIds.length === 0) return
+
+    try {
+      await supabase
+        .from('notifications')
+        .update({ read_at: readAt })
+        .in('id', databaseIds)
+    } catch {
+      // Keep optimistic read state
+    }
+  }, [notifications, profileKey])
 
   const unreadCount = useMemo(
     () => notifications.filter((notification) => !notification.readAt).length,
     [notifications],
   )
+
+  useEffect(() => {
+    if (typeof navigator !== 'undefined' && 'setAppBadge' in navigator) {
+      if (unreadCount > 0) {
+        void (navigator as any).setAppBadge(unreadCount).catch(() => {})
+      } else if ('clearAppBadge' in navigator) {
+        void (navigator as any).clearAppBadge().catch(() => {})
+      }
+    }
+  }, [unreadCount])
 
   return {
     notifications,
