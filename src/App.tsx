@@ -507,21 +507,21 @@ function CompetitionView() {
       {/* TEAM SCORE BREAKDOWN MODAL */}
       {selectedTeam && (
         <div className="modal-overlay" onClick={() => setSelectedTeam(null)}>
-          <div className="modal-card score-history-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
+          <div className="modal-dialog-card score-history-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-dialog-header">
               <div className="modal-title-with-flag">
-                <CountryFlagIcon country={selectedTeam.country} size={40} />
+                <CountryFlagIcon country={selectedTeam.country} size={38} />
                 <div>
                   <h2>{selectedTeam.country} ({selectedTeam.classCode})</h2>
                   <span className="score-modal-rank-badge">Plaats #{selectedTeam.rank} · <b>{selectedTeam.points} punten</b></span>
                 </div>
               </div>
-              <button type="button" className="close-button icon-only-btn" onClick={() => setSelectedTeam(null)}>
+              <button type="button" className="close-modal-icon-btn" onClick={() => setSelectedTeam(null)} aria-label="Sluiten">
                 <X aria-hidden="true" />
               </button>
             </div>
 
-            <div className="modal-content">
+            <div className="modal-dialog-body">
               <div className="score-history-header">
                 <h3>Puntenhistorie &amp; Opbouw</h3>
                 <p>Overzicht van alle toegekende punten door de organisatie en jury.</p>
@@ -547,8 +547,8 @@ function CompetitionView() {
               </div>
             </div>
 
-            <div className="modal-actions">
-              <button type="button" className="secondary-button" onClick={() => setSelectedTeam(null)}>
+            <div className="modal-dialog-footer">
+              <button type="button" className="close-modal-text-btn" onClick={() => setSelectedTeam(null)}>
                 Sluiten
               </button>
             </div>
