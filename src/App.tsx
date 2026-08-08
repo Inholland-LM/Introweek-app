@@ -34,6 +34,149 @@ import type { MasterContent } from './import/parseWorkbook'
 import { PovPanel } from './PovPanel'
 import { OrganizerDashboard } from './OrganizerDashboard'
 
+export type WeatherInfo = {
+  temperature: number
+  weatherCode: number
+  description: string
+  icon: string
+  advice: string
+}
+
+const weatherCacheKey = 'lmyou-amsterdam-weather-v1'
+const weatherCacheLifetimeMs = 30 * 60 * 1000
+
+function describeWeather(weatherCode: number, temperature: number, isDay: boolean): Omit<WeatherInfo, 'temperature' | 'weatherCode'> {
+  if (weatherCode === 0) return {
+    icon: isDay ? '☀️' : '🌙',
+    description: 'Helder',
+    advice: temperature >= 23
+      ? 'Zonnig en warm. Neem zonnebrand en een gevulde waterfles mee.'
+      : 'Helder weer voor de buitenactiviteiten.',
+  }
+  if (weatherCode >= 1 && weatherCode <= 3) return {
+    icon: isDay ? '⛅' : '☁️',
+    description: weatherCode === 3 ? 'Bewolkt' : 'Licht bewolkt',
+    advice: 'Prima weer om door Amsterdam te reizen. Neem voor de zekerheid een lichte jas mee.',
+  }
+  if (weatherCode === 45 || weatherCode === 48) return {
+    icon: '🌫️',
+    description: 'Mistig',
+    advice: 'Het zicht kan beperkt zijn. Neem extra tijd en let goed op in het verkeer.',
+  }
+  if (weatherCode >= 51 && weatherCode <= 57) return {
+    icon: '🌦️',
+    description: weatherCode >= 56 ? 'IJzel of motregen' : 'Motregen',
+    advice: 'Er valt motregen. Neem een regenjas of paraplu mee.',
+  }
+  if (weatherCode >= 61 && weatherCode <= 67) return {
+    icon: '🌧️',
+    description: weatherCode >= 66 ? 'IJzel of regen' : 'Regen',
+    advice: 'Neem een regenjas of paraplu mee en houd rekening met extra reistijd.',
+  }
+  if (weatherCode >= 71 && weatherCode <= 77) return {
+    icon: '🌨️',
+    description: 'Sneeuw',
+    advice: 'Er wordt sneeuw gemeld. Kleed je warm aan en houd rekening met gladheid.',
+  }
+  if (weatherCode >= 80 && weatherCode <= 82) return {
+    icon: '🌧️',
+    description: 'Regenbuien',
+    advice: 'Er worden regenbuien gemeld. Neem regenkleding mee en zoek zo nodig een overdekte plek.',
+  }
+  if (weatherCode === 85 || weatherCode === 86) return {
+    icon: '🌨️',
+    description: 'Sneeuwbuien',
+    advice: 'Er worden sneeuwbuien gemeld. Kleed je warm aan en let op gladheid.',
+  }
+  if (weatherCode >= 95 && weatherCode <= 99) return {
+    icon: '⛈️',
+    description: weatherCode >= 96 ? 'Onweer met hagel' : 'Onweer',
+    advice: 'Er wordt onweer gemeld. Volg aanwijzingen van de organisatie en zoek een veilige binnenlocatie.',
+  }
+  return {
+    icon: '🌡️',
+    description: 'Actueel weer',
+    advice: 'Controleer voor vertrek ook de actuele omstandigheden buiten.',
+  }
+}
+
+type WeatherCacheEntry = { fetchedAt: number; weather: WeatherInfo }
+
+function readCachedWeatherEntry(): WeatherCacheEntry | null {
+  try {
+    const raw = window.localStorage.getItem(weatherCacheKey)
+    if (!raw) return null
+    const cached = JSON.parse(raw) as { fetchedAt?: number; weather?: WeatherInfo }
+    if (!cached.fetchedAt || !cached.weather || Date.now() - cached.fetchedAt >= weatherCacheLifetimeMs) return null
+    return { fetchedAt: cached.fetchedAt, weather: cached.weather }
+  } catch {
+    return null
+  }
+}
+
+function useAmsterdamWeather(): { weather: WeatherInfo | null; unavailable: boolean } {
+  const [weather, setWeather] = useState<WeatherInfo | null>(() => readCachedWeatherEntry()?.weather ?? null)
+  const [unavailable, setUnavailable] = useState(false)
+
+  useEffect(() => {
+    let active = true
+    let controller: AbortController | null = null
+    let refreshTimer = 0
+
+    async function refreshWeather() {
+      const cached = readCachedWeatherEntry()
+      if (cached) {
+        if (active) {
+          setWeather(cached.weather)
+          setUnavailable(false)
+          refreshTimer = window.setTimeout(() => { void refreshWeather() }, Math.max(1_000, weatherCacheLifetimeMs - (Date.now() - cached.fetchedAt)))
+        }
+        return
+      }
+
+      controller = new AbortController()
+      const timeout = window.setTimeout(() => controller?.abort(), 8_000)
+      try {
+        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=52.3676&longitude=4.9041&current=temperature_2m,weather_code,is_day&timezone=Europe%2FAmsterdam&forecast_days=1', { signal: controller.signal })
+        if (!response.ok) throw new Error('Weather request failed')
+        const data = await response.json()
+        const temperature = Number(data?.current?.temperature_2m)
+        const weatherCode = Number(data?.current?.weather_code)
+        const isDay = Number(data?.current?.is_day) === 1
+        if (!Number.isFinite(temperature) || !Number.isInteger(weatherCode)) throw new Error('Invalid weather response')
+        const nextWeather = { temperature: Math.round(temperature), weatherCode, ...describeWeather(weatherCode, temperature, isDay) }
+        if (!active) return
+        setWeather(nextWeather)
+        setUnavailable(false)
+        try {
+          window.localStorage.setItem(weatherCacheKey, JSON.stringify({ fetchedAt: Date.now(), weather: nextWeather }))
+        } catch {
+          // Het weer blijft bruikbaar wanneer lokale opslag niet beschikbaar is.
+        }
+        refreshTimer = window.setTimeout(() => { void refreshWeather() }, weatherCacheLifetimeMs)
+      } catch {
+        if (active) {
+          setWeather(null)
+          setUnavailable(true)
+          refreshTimer = window.setTimeout(() => { void refreshWeather() }, 5 * 60 * 1000)
+        }
+      } finally {
+        window.clearTimeout(timeout)
+      }
+    }
+
+    void refreshWeather()
+
+    return () => {
+      active = false
+      controller?.abort()
+      window.clearTimeout(refreshTimer)
+    }
+  }, [])
+
+  return { weather, unavailable }
+}
+
 export function CountryFlagIcon({ country, size = 32 }: { country: string; size?: number }) {
   const code = country.toLowerCase()
   if (code.includes('austral') || country === 'AU') {
@@ -1093,6 +1236,7 @@ function AnimatedBrandLogo({ firstName }: { firstName: string }) {
 function App() {
   const profile = useAppProfile()
   const masterContent = useMasterContent()
+  const { weather, unavailable: weatherUnavailable } = useAmsterdamWeather()
   const currentProgrammeDays = buildProgrammeDays(masterContent.content, profile.classCode)
   const currentRouteDays = buildRouteDays(masterContent.content, profile.classCode)
   const notificationInbox = useNotifications(profile.id, profile.classCode, profile.profileType, masterContent.content?.messages)
@@ -1150,6 +1294,30 @@ function App() {
               <h1 id="welcome-title">{homeProgramme.greeting}, {profile.firstName}</h1>
               <p className="welcome-copy">Alles wat je vandaag nodig hebt, staat hier voor je klaar.</p>
             </section>
+
+            {weather && (
+              <aside className="weather-widget-card" aria-label="Live weerbericht Amsterdam">
+                <div className="weather-widget-header">
+                  <span className="weather-widget-icon" aria-hidden="true">{weather.icon}</span>
+                  <div>
+                    <strong>{weather.temperature}°C in Amsterdam · {weather.description}</strong>
+                    <span className="weather-source-tag">Open-Meteo · maximaal 30 minuten oud</span>
+                  </div>
+                </div>
+                <p className="weather-widget-advice">{weather.advice}</p>
+              </aside>
+            )}
+            {!weather && weatherUnavailable && (
+              <aside className="weather-widget-card" aria-label="Weerbericht niet beschikbaar">
+                <div className="weather-widget-header">
+                  <span className="weather-widget-icon" aria-hidden="true">🌡️</span>
+                  <div>
+                    <strong>Weerbericht tijdelijk niet beschikbaar</strong>
+                    <span className="weather-source-tag">Probeer het later opnieuw</span>
+                  </div>
+                </div>
+              </aside>
+            )}
 
             <div className="time-travel-bar" aria-label="Tijdsimulatie voor testen">
               <div className="time-travel-label">

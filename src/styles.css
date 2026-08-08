@@ -3578,3 +3578,45 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .score-cat-tag.cat-citygame { background: #fef3c7; color: #92400e; }
 .score-cat-tag.cat-vlaggenparade { background: #dcfce7; color: #166534; }
 .score-cat-tag.cat-bonus { background: #f3e8ff; color: #6b21a8; }
+
+.weather-widget-card {
+  margin: 14px 0 10px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.08), rgba(227, 0, 79, 0.06), #ffffff);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+.weather-widget-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 6px;
+}
+
+.weather-widget-icon {
+  font-size: 1.8rem;
+  line-height: 1;
+}
+
+.weather-widget-header strong {
+  display: block;
+  font-size: 0.95rem;
+  color: #111827;
+}
+
+.weather-source-tag {
+  font-size: 0.68rem;
+  font-weight: 800;
+  color: #0284c7;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.weather-widget-advice {
+  margin: 0;
+  font-size: 0.84rem;
+  color: #475569;
+  line-height: 1.35;
+}

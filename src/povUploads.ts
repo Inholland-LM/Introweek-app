@@ -1,7 +1,8 @@
 import { supabase } from './lib/supabase'
 
 const bucketName = 'pov-inzendingen'
-const maximumUploadBytes = 1_500_000
+const maximumPhotoDimension = 800
+const maximumUploadBytes = 100_000
 
 export type PovSubmission = {
   id: string
@@ -39,10 +40,10 @@ export async function compressPovPhoto(file: File) {
   if (file.size > 20 * 1024 * 1024) throw new Error('Deze foto is groter dan 20 MB. Kies een kleinere foto.')
 
   const image = await loadImage(file)
-  let scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight))
-  let quality = 0.84
+  let scale = Math.min(1, maximumPhotoDimension / Math.max(image.naturalWidth, image.naturalHeight))
+  let quality = 0.82
 
-  for (let attempt = 0; attempt < 6; attempt += 1) {
+  for (let attempt = 0; attempt < 8; attempt += 1) {
     const canvas = document.createElement('canvas')
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale))
     canvas.height = Math.max(1, Math.round(image.naturalHeight * scale))
@@ -53,8 +54,8 @@ export async function compressPovPhoto(file: File) {
     context.drawImage(image, 0, 0, canvas.width, canvas.height)
     const blob = await canvasBlob(canvas, quality)
     if (blob.size <= maximumUploadBytes) return blob
-    quality = Math.max(0.58, quality - 0.07)
-    scale *= 0.86
+    quality = Math.max(0.48, quality - 0.06)
+    scale *= 0.92
   }
 
   throw new Error('De foto blijft na verkleinen te groot. Kies een foto met een lagere resolutie.')
@@ -73,7 +74,7 @@ export async function uploadPovPhoto(assignmentId: string, file: File, caption: 
 
   const { error: uploadError } = await supabase.storage.from(bucketName).upload(parsed.path, compressed, {
     contentType: 'image/jpeg',
-    cacheControl: '3600',
+    cacheControl: '31536000',
     upsert: false,
   })
   if (uploadError) {
