@@ -556,7 +556,11 @@ function MapView({ routeDays }: { routeDays: RouteDay[] }) {
   )
 }
 
-function CompetitionView() {
+type CompetitionViewProps = {
+  onNavigate: (destination: NavLabel, moreSection?: MoreSectionId) => void
+}
+
+function CompetitionView({ onNavigate }: CompetitionViewProps) {
   const profile = useAppProfile()
   const [selectedTeam, setSelectedTeam] = useState<Standing | null>(null)
   const leader = standings[0]
@@ -729,10 +733,10 @@ function CompetitionView() {
           </div>
         </div>
         <div className="points-grid">
-          <article><Camera aria-hidden="true" /><div><strong>POV-foto’s</strong><span>Creatief, grappig en uniek</span></div></article>
-          <article><Compass aria-hidden="true" /><div><strong>Experiences</strong><span>Samenwerken en presteren</span></div></article>
-          <article><Map aria-hidden="true" /><div><strong>City Game</strong><span>Opdrachten door Amsterdam</span></div></article>
-          <article><Trophy aria-hidden="true" /><div><strong>Bonuspunten</strong><span>Let op verrassingsacties</span></div></article>
+          <button type="button" onClick={() => onNavigate('Meer', 'pov')}><Camera aria-hidden="true" /><div><strong>POV-foto’s</strong><span>Bekijk en plaats inzendingen</span></div><ChevronRight aria-hidden="true" /></button>
+          <button type="button" onClick={() => onNavigate('Programma')}><Compass aria-hidden="true" /><div><strong>Experiences</strong><span>Bekijk waar en wanneer</span></div><ChevronRight aria-hidden="true" /></button>
+          <button type="button" onClick={() => onNavigate('Kaart')}><Map aria-hidden="true" /><div><strong>City Game</strong><span>Open locaties en routes</span></div><ChevronRight aria-hidden="true" /></button>
+          <button type="button" onClick={() => onNavigate('Meer', 'notifications')}><Trophy aria-hidden="true" /><div><strong>Bonuspunten</strong><span>Bekijk acties en berichten</span></div><ChevronRight aria-hidden="true" /></button>
         </div>
       </section>
 
@@ -1536,7 +1540,11 @@ function App() {
 
         {active === 'Kaart' && <MapView routeDays={currentRouteDays} />}
 
-        {active === 'Strijd' && <CompetitionView />}
+        {active === 'Strijd' && <CompetitionView onNavigate={(destination, section) => {
+          if (section) setMoreSection(section)
+          setActive(destination)
+          if (section === 'notifications') void notificationInbox.refresh()
+        }} />}
 
         {active === 'Meer' && (
           <MoreView

@@ -1102,25 +1102,29 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 
 .points-section { margin-top: 24px; }
 .points-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.points-grid article {
+.points-grid button {
   display: flex;
+  width: 100%;
   min-height: 80px;
   gap: 10px;
   align-items: flex-start;
   padding: 13px;
+  text-align: left;
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 18px;
   background: #ffffff;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.03);
   transition: all 0.2s ease;
 }
-.points-grid article:hover {
+.points-grid button:hover,
+.points-grid button:focus-visible {
   border-color: rgba(227, 0, 79, 0.3);
   transform: translateY(-2px);
   box-shadow: 0 8px 24px rgba(227, 0, 79, 0.08);
 }
-.points-grid article > svg { width: 22px; height: 22px; flex: 0 0 auto; color: #e3004f; }
-.points-grid article div { display: grid; gap: 4px; }
+.points-grid button > svg { width: 22px; height: 22px; flex: 0 0 auto; color: #e3004f; }
+.points-grid button > svg:last-child { width: 15px; height: 15px; margin-left: auto; color: #94a3b8; }
+.points-grid button div { display: grid; min-width: 0; gap: 4px; }
 .points-grid strong { font-size: 0.85rem; line-height: 1.2; color: #111827; }
 .points-grid span { color: var(--muted); font-size: 0.7rem; line-height: 1.35; }
 
