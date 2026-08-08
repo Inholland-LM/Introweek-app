@@ -306,6 +306,29 @@ function getAmsterdamMoment(referenceDate: Date) {
   }
 }
 
+function getProgrammeStart(dayId: ProgrammeDay['id'], time: string) {
+  return new Date(`${introDateByDay[dayId]}T${time}:00+02:00`)
+}
+
+function formatProgrammeCountdown(millisecondsUntilStart: number, beforeIntroweek: boolean) {
+  const totalMinutes = Math.max(1, Math.ceil(millisecondsUntilStart / 60_000))
+
+  if (beforeIntroweek && totalMinutes >= 24 * 60) {
+    const days = Math.ceil(totalMinutes / (24 * 60))
+    return `Introweek start over ${days} ${days === 1 ? 'dag' : 'dagen'}`
+  }
+
+  if (totalMinutes >= 60) {
+    const hours = Math.floor(totalMinutes / 60)
+    const minutes = totalMinutes % 60
+    return minutes > 0
+      ? `Start over ${hours} uur en ${minutes} ${minutes === 1 ? 'minuut' : 'minuten'}`
+      : `Start over ${hours} uur`
+  }
+
+  return `Start over ${totalMinutes} ${totalMinutes === 1 ? 'minuut' : 'minuten'}`
+}
+
 function getHomeProgramme(referenceDate: Date, programmeDays: ProgrammeDay[]) {
   const dayId = getDefaultIntroDayId(referenceDate)
   const dayIndex = programmeDays.findIndex((pDay) => pDay.id === dayId)
@@ -360,18 +383,17 @@ function getHomeProgramme(referenceDate: Date, programmeDays: ProgrammeDay[]) {
       ? nextDay.items[0]
       : day.items[nextIndex]
 
-  const minutesUntilStart = itemMinutes(activeItem.time) - now.minutes
+  const activeDay = finished && nextDay ? nextDay : day
+  const millisecondsUntilStart = getProgrammeStart(activeDay.id, activeItem.time).getTime() - referenceDate.getTime()
+  const firstProgrammeStart = getProgrammeStart(programmeDays[0].id, programmeDays[0].items[0].time)
+  const beforeIntroweek = referenceDate.getTime() < firstProgrammeStart.getTime()
   const status = introweekCompleted
     ? 'Eindklassement bekend · Bedankt voor je inzet!'
-    : finished && nextDay
-      ? `Start ${nextDay.id} om ${nextDay.items[0].time}`
-      : now.date < eventDate
-        ? `Start ${day.id} om ${activeItem.time}`
-        : isCurrentlyActive
-          ? `Volgende: ${day.items[nextIndex]?.title ?? ''} om ${day.items[nextIndex]?.time ?? ''}`
-          : minutesUntilStart > 0 && minutesUntilStart <= 180
-            ? `Start over ${minutesUntilStart} ${minutesUntilStart === 1 ? 'minuut' : 'minuten'}`
-            : `Start om ${activeItem.time}`
+    : isCurrentlyActive
+      ? 'Nu bezig'
+      : millisecondsUntilStart > 0
+        ? formatProgrammeCountdown(millisecondsUntilStart, beforeIntroweek)
+        : `Start om ${activeItem.time}`
 
   const greeting = now.hour < 12 ? 'Goedemorgen' : now.hour < 18 ? 'Goedemiddag' : 'Goedenavond'
 
@@ -1442,11 +1464,7 @@ function App() {
                     {homeProgramme.activeItem.location && <div className="detail-row"><MapPin aria-hidden="true" /><span>{homeProgramme.activeItem.location}</span></div>}
                     <div className="detail-row countdown">
                       <span>
-                        {homeProgramme.nextDay
-                          ? 'Eerste activiteit van morgen'
-                          : homeProgramme.currentIndex === -1 && !homeProgramme.finished
-                            ? 'Eerste activiteit van vandaag'
-                            : homeProgramme.status}
+                        {homeProgramme.status}
                       </span>
                     </div>
                   </div>
