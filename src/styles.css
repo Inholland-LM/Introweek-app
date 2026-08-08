@@ -112,7 +112,7 @@ button { color: inherit; cursor: pointer; }
   vertical-align: top;
   height: 1.2em;
   min-width: 3.6ch;
-  margin-left: 0.35em;
+  margin-left: 0;
   perspective: 180px;
   transform-style: preserve-3d;
 }
