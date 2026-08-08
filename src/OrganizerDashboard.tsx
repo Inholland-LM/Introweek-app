@@ -30,7 +30,7 @@ import {
 import type { AppProfile } from './profile'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import type { ImportPerson, ImportRole, MasterContent } from './import/parseWorkbook'
-import { createPovPhotoUrl, fetchPovSubmissions, type PovSubmission } from './povUploads'
+import { createPovPhotoUrl, fetchPovSubmissions, reviewPovSubmission, type PovSubmission } from './povUploads'
 import { createInitialMasterContent, saveMasterContent } from './content'
 import { supabase } from './lib/supabase'
 
@@ -176,6 +176,8 @@ export function OrganizerDashboard({
           caption: 'Klasse LM1A klaar voor de strijd!',
           byteSize: 240000,
           uploadedAt: new Date().toISOString(),
+          reviewStatus: 'pending',
+          rejectionReason: null,
         },
         {
           id: 'demo-pov-2',
@@ -187,6 +189,8 @@ export function OrganizerDashboard({
           caption: 'Tweede hoek van de klas',
           byteSize: 210000,
           uploadedAt: new Date().toISOString(),
+          reviewStatus: 'pending',
+          rejectionReason: null,
         },
       ])
     } finally {
@@ -213,15 +217,16 @@ export function OrganizerDashboard({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedPov, pointsInput])
 
-  const [rejectedPovIds, setRejectedPovIds] = useState<Record<string, 'rejected' | 'deleted'>>({})
-
-  function handleRejectPov(povId: string, mode: 'rejected' | 'deleted') {
-    if (mode === 'deleted') {
-      setSubmissions((prev) => prev.filter((s) => s.id !== povId))
-    } else {
-      setRejectedPovIds((prev) => ({ ...prev, [povId]: 'rejected' }))
+  async function handleRejectPov(povId: string) {
+    try {
+      await reviewPovSubmission(povId, 'rejected', 'Afgekeurd door de organisatie.')
+      setSubmissions((prev) => prev.map((submission) => submission.id === povId
+        ? { ...submission, reviewStatus: 'rejected', rejectionReason: 'Afgekeurd door de organisatie.' }
+        : submission))
+      setSelectedPov(null)
+    } catch {
+      window.alert('De afkeuring kon niet worden opgeslagen. Probeer het opnieuw.')
     }
-    setSelectedPov(null)
   }
 
   async function openPovModal(submission: PovSubmission) {
@@ -240,17 +245,24 @@ export function OrganizerDashboard({
     const points = Number(pointsInput) || 100
     setEvaluatingPovId(selectedPov.id)
 
-    // Mark assignment as evaluated with winning submission
-    setEvaluatedAssignmentIds((prev) => ({
-      ...prev,
-      [`${selectedPov.classCode}-${selectedPov.assignmentId}`]: {
-        points,
-        winningSubmissionId: selectedPov.id,
-      },
-    }))
-
-    setSelectedPov(null)
-    setEvaluatingPovId(null)
+    try {
+      await reviewPovSubmission(selectedPov.id, 'approved')
+      setEvaluatedAssignmentIds((prev) => ({
+        ...prev,
+        [`${selectedPov.classCode}-${selectedPov.assignmentId}`]: {
+          points,
+          winningSubmissionId: selectedPov.id,
+        },
+      }))
+      setSubmissions((prev) => prev.map((submission) => submission.id === selectedPov.id
+        ? { ...submission, reviewStatus: 'approved', rejectionReason: null }
+        : submission))
+      setSelectedPov(null)
+    } catch {
+      window.alert('De beoordeling kon niet worden opgeslagen. Probeer het opnieuw.')
+    } finally {
+      setEvaluatingPovId(null)
+    }
   }
 
   function handleAddPerson() {
@@ -746,6 +758,9 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                       </div>
                       <div className="pov-card-details">
                         <span className="class-tag">{item.classCode}</span>
+                        <span className={`pov-review-status status-${item.reviewStatus}`}>
+                          {item.reviewStatus === 'approved' ? 'Goedgekeurd' : item.reviewStatus === 'rejected' ? 'Afgekeurd' : 'In afwachting'}
+                        </span>
                         <strong>{item.assignmentTitle}</strong>
                         <small>Door: {item.uploaderName}</small>
                         {item.caption && <p>"{item.caption}"</p>}
@@ -993,19 +1008,10 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                     <button
                       type="button"
                       className="moderation-btn reject-btn"
-                      onClick={() => handleRejectPov(selectedPov.id, 'rejected')}
+                      onClick={() => { void handleRejectPov(selectedPov.id) }}
                     >
                       <X aria-hidden="true" />
-                      <span>Afkeuren (plek blijft bezet)</span>
-                    </button>
-
-                    <button
-                      type="button"
-                      className="moderation-btn delete-btn"
-                      onClick={() => handleRejectPov(selectedPov.id, 'deleted')}
-                    >
-                      <Trash2 aria-hidden="true" />
-                      <span>Wissen (plek komt vrij)</span>
+                      <span>Afkeuren (plek komt vrij)</span>
                     </button>
                   </div>
                 </div>

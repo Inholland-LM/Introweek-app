@@ -1923,6 +1923,144 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   margin-top: 4px;
 }
 
+.class-submissions-section {
+  display: grid;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.class-submissions-heading {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.class-submissions-heading h3,
+.class-submissions-heading p {
+  margin: 0;
+}
+
+.class-submissions-heading h3 { font-size: 1rem; }
+.class-submissions-heading p { margin-top: 3px; color: #64748b; font-size: 0.76rem; }
+.class-submissions-heading button {
+  padding: 7px 10px;
+  border: 1px solid rgba(227, 0, 79, 0.25);
+  border-radius: 10px;
+  background: #ffffff;
+  color: #e3004f;
+  font-size: 0.74rem;
+  font-weight: 850;
+}
+
+.class-submissions-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.class-submission-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 15px;
+  background: #ffffff;
+}
+
+.class-submission-card.status-approved { border-color: rgba(5, 150, 105, 0.45); }
+.class-submission-card.status-rejected { border-color: rgba(227, 0, 79, 0.25); }
+
+.class-submission-photo {
+  display: grid;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  place-items: center;
+  overflow: hidden;
+  border: 0;
+  border-radius: 0;
+  background: #eef2f7;
+  color: #94a3b8;
+}
+
+.class-submission-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.class-submission-photo svg { width: 28px; height: 28px; }
+.class-submission-photo:disabled { cursor: default; }
+.class-submission-info { display: grid; gap: 4px; padding: 9px; }
+.class-submission-info strong { overflow: hidden; font-size: 0.78rem; text-overflow: ellipsis; white-space: nowrap; }
+.class-submission-info p,
+.class-submission-info small { margin: 0; color: #64748b; font-size: 0.7rem; line-height: 1.35; }
+
+.pov-review-status {
+  width: fit-content;
+  padding: 3px 6px;
+  border-radius: 999px;
+  background: #eef2f7;
+  color: #475569;
+  font-size: 0.62rem;
+  font-weight: 900;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.pov-review-status.status-approved { background: rgba(5, 150, 105, 0.12); color: #047857; }
+.pov-review-status.status-rejected { background: rgba(227, 0, 79, 0.1); color: #b0003c; }
+
+.pov-photo-modal {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: max(12px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  background: rgba(3, 10, 25, 0.96);
+  color: #ffffff;
+}
+
+.pov-photo-modal > button {
+  justify-self: end;
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.pov-photo-zoom {
+  min-height: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pinch-zoom;
+}
+
+.pov-photo-modal img {
+  display: block;
+  width: 100%;
+  min-width: 100%;
+  height: auto;
+  margin: auto;
+  object-fit: contain;
+}
+
+.pov-photo-modal > strong {
+  padding: 0 8px;
+  overflow: hidden;
+  font-size: 0.82rem;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .institutional-signature {
   display: flex;
   flex-direction: column;

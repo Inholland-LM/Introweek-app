@@ -14,6 +14,24 @@ export type PovSubmission = {
   caption: string | null
   byteSize: number
   uploadedAt: string
+  reviewStatus: 'pending' | 'approved' | 'rejected'
+  rejectionReason: string | null
+}
+
+function mapPovSubmission(item: Record<string, unknown>): PovSubmission {
+  return {
+    id: String(item.id),
+    assignmentId: String(item.assignment_id),
+    assignmentTitle: String(item.assignment_title),
+    classCode: String(item.class_code),
+    uploaderName: String(item.uploader_name),
+    storagePath: String(item.storage_path ?? ''),
+    caption: item.caption ? String(item.caption) : null,
+    byteSize: Number(item.byte_size ?? 0),
+    uploadedAt: String(item.uploaded_at),
+    reviewStatus: item.review_status === 'approved' || item.review_status === 'rejected' ? item.review_status : 'pending',
+    rejectionReason: item.rejection_reason ? String(item.rejection_reason) : null,
+  }
 }
 
 async function loadImage(file: File) {
@@ -100,22 +118,22 @@ export async function uploadPovPhoto(assignmentId: string, file: File, caption: 
 
 export async function fetchPovSubmissions(offset = 0, limit = 50) {
   if (!supabase) throw new Error('De beveiligde verbinding is niet beschikbaar.')
-  const { data, error } = await supabase.rpc('list_pov_submissions', {
+  const { data, error } = await supabase.rpc('list_pov_submissions_v2', {
     requested_limit: limit,
     requested_offset: offset,
   })
   if (error) throw error
-  return ((data ?? []) as Array<Record<string, unknown>>).map((item) => ({
-    id: String(item.id),
-    assignmentId: String(item.assignment_id),
-    assignmentTitle: String(item.assignment_title),
-    classCode: String(item.class_code),
-    uploaderName: String(item.uploader_name),
-    storagePath: String(item.storage_path),
-    caption: item.caption ? String(item.caption) : null,
-    byteSize: Number(item.byte_size ?? 0),
-    uploadedAt: String(item.uploaded_at),
-  })) satisfies PovSubmission[]
+  return ((data ?? []) as Array<Record<string, unknown>>).map(mapPovSubmission)
+}
+
+export async function fetchClassPovSubmissions(assignmentId: string) {
+  if (!supabase) throw new Error('De beveiligde verbinding is niet beschikbaar.')
+  const { data, error } = await supabase.rpc('list_class_pov_submissions', {
+    requested_assignment_id: assignmentId,
+    requested_limit: 50,
+  })
+  if (error) throw error
+  return ((data ?? []) as Array<Record<string, unknown>>).map(mapPovSubmission)
 }
 
 export async function createPovPhotoUrl(storagePath: string) {
@@ -125,16 +143,12 @@ export async function createPovPhotoUrl(storagePath: string) {
   return data.signedUrl
 }
 
-export async function fetchClassPovSubmissionCount(assignmentId: string) {
-  if (!supabase) return 0
-  try {
-    const { count, error } = await supabase
-      .from('pov_submissions')
-      .select('*', { count: 'exact', head: true })
-      .eq('assignment_id', assignmentId)
-    if (error) return 0
-    return count ?? 0
-  } catch {
-    return 0
-  }
+export async function reviewPovSubmission(id: string, status: 'approved' | 'rejected', reason = '') {
+  if (!supabase) throw new Error('De beveiligde verbinding is niet beschikbaar.')
+  const { error } = await supabase.rpc('review_pov_submission', {
+    requested_submission_id: id,
+    requested_review_status: status,
+    requested_rejection_reason: reason,
+  })
+  if (error) throw error
 }
