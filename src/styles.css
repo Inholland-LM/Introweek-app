@@ -88,6 +88,20 @@ button { color: inherit; cursor: pointer; }
   letter-spacing: -0.025em;
 }
 
+.brand-toggle {
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.brand-toggle:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 4px;
+  border-radius: 4px;
+}
+
 .brand-mark b, .signature-brand b { font-size: 1rem; font-weight: 950; color: #111827; }
 .brand-mark i, .signature-brand i, .brand-equals { margin: 0 4px; color: #e3004f !important; font-style: normal; font-weight: 950; }
 .brand-mark strong, .signature-brand strong, .brand-you { font-size: 1rem; font-weight: 950; letter-spacing: 0.04em; color: #e3004f !important; }

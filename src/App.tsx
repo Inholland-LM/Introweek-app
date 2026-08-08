@@ -1223,23 +1223,28 @@ function MoreView({
 
 function AnimatedBrandLogo({ firstName }: { firstName: string }) {
   const [showName, setShowName] = useState(false)
+  const hideNameTimerRef = useRef<number | null>(null)
+
+  function revealName() {
+    if (!firstName || firstName.toUpperCase() === 'YOU') return
+    if (hideNameTimerRef.current !== null) window.clearTimeout(hideNameTimerRef.current)
+    setShowName(true)
+    hideNameTimerRef.current = window.setTimeout(() => {
+      setShowName(false)
+      hideNameTimerRef.current = null
+    }, 10_000)
+  }
 
   useEffect(() => {
     if (!firstName || firstName.toUpperCase() === 'YOU') return
 
-    const initialTimer = window.setTimeout(() => {
-      setShowName(true)
-      window.setTimeout(() => setShowName(false), 10_000)
-    }, 3_000)
-
-    const interval = window.setInterval(() => {
-      setShowName(true)
-      window.setTimeout(() => setShowName(false), 10_000)
-    }, 120_000)
+    const initialTimer = window.setTimeout(revealName, 3_000)
+    const interval = window.setInterval(revealName, 120_000)
 
     return () => {
       window.clearTimeout(initialTimer)
       window.clearInterval(interval)
+      if (hideNameTimerRef.current !== null) window.clearTimeout(hideNameTimerRef.current)
     }
   }, [firstName])
 
@@ -1247,14 +1252,19 @@ function AnimatedBrandLogo({ firstName }: { firstName: string }) {
 
   return (
     <div className="brand-lockup" aria-label={`LM = YOU, LM = ${nameUpper}, Intro 2026`}>
-      <span className="brand-mark">
+      <button
+        type="button"
+        className="brand-mark brand-toggle"
+        onClick={revealName}
+        aria-label={`Toon LM = ${nameUpper}`}
+      >
         <b>LM</b>
         <i className="brand-equals">=</i>
         <span className="brand-flip-container">
           <span className={`brand-you-text ${showName ? 'flip-out' : 'flip-in'}`}>YOU</span>
           <span className={`brand-name-text ${showName ? 'flip-in' : 'flip-out'}`}>{nameUpper}</span>
         </span>
-      </span>
+      </button>
       <span className="brand-edition">Intro 2026</span>
     </div>
   )
