@@ -2,7 +2,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
 import { ArrowLeft, KeyRound, LogOut, Mail, ShieldCheck, Sparkles } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
-import { demoProfile, ProfileProvider, type AppProfile } from './profile'
+import { demoProfile, demoProfiles, ProfileProvider, type AppProfile } from './profile'
 
 type AuthGateProps = {
   children: ReactNode
@@ -87,7 +87,7 @@ export function AuthGate({ children }: AuthGateProps) {
   const [resendCooldown, setResendCooldown] = useState(() => pendingLogin
     ? Math.max(0, resendDelaySeconds - Math.floor((Date.now() - pendingLogin.requestedAt) / 1000))
     : 0)
-  const [useDemo, setUseDemo] = useState(false)
+  const [demoProfileOverride, setDemoProfileOverride] = useState<AppProfile | null>(null)
 
   useEffect(() => {
     if (step !== 'code' || resendCooldown <= 0) return
@@ -195,7 +195,9 @@ export function AuthGate({ children }: AuthGateProps) {
     }
   }, [session])
 
-  if (!authEnabled || useDemo) return <ProfileProvider profile={demoProfile}>{children}</ProfileProvider>
+  if (!authEnabled || demoProfileOverride) {
+    return <ProfileProvider profile={demoProfileOverride ?? demoProfile}>{children}</ProfileProvider>
+  }
 
   if (!isSupabaseConfigured || !supabase) {
     return (
@@ -220,7 +222,7 @@ export function AuthGate({ children }: AuthGateProps) {
       <AuthMessage title="Nog geen toegang">
         Je bent ingelogd, maar je schoolmailadres staat nog niet in de deelnemerslijst.
         <div style={{ display: 'grid', gap: '10px', marginTop: '16px' }}>
-          <button className="auth-primary" onClick={() => setUseDemo(true)}>
+          <button className="auth-primary" onClick={() => setDemoProfileOverride(demoProfiles.student)}>
             <Sparkles aria-hidden="true" /> Open demo-modus (Sofia · Australië 🇦🇺)
           </button>
           <button className="auth-secondary" onClick={() => client.auth.signOut()}>
@@ -334,9 +336,25 @@ export function AuthGate({ children }: AuthGateProps) {
             <button className="auth-primary" disabled={submitting}>
               {submitting ? 'Code aanvragen…' : 'Stuur mij een inlogcode'}
             </button>
-            <button type="button" className="auth-secondary" onClick={() => setUseDemo(true)}>
+            <button type="button" className="auth-secondary" onClick={() => setDemoProfileOverride(demoProfiles.student)}>
               <Sparkles aria-hidden="true" /> Direct openen in demo-modus (Sofia · Australië 🇦🇺)
             </button>
+            {import.meta.env.DEV && (
+              <div className="auth-role-tests" aria-label="Lokale testprofielen">
+                <span>Snel testen als</span>
+                <div className="auth-role-test-grid">
+                  <button type="button" onClick={() => setDemoProfileOverride(demoProfiles.poer)}>
+                    PO'er <small>Puck</small>
+                  </button>
+                  <button type="button" onClick={() => setDemoProfileOverride(demoProfiles.buddy)}>
+                    Buddy <small>Bo</small>
+                  </button>
+                  <button type="button" onClick={() => setDemoProfileOverride(demoProfiles.organizer)}>
+                    Organisatie <small>Jacco</small>
+                  </button>
+                </div>
+              </div>
+            )}
             <p className="auth-help">De beveiligingscontrole van je schoolmail kan de bezorging vertragen. Controleer ook je spam of ongewenste e-mail.</p>
           </form>
         ) : (

@@ -2331,6 +2331,49 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   font-weight: 800;
   cursor: pointer;
 }
+.auth-role-tests {
+  display: grid;
+  gap: 8px;
+  padding-top: 2px;
+  text-align: center;
+}
+.auth-role-tests > span {
+  color: #64748b;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.auth-role-test-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.auth-role-test-grid button {
+  display: grid;
+  min-width: 0;
+  min-height: 52px;
+  place-content: center;
+  gap: 2px;
+  padding: 7px 5px;
+  border: 1px solid rgba(17, 24, 39, 0.14);
+  border-radius: 11px;
+  background: #f8fafc;
+  color: #111827;
+  font-size: 0.76rem;
+  font-weight: 850;
+}
+.auth-role-test-grid button:hover {
+  border-color: rgba(227, 0, 79, 0.45);
+  background: rgba(227, 0, 79, 0.05);
+}
+.auth-role-test-grid small {
+  overflow: hidden;
+  color: #64748b;
+  font-size: 0.66rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+}
 .auth-help { color: #64748b; font-size: 0.78rem; line-height: 1.4; margin-top: 8px; text-align: center; }
 .auth-error { color: #dc2626; font-size: 0.8rem; font-weight: 750; text-align: center; }
 .auth-notice { color: #059669; font-size: 0.8rem; font-weight: 750; text-align: center; }

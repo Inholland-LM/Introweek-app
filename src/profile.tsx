@@ -20,6 +20,37 @@ export const demoProfile: AppProfile = {
   flag: '🇦🇺',
 }
 
+export const demoProfiles: Record<'student' | 'buddy' | 'poer' | 'organizer', AppProfile> = {
+  student: demoProfile,
+  buddy: {
+    id: null,
+    firstName: 'Bo',
+    displayName: 'Bo Testbuddy',
+    profileType: 'buddy',
+    classCode: 'LM1A',
+    country: 'Australië',
+    flag: '🇦🇺',
+  },
+  poer: {
+    id: null,
+    firstName: 'Puck',
+    displayName: 'Puck Test-POer',
+    profileType: 'poer',
+    classCode: 'LM1A',
+    country: 'Australië',
+    flag: '🇦🇺',
+  },
+  organizer: {
+    id: null,
+    firstName: 'Jacco',
+    displayName: 'Jacco Testorganisatie',
+    profileType: 'organizer',
+    classCode: 'TEAM',
+    country: 'Organisatie',
+    flag: '🇳🇱',
+  },
+}
+
 const ProfileContext = createContext<AppProfile>(demoProfile)
 
 export function ProfileProvider({ profile, children }: { profile: AppProfile; children: ReactNode }) {
