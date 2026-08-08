@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState, type TouchEvent } from 'react'
 import {
   Bell,
   BadgePercent,
@@ -16,6 +16,7 @@ import {
   MapPin,
   Mail,
   Navigation,
+  RefreshCw,
   Settings,
   ShieldCheck,
   Sparkles,
@@ -1274,6 +1275,12 @@ function App() {
   const [currentTime, setCurrentTime] = useState(() => new Date())
   const [simulatedDate, setSimulatedDate] = useState<Date | null>(null)
   const [presetId, setPresetId] = useState<string | null>(null)
+  const [pullDistance, setPullDistance] = useState(0)
+  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [refreshComplete, setRefreshComplete] = useState(false)
+  const pullStartYRef = useRef<number | null>(null)
+  const pullDistanceRef = useRef(0)
+  const refreshResetTimerRef = useRef<number | null>(null)
   const effectiveTime = simulatedDate ?? currentTime
   const homeProgramme = getHomeProgramme(effectiveTime, currentProgrammeDays)
   const isWidescreenActive = widescreenDashboard && active === 'Meer' && moreSection === 'import' && profile.profileType === 'organizer'
@@ -1282,6 +1289,60 @@ function App() {
     const timer = window.setInterval(() => setCurrentTime(new Date()), 30_000)
     return () => window.clearInterval(timer)
   }, [])
+
+  useEffect(() => () => {
+    if (refreshResetTimerRef.current !== null) window.clearTimeout(refreshResetTimerRef.current)
+  }, [])
+
+  function updatePullDistance(distance: number) {
+    pullDistanceRef.current = distance
+    setPullDistance(distance)
+  }
+
+  function handlePullStart(event: TouchEvent<HTMLElement>) {
+    if (event.currentTarget.scrollTop > 0 || isRefreshing) return
+    pullStartYRef.current = event.touches[0]?.clientY ?? null
+  }
+
+  function handlePullMove(event: TouchEvent<HTMLElement>) {
+    if (pullStartYRef.current === null || isRefreshing || event.currentTarget.scrollTop > 0) return
+    const currentY = event.touches[0]?.clientY
+    if (currentY === undefined) return
+    const distance = currentY - pullStartYRef.current
+    updatePullDistance(distance > 0 ? Math.min(82, distance * 0.46) : 0)
+  }
+
+  async function refreshAppData() {
+    if (isRefreshing) return
+    setIsRefreshing(true)
+    setRefreshComplete(false)
+    updatePullDistance(48)
+
+    const minimumAnimation = new Promise<void>((resolve) => window.setTimeout(resolve, 700))
+    await Promise.allSettled([
+      masterContent.refresh(true),
+      notificationInbox.refresh(true),
+      minimumAnimation,
+    ])
+
+    setIsRefreshing(false)
+    setRefreshComplete(true)
+    updatePullDistance(48)
+    refreshResetTimerRef.current = window.setTimeout(() => {
+      setRefreshComplete(false)
+      updatePullDistance(0)
+      refreshResetTimerRef.current = null
+    }, 750)
+  }
+
+  function handlePullEnd() {
+    pullStartYRef.current = null
+    if (pullDistanceRef.current >= 58) {
+      void refreshAppData()
+      return
+    }
+    updatePullDistance(0)
+  }
 
   function openNotifications() {
     setMoreSection('notifications')
@@ -1312,7 +1373,30 @@ function App() {
         </div>
       </header>
 
-      <main>
+      <main
+        onTouchStart={handlePullStart}
+        onTouchMove={handlePullMove}
+        onTouchEnd={handlePullEnd}
+        onTouchCancel={handlePullEnd}
+      >
+        <div
+          className={`pull-refresh-indicator${pullDistance > 8 ? ' is-visible' : ''}${isRefreshing ? ' is-refreshing' : ''}${refreshComplete ? ' is-complete' : ''}`}
+          style={{ height: `${pullDistance}px` }}
+          role="status"
+          aria-live="polite"
+          aria-hidden={pullDistance <= 8 && !isRefreshing && !refreshComplete}
+        >
+          <RefreshCw aria-hidden="true" />
+          <span>
+            {isRefreshing
+              ? 'Vernieuwen...'
+              : refreshComplete
+                ? 'Helemaal bijgewerkt'
+                : pullDistance >= 58
+                  ? 'Laat los om te vernieuwen'
+                  : 'Trek omlaag om te vernieuwen'}
+          </span>
+        </div>
         {active === 'Vandaag' && (
           <>
             <section className="welcome" aria-labelledby="welcome-title">

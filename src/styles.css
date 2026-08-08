@@ -208,6 +208,46 @@ main::-webkit-scrollbar { width: 6px; }
 main::-webkit-scrollbar-track { background: transparent; }
 main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 79, 0.3); }
 
+.pull-refresh-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 0;
+  overflow: hidden;
+  color: var(--muted);
+  font-size: 0.74rem;
+  font-weight: 800;
+  opacity: 0;
+  transition: height 180ms ease, opacity 140ms ease, color 140ms ease;
+}
+
+.pull-refresh-indicator.is-visible,
+.pull-refresh-indicator.is-refreshing,
+.pull-refresh-indicator.is-complete {
+  opacity: 1;
+}
+
+.pull-refresh-indicator svg {
+  width: 17px;
+  height: 17px;
+  color: var(--gold);
+}
+
+.pull-refresh-indicator.is-complete {
+  color: #60d9ad;
+}
+
+@keyframes pull-refresh-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pull-refresh-indicator.is-refreshing svg {
+    animation: pull-refresh-spin 650ms linear infinite;
+  }
+}
+
 .welcome { padding: 0 3px 14px; }
 .welcome h1, .placeholder-view h1 {
   margin: 2px 0 6px;
