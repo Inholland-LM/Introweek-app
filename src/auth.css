@@ -51,6 +51,7 @@
 .auth-brand i { margin: 0 5px; color: #e3004f; font-style: normal; font-weight: 950; }
 .auth-brand strong { font-size: 1.15rem; font-weight: 950; letter-spacing: 0.04em; color: #e3004f; }
 .auth-eyebrow { margin: 0 0 8px; color: #e3004f; font-size: 0.74rem; font-weight: 900; letter-spacing: 0.13em; text-transform: uppercase; }
+.auth-eyebrow strong { color: #e3006f; font-size: 1.08em; text-shadow: 0 0 12px rgba(227, 0, 111, 0.2); }
 .auth-card h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.8rem, 8vw, 2.5rem); line-height: 1.1; letter-spacing: -0.02em; color: #111827; }
 .auth-intro { margin: 14px auto 25px; color: #4b5563; line-height: 1.55; font-size: 0.9rem; }
 .auth-form { display: grid; gap: 12px; text-align: left; }

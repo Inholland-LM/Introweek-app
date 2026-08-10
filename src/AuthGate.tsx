@@ -324,7 +324,7 @@ export function AuthGate({ children }: AuthGateProps) {
         <div className="auth-brand" aria-label="LM = YOU">
           <span>LM</span><i>=</i><strong>YOU</strong>
         </div>
-        <p className="auth-eyebrow">Intro 2026</p>
+        <p className="auth-eyebrow">ENTER THE <strong>X</strong> · 2026</p>
         <h1 id="auth-title">Jouw introweek</h1>
         <p className="auth-intro">
           {step === 'email'
@@ -442,6 +442,7 @@ function AuthMessage({ title, children }: { title: string; children: ReactNode }
         <div className="auth-brand" aria-label="LM = YOU">
           <span>LM</span><i>=</i><strong>YOU</strong>
         </div>
+        <p className="auth-eyebrow">ENTER THE <strong>X</strong> · 2026</p>
         <h1>{title}</h1>
         <div className="auth-intro">{children}</div>
       </section>

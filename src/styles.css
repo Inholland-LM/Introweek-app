@@ -11,6 +11,8 @@
   --gold: #e3004f;
   --gold-soft: #c90044;
   --coral: #e3004f;
+  --enter-magenta: #e3006f;
+  --enter-blue: #2f7df6;
   --muted: #4b5563;
   --cream: #111827;
   --line: rgba(0, 0, 0, 0.08);
@@ -60,6 +62,22 @@ button { color: inherit; cursor: pointer; }
   background-size: 86px 74px, 122px 104px;
   mask-image: linear-gradient(#000, transparent);
 }
+
+.enter-x-shell::before,
+.enter-x-shell::after {
+  position: absolute;
+  z-index: 0;
+  width: 210px;
+  height: 18px;
+  border-radius: 999px;
+  content: "";
+  pointer-events: none;
+  opacity: 0.08;
+  background: linear-gradient(90deg, transparent, var(--enter-magenta), transparent);
+}
+
+.enter-x-shell::before { top: 152px; right: -62px; transform: rotate(45deg); }
+.enter-x-shell::after { top: 152px; right: -62px; transform: rotate(-45deg); }
 
 .topbar {
   position: relative;
@@ -150,6 +168,9 @@ button { color: inherit; cursor: pointer; }
   pointer-events: none;
 }
 .brand-edition {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
   padding: 5px 8px;
   border: 1px solid rgba(227, 0, 79, 0.3);
   border-radius: 999px;
@@ -160,6 +181,11 @@ button { color: inherit; cursor: pointer; }
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+
+.brand-edition span,
+.brand-edition small { font: inherit; }
+.brand-edition b { color: var(--enter-magenta); font-size: 0.8rem; line-height: 0.8; }
+.brand-edition small { opacity: 0.72; }
 
 .identity-row, .identity, .detail-row, .section-heading, .standings-card, .primary-button {
   display: flex;
@@ -263,6 +289,13 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 }
 
 .welcome { padding: 0 3px 14px; }
+.welcome-date {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 720;
+  text-transform: capitalize;
+}
 .welcome h1, .placeholder-view h1 {
   margin: 2px 0 6px;
   font-family: Georgia, "Times New Roman", serif;
@@ -280,6 +313,14 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+
+.enter-day-heading {
+  color: var(--enter-magenta);
+  letter-spacing: 0.085em;
+  text-transform: none;
+}
+
+.enter-day-heading::first-letter { font-weight: 950; }
 
 .welcome-copy, .placeholder-view > p:last-of-type { margin: 0; color: var(--muted); font-size: 0.9rem; line-height: 1.4; }
 
@@ -666,6 +707,30 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   font-weight: 850;
   letter-spacing: 0.1em;
   text-transform: uppercase;
+}
+.day-overview-heading .enter-day-title {
+  margin-bottom: 3px;
+  color: var(--enter-magenta);
+  text-transform: none;
+}
+.day-overview-heading .day-date {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 0.72rem;
+  font-weight: 750;
+  text-transform: capitalize;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .brand-edition b {
+    animation: enter-x-glow 4s ease-in-out infinite;
+  }
+}
+
+@keyframes enter-x-glow {
+  0%, 75%, 100% { text-shadow: 0 0 0 rgba(227, 0, 111, 0); }
+  85% { text-shadow: 0 0 10px rgba(227, 0, 111, 0.5); }
 }
 .day-overview-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 1.35rem; line-height: 1.12; color: #111827; }
 .day-overview-heading svg { width: 25px; flex: 0 0 auto; color: var(--gold); }

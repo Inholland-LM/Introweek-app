@@ -287,6 +287,12 @@ const introDateByDay: Record<ProgrammeDay['id'], string> = {
   donderdag: '2026-08-27',
 }
 
+const enterDayIdentity: Record<ProgrammeDay['id'], { label: string; shortLabel: string }> = {
+  dinsdag: { label: 'ENTER DAY 1 — Meet', shortLabel: 'Meet' },
+  woensdag: { label: 'ENTER DAY 2 — eXperience', shortLabel: 'eXperience' },
+  donderdag: { label: 'ENTER DAY 3 — eXplore & Celebrate', shortLabel: 'eXplore' },
+}
+
 function getAmsterdamMoment(referenceDate: Date) {
   const parts = new Intl.DateTimeFormat('nl-NL', {
     timeZone: 'Europe/Amsterdam',
@@ -421,7 +427,7 @@ function ProgrammeView({ programmeDays }: { programmeDays: ProgrammeDay[] }) {
   return (
     <section className="programme-view" aria-labelledby="programme-title">
       <div className="page-intro">
-        <p className="eyebrow">Persoonlijk voor {profile.classCode}</p>
+        <p className="eyebrow">ENTER THE PROGRAMME · {profile.classCode}</p>
         <h1 id="programme-title">Jouw programma</h1>
         <p>Alle tijden, locaties en routes voor jouw klas overzichtelijk bij elkaar.</p>
       </div>
@@ -436,7 +442,7 @@ function ProgrammeView({ programmeDays }: { programmeDays: ProgrammeDay[] }) {
             onClick={() => setSelectedDayId(day.id)}
           >
             <span>{day.shortLabel}</span>
-            <small>aug</small>
+            <small>{enterDayIdentity[day.id].shortLabel}</small>
           </button>
         ))}
       </div>
@@ -444,7 +450,8 @@ function ProgrammeView({ programmeDays }: { programmeDays: ProgrammeDay[] }) {
       <article className="day-overview">
         <div className="day-overview-heading">
           <div>
-            <p>{selectedDay.date}</p>
+            <p className="enter-day-title">{enterDayIdentity[selectedDay.id].label}</p>
+            <span className="day-date">{selectedDay.date}</span>
             <h2>{selectedDay.title}</h2>
           </div>
           <CalendarDays aria-hidden="true" />
@@ -489,7 +496,7 @@ function MapView({ routeDays }: { routeDays: RouteDay[] }) {
   return (
     <section className="map-view" aria-labelledby="map-title">
       <div className="page-intro">
-        <p className="eyebrow">Jouw locaties</p>
+        <p className="eyebrow">ENTER AMSTERDAM</p>
         <h1 id="map-title">Op pad in Amsterdam</h1>
         <p>Bekijk je route zonder zware online kaart. Open Google Maps alleen wanneer je echt wilt navigeren.</p>
       </div>
@@ -577,7 +584,7 @@ function CompetitionView({ onNavigate }: CompetitionViewProps) {
   return (
     <section className="competition-view" aria-labelledby="competition-title">
       <div className="page-intro">
-        <p className="eyebrow">{isOrganizer ? 'Overzicht Landenstrijd' : 'De landenstrijd'}</p>
+        <p className="eyebrow">ENTER THE CHALLENGE{isOrganizer ? ' · ORGANISATIE' : ''}</p>
         <h1 id="competition-title">{isOrganizer ? 'Live Klassement' : `Samen voor ${profile.country}`}</h1>
         <p>{isOrganizer ? 'Houd de punten en tussenstand bij van alle deelnemende klassen.' : `Iedere opdracht telt. Werk samen met ${profile.classCode} en klim naar de eerste plaats.`}</p>
       </div>
@@ -728,7 +735,7 @@ function CompetitionView({ onNavigate }: CompetitionViewProps) {
       <section className="points-section" aria-labelledby="points-title">
         <div className="route-heading">
           <div>
-            <p className="eyebrow">Pak die punten</p>
+            <p className="eyebrow">ENTER THE CHALLENGE</p>
             <h2 id="points-title">Kansen voor je klas</h2>
           </div>
         </div>
@@ -816,7 +823,7 @@ function ContactHelpPanel({ classAppUrl }: { classAppUrl: string | null }) {
 
   return (
     <>
-      <div className="more-panel-heading"><div><p className="eyebrow">We staan klaar</p><h2>Contact &amp; hulp</h2></div><CircleHelp aria-hidden="true" /></div>
+      <div className="more-panel-heading"><div><p className="eyebrow">ENTER YOUR NETWORK</p><h2>Contact &amp; hulp</h2></div><CircleHelp aria-hidden="true" /></div>
       {loading && <div className="notification-state" aria-live="polite">Contactpersonen ophalen...</div>}
       {error && <div className="notification-state notification-error" role="alert"><p>{error}</p></div>}
       {!loading && !error && (
@@ -923,7 +930,7 @@ function MoreView({
   return (
     <section className={`more-view${largeText ? ' large-text' : ''}`} aria-labelledby="more-title">
       <div className="page-intro">
-        <p className="eyebrow">Jouw introweek</p>
+        <p className="eyebrow">ENTER YOUR WEEK</p>
         <h1 id="more-title">Meer</h1>
         <p>Berichten, praktische informatie en persoonlijke instellingen op één plek.</p>
       </div>
@@ -953,7 +960,7 @@ function MoreView({
           <>
             <div className="more-panel-heading notification-heading">
               <div>
-                <p className="eyebrow">{profile.profileType === 'organizer' ? 'Systeem & Audit' : 'Berichten'}</p>
+                <p className="eyebrow">{profile.profileType === 'organizer' ? 'ENTER THE CONTROL ROOM' : 'ENTER THE UPDATE'}</p>
                 <h2>{profile.profileType === 'organizer' ? 'Organisatie Logboek' : 'Meldingen'}</h2>
               </div>
               <div className="notification-heading-actions">
@@ -1127,7 +1134,7 @@ function MoreView({
 
         {selected === 'pov' && (
           <>
-            <div className="more-panel-heading"><div><p className="eyebrow">Voor je land</p><h2>POV-foto’s</h2></div><Camera aria-hidden="true" /></div>
+            <div className="more-panel-heading"><div><p className="eyebrow">ENTER YOUR STORY</p><h2>POV-foto’s</h2></div><Camera aria-hidden="true" /></div>
             <PovPanel profile={profile} assignments={visiblePovAssignments} fallbackUrl={classContent?.povUrl ?? null} />
           </>
         )}
@@ -1249,7 +1256,7 @@ function AnimatedBrandLogo({ firstName }: { firstName: string }) {
   const nameUpper = firstName.toUpperCase()
 
   return (
-    <div className="brand-lockup" aria-label={`LM = YOU, LM = ${nameUpper}, Intro 2026`}>
+    <div className="brand-lockup" aria-label={`LM = YOU, LM = ${nameUpper}, Enter the X 2026`}>
       <button
         type="button"
         className="brand-mark brand-toggle"
@@ -1263,7 +1270,7 @@ function AnimatedBrandLogo({ firstName }: { firstName: string }) {
           <span className={`brand-name-text ${showName ? 'flip-in' : 'flip-out'}`}>{nameUpper}</span>
         </span>
       </button>
-      <span className="brand-edition">Intro 2026</span>
+      <span className="brand-edition"><span>ENTER THE</span><b>X</b><small>2026</small></span>
     </div>
   )
 }
@@ -1359,7 +1366,7 @@ function App() {
   }
 
   return (
-    <div className={`app-shell${largeText ? ' large-text-mode' : ''}${isWidescreenActive ? ' widescreen-dashboard' : ''}`}>
+    <div className={`app-shell enter-x-shell${largeText ? ' large-text-mode' : ''}${isWidescreenActive ? ' widescreen-dashboard' : ''}`}>
       <div className="map-texture" aria-hidden="true" />
       <header className="topbar">
         <AnimatedBrandLogo firstName={profile.firstName} />
@@ -1408,7 +1415,8 @@ function App() {
         {active === 'Vandaag' && (
           <>
             <section className="welcome" aria-labelledby="welcome-title">
-              <p className="eyebrow">Introdag {currentProgrammeDays.findIndex((day) => day.id === homeProgramme.day.id) + 1} · {homeProgramme.day.id} {homeProgramme.day.date}</p>
+              <p className="eyebrow enter-day-heading">{enterDayIdentity[homeProgramme.day.id].label}</p>
+              <p className="welcome-date">{homeProgramme.day.id} {homeProgramme.day.date}</p>
               <h1 id="welcome-title">{homeProgramme.greeting}, {profile.firstName}</h1>
               <p className="welcome-copy">Alles wat je vandaag nodig hebt, staat hier voor je klaar.</p>
             </section>
