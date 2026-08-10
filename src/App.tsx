@@ -1226,7 +1226,7 @@ function MoreView({
   )
 }
 
-function AnimatedBrandLogo({ firstName }: { firstName: string }) {
+function AnimatedBrandLogo({ firstName, onTriggerEnterX }: { firstName: string; onTriggerEnterX: () => void }) {
   const [showName, setShowName] = useState(false)
   const hideNameTimerRef = useRef<number | null>(null)
 
@@ -1270,7 +1270,14 @@ function AnimatedBrandLogo({ firstName }: { firstName: string }) {
           <span className={`brand-name-text ${showName ? 'flip-in' : 'flip-out'}`}>{nameUpper}</span>
         </span>
       </button>
-      <span className="brand-edition"><span>ENTER THE</span><b>X</b><small>2026</small></span>
+      <button
+        type="button"
+        className="brand-edition"
+        onClick={onTriggerEnterX}
+        aria-label="Start de ENTER THE X-animatie"
+      >
+        <span>ENTER THE</span><b>X</b><small>2026</small>
+      </button>
     </div>
   )
 }
@@ -1293,9 +1300,12 @@ function App() {
   const [pullDistance, setPullDistance] = useState(0)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [refreshComplete, setRefreshComplete] = useState(false)
+  const [electricXSequence, setElectricXSequence] = useState(0)
+  const [electricXVisible, setElectricXVisible] = useState(false)
   const pullStartYRef = useRef<number | null>(null)
   const pullDistanceRef = useRef(0)
   const refreshResetTimerRef = useRef<number | null>(null)
+  const electricXHideTimerRef = useRef<number | null>(null)
   const effectiveTime = simulatedDate ?? currentTime
   const homeProgramme = getHomeProgramme(effectiveTime, currentProgrammeDays)
   const isWidescreenActive = widescreenDashboard && active === 'Meer' && moreSection === 'import' && profile.profileType === 'organizer'
@@ -1307,6 +1317,24 @@ function App() {
 
   useEffect(() => () => {
     if (refreshResetTimerRef.current !== null) window.clearTimeout(refreshResetTimerRef.current)
+  }, [])
+
+  function triggerEnterX() {
+    if (electricXHideTimerRef.current !== null) window.clearTimeout(electricXHideTimerRef.current)
+    setElectricXSequence((sequence) => sequence + 1)
+    setElectricXVisible(true)
+    electricXHideTimerRef.current = window.setTimeout(() => {
+      setElectricXVisible(false)
+      electricXHideTimerRef.current = null
+    }, 6_500)
+  }
+
+  useEffect(() => {
+    const interval = window.setInterval(triggerEnterX, 180_000)
+    return () => {
+      window.clearInterval(interval)
+      if (electricXHideTimerRef.current !== null) window.clearTimeout(electricXHideTimerRef.current)
+    }
   }, [])
 
   function updatePullDistance(distance: number) {
@@ -1368,13 +1396,41 @@ function App() {
   return (
     <div className={`app-shell enter-x-shell${largeText ? ' large-text-mode' : ''}${isWidescreenActive ? ' widescreen-dashboard' : ''}`}>
       <div className="map-texture" aria-hidden="true" />
-      <div className="enter-electric-x" aria-hidden="true">
-        <span className="electric-bolt electric-bolt-one" />
-        <span className="electric-bolt electric-bolt-two" />
-        <i className="electric-impact" />
-      </div>
+      {electricXVisible && (
+        <div key={electricXSequence} className="enter-electric-stage" aria-hidden="true">
+          <svg className="enter-electric-svg" viewBox="0 0 100 100" preserveAspectRatio="none">
+            <defs>
+              <filter id="lightning-glow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="1.8" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+              <filter id="magenta-x-glow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="2.5" result="blur" />
+                <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+              </filter>
+            </defs>
+            <g className="incoming-lightning incoming-lightning-left" filter="url(#lightning-glow)">
+              <path pathLength="100" className="lightning-outer" d="M 1 99 L 10 89 L 16 91 L 22 79 L 29 82 L 34 69 L 41 72 L 44 60 L 50 50" />
+              <path pathLength="100" className="lightning-inner" d="M 1 99 L 10 89 L 16 91 L 22 79 L 29 82 L 34 69 L 41 72 L 44 60 L 50 50" />
+            </g>
+            <g className="incoming-lightning incoming-lightning-right" filter="url(#lightning-glow)">
+              <path pathLength="100" className="lightning-outer" d="M 99 99 L 90 88 L 84 91 L 78 79 L 71 82 L 66 69 L 59 72 L 56 60 L 50 50" />
+              <path pathLength="100" className="lightning-inner" d="M 99 99 L 90 88 L 84 91 L 78 79 L 71 82 L 66 69 L 59 72 L 56 60 L 50 50" />
+            </g>
+            <circle className="electric-collision" cx="50" cy="50" r="4" />
+            <g className="electric-x-result" filter="url(#magenta-x-glow)">
+              <path className="electric-x-outer" d="M 13 13 L 23 27 L 31 31 L 42 46 L 50 50 L 59 62 L 68 68 L 77 82 L 87 87" />
+              <path className="electric-x-inner" d="M 13 13 L 23 27 L 31 31 L 42 46 L 50 50 L 59 62 L 68 68 L 77 82 L 87 87" />
+              <path className="electric-x-core" d="M 13 13 L 23 27 L 31 31 L 42 46 L 50 50 L 59 62 L 68 68 L 77 82 L 87 87" />
+              <path className="electric-x-outer" d="M 87 13 L 78 25 L 70 31 L 61 43 L 50 50 L 41 62 L 32 68 L 23 82 L 13 87" />
+              <path className="electric-x-inner" d="M 87 13 L 78 25 L 70 31 L 61 43 L 50 50 L 41 62 L 32 68 L 23 82 L 13 87" />
+              <path className="electric-x-core" d="M 87 13 L 78 25 L 70 31 L 61 43 L 50 50 L 41 62 L 32 68 L 23 82 L 13 87" />
+            </g>
+          </svg>
+        </div>
+      )}
       <header className="topbar">
-        <AnimatedBrandLogo firstName={profile.firstName} />
+        <AnimatedBrandLogo firstName={profile.firstName} onTriggerEnterX={triggerEnterX} />
         <div className="identity-row">
           <div className="identity">
             <CountryFlagIcon country={profile.country} size={24} />
