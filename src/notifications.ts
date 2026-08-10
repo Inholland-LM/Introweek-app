@@ -5,11 +5,13 @@ import type { ImportRole, MasterContent } from './import/parseWorkbook'
 
 export type AppNotification = {
   id: string
-  kind: 'welcome' | 'class_changed' | 'class_member_arrived' | 'class_member_left' | 'scheduled'
+  kind: 'welcome' | 'class_changed' | 'class_member_arrived' | 'class_member_left' | 'scheduled' | 'broadcast'
   title: string
   body: string
   createdAt: string
   readAt: string | null
+  deliveryChannel?: 'in-app' | 'push' | 'both'
+  actionTarget?: 'route' | 'programme' | 'notifications'
 }
 
 type NotificationRecord = {
@@ -19,6 +21,8 @@ type NotificationRecord = {
   body: string
   created_at: string
   read_at: string | null
+  delivery_channel?: AppNotification['deliveryChannel']
+  action_target?: AppNotification['actionTarget']
 }
 
 const MAX_NOTIFICATIONS = 20
@@ -61,7 +65,30 @@ function mapNotification(record: NotificationRecord): AppNotification {
     body: record.body,
     createdAt: record.created_at,
     readAt: record.read_at,
+    deliveryChannel: record.delivery_channel,
+    actionTarget: record.action_target,
   }
+}
+
+async function showBrowserNotification(notification: AppNotification) {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return
+  const options: NotificationOptions = {
+    body: notification.body,
+    tag: notification.id,
+    icon: `${import.meta.env.BASE_URL}icon-192.png`,
+    badge: `${import.meta.env.BASE_URL}icon-192.png`,
+    data: { actionTarget: notification.actionTarget ?? 'notifications' },
+  }
+  if ('serviceWorker' in navigator) {
+    try {
+      const registration = await navigator.serviceWorker.ready
+      await registration.showNotification(notification.title, options)
+      return
+    } catch {
+      // Gebruik hieronder de gewone browsermelding als serviceworker fallback.
+    }
+  }
+  new Notification(notification.title, options)
 }
 
 function getScheduledReadIds(profileKey: string) {
@@ -121,7 +148,7 @@ export function useNotifications(profileId: string | null, classCode: string, pr
       setLoading(true)
       const { data, error: fetchError } = await supabase
         .from('notifications')
-        .select('id, kind, title, body, created_at, read_at')
+        .select('id, kind, title, body, created_at, read_at, delivery_channel, action_target')
         .order('created_at', { ascending: false })
         .limit(MAX_NOTIFICATIONS)
 
@@ -181,6 +208,9 @@ export function useNotifications(profileId: string | null, classCode: string, pr
             next,
             ...current.filter((notification) => notification.id !== next.id),
           ].slice(0, MAX_NOTIFICATIONS))
+          if (next.deliveryChannel === 'push' || next.deliveryChannel === 'both') {
+            void showBrowserNotification(next)
+          }
         },
       )
       .subscribe()

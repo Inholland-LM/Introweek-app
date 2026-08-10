@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
 import {
   AlertTriangle,
   Bell,
@@ -31,12 +31,19 @@ import type { AppProfile } from './profile'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import type { ImportPerson, ImportRole, MasterContent } from './import/parseWorkbook'
 import { createPovPhotoUrl, fetchPovSubmissions, reviewPovSubmission, type PovSubmission } from './povUploads'
-import { createInitialMasterContent, saveMasterContent } from './content'
+import { createInitialMasterContent, updateMasterContent } from './content'
+import {
+  fetchOrganizerRecipients,
+  sendOrganizerNotification,
+  type OrganizerDeliveryChannel,
+  type OrganizerRecipient,
+} from './organizerMessaging'
 import { supabase } from './lib/supabase'
 
 type Props = {
   profile: AppProfile
   content: MasterContent | null
+  contentVersion: number
   onContentUpdated: () => void
   isWidescreen?: boolean
   onToggleWidescreen?: () => void
@@ -49,8 +56,8 @@ type AnnouncementMessage = {
   title: string
   body: string
   scheduledAt: string
-  classCode: string
-  channel: 'in-app' | 'brevo-email' | 'all'
+  targets: string[]
+  channel: OrganizerDeliveryChannel
   actionTarget: 'route' | 'programme' | 'notifications'
   status: 'sent' | 'scheduled'
 }
@@ -61,8 +68,8 @@ const mockInitialMessages: AnnouncementMessage[] = [
     title: '🌧️ Locatiewijziging ivm regen',
     body: 'Het verzamelen om 14:00 is verplaatst naar de aula van Inholland Amsterdam.',
     scheduledAt: '2026-08-25T13:45:00+02:00',
-    classCode: 'all',
-    channel: 'all',
+    targets: ['Alle klassen'],
+    channel: 'both',
     actionTarget: 'programme',
     status: 'sent',
   },
@@ -71,7 +78,7 @@ const mockInitialMessages: AnnouncementMessage[] = [
     title: '🎁 Goodiebags ophalen',
     body: 'Vergeet je polsbandje niet te tonen bij de stand van het festivalterrein.',
     scheduledAt: '2026-08-25T16:00:00+02:00',
-    classCode: 'LM1A',
+    targets: ['LM1A'],
     channel: 'in-app',
     actionTarget: 'notifications',
     status: 'sent',
@@ -81,6 +88,7 @@ const mockInitialMessages: AnnouncementMessage[] = [
 export function OrganizerDashboard({
   profile,
   content,
+  contentVersion,
   onContentUpdated,
   isWidescreen = false,
   onToggleWidescreen,
@@ -132,11 +140,17 @@ export function OrganizerDashboard({
   const [messages, setMessages] = useState<AnnouncementMessage[]>(mockInitialMessages)
   const [msgTitle, setMsgTitle] = useState('')
   const [msgBody, setMsgBody] = useState('')
-  const [msgClass, setMsgClass] = useState('all')
-  const [msgChannel, setMsgChannel] = useState<'in-app' | 'brevo-email' | 'all'>('all')
+  const [selectedClassCodes, setSelectedClassCodes] = useState<string[]>([])
+  const [selectedBuddyIds, setSelectedBuddyIds] = useState<string[]>([])
+  const [selectedPoerIds, setSelectedPoerIds] = useState<string[]>([])
+  const [messageRecipients, setMessageRecipients] = useState<OrganizerRecipient[]>([])
+  const [recipientsLoading, setRecipientsLoading] = useState(false)
+  const [recipientsError, setRecipientsError] = useState('')
+  const [msgChannel, setMsgChannel] = useState<OrganizerDeliveryChannel>('both')
   const [msgAction, setMsgAction] = useState<'route' | 'programme' | 'notifications'>('programme')
   const [msgSortOrder, setMsgSortOrder] = useState<'newest' | 'oldest'>('newest')
   const [msgSuccess, setMsgSuccess] = useState('')
+  const [msgSending, setMsgSending] = useState(false)
 
   // Schedule CMS State
   const [programmesList, setProgrammesList] = useState<any[]>([
@@ -151,6 +165,47 @@ export function OrganizerDashboard({
   const [editDescription, setEditDescription] = useState('')
   const [editLocation, setEditLocation] = useState('')
   const [scheduleSuccess, setScheduleSuccess] = useState('')
+  const [scheduleError, setScheduleError] = useState('')
+
+  const activeClassCodes = useMemo(() => {
+    const configured = (content?.classes ?? [])
+      .filter((item) => item.active !== false && item.classCode)
+      .map((item) => item.classCode)
+    return configured.length ? [...new Set(configured)].sort() : ['LM1A', 'LM1B', 'LM1C', 'LM1D', 'LM1E', 'LM1F', 'LM1G', 'LM1H']
+  }, [content?.classes])
+
+  const buddyRecipients = messageRecipients.filter((recipient) => recipient.role === 'buddy')
+  const poerRecipients = messageRecipients.filter((recipient) => recipient.role === 'poer')
+
+  useEffect(() => {
+    if (!content?.programmes?.length) return
+    setProgrammesList(content.programmes.map((item) => ({ ...item })))
+  }, [content?.programmes])
+
+  useEffect(() => {
+    if (activeTab !== 'messages') return
+    let active = true
+    setRecipientsLoading(true)
+    setRecipientsError('')
+    fetchOrganizerRecipients()
+      .then((recipients) => {
+        if (!active) return
+        setMessageRecipients(recipients.length ? recipients : people
+          .filter((person) => person.role === 'buddy' || person.role === 'poer')
+          .map((person, index) => ({
+            id: `demo-recipient-${index}`,
+            displayName: [person.firstName, person.namePrefix, person.lastName].filter(Boolean).join(' '),
+            email: person.email,
+            role: person.role as 'buddy' | 'poer',
+            classCode: person.classCode,
+          })))
+      })
+      .catch((reason) => {
+        if (active) setRecipientsError(reason instanceof Error ? reason.message : 'Ontvangers konden niet worden opgehaald.')
+      })
+      .finally(() => { if (active) setRecipientsLoading(false) })
+    return () => { active = false }
+  }, [activeTab])
 
   useEffect(() => {
     if (activeTab === 'pov') {
@@ -328,24 +383,52 @@ export function OrganizerDashboard({
     }
   }
 
-  function handleSendBroadcast() {
-    if (!msgTitle || !msgBody) return
+  async function handleSendBroadcast() {
+    if (!msgTitle.trim() || !msgBody.trim() || msgSending) return
+    const recipientProfileIds = [...new Set([...selectedBuddyIds, ...selectedPoerIds])]
+    if (selectedClassCodes.length === 0 && recipientProfileIds.length === 0) {
+      setMsgSuccess('Kies eerst minimaal één klas, buddy of PO’er.')
+      return
+    }
+    setMsgSending(true)
+    setMsgSuccess('')
+    try {
+      const result = await sendOrganizerNotification({
+        title: msgTitle.trim(),
+        body: msgBody.trim(),
+        classCodes: selectedClassCodes,
+        recipientProfileIds,
+        deliveryChannel: msgChannel,
+        actionTarget: msgAction,
+      })
+      const targetLabels = [
+        ...selectedClassCodes,
+        ...messageRecipients.filter((recipient) => recipientProfileIds.includes(recipient.id)).map((recipient) => recipient.displayName),
+      ]
     const newMsg: AnnouncementMessage = {
       id: `msg-${Date.now()}`,
-      title: msgTitle,
-      body: msgBody,
+        title: msgTitle.trim(),
+        body: msgBody.trim(),
       scheduledAt: new Date().toISOString(),
-      classCode: msgClass,
+        targets: targetLabels,
       channel: msgChannel,
       actionTarget: msgAction,
       status: 'sent',
     }
 
     setMessages((prev) => [newMsg, ...prev])
-    setMsgSuccess(`Melding "${msgTitle}" succesvol verzonden!`)
+      setMsgSuccess(`Melding verzonden naar ${result.recipientCount} ontvanger${result.recipientCount === 1 ? '' : 's'}.`)
     setMsgTitle('')
     setMsgBody('')
+      setSelectedClassCodes([])
+      setSelectedBuddyIds([])
+      setSelectedPoerIds([])
     window.setTimeout(() => setMsgSuccess(''), 4_000)
+    } catch (reason) {
+      setMsgSuccess(reason instanceof Error ? reason.message : 'De melding kon niet worden verzonden.')
+    } finally {
+      setMsgSending(false)
+    }
   }
 
 function resolveLocationDetails(locationInput: string, existingLocations: Array<any>) {
@@ -415,8 +498,9 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
   }
 }
 
-  function handleSaveProgrammeItem() {
+  async function handleSaveProgrammeItem() {
     if (!editingProgrammeId || !editTitle) return
+    setScheduleError('')
 
     const baseContent = content ?? createInitialMasterContent()
     const currentLocations = [...(baseContent.locations ?? [])]
@@ -471,12 +555,15 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
       programmes: updatedProgrammes,
     }
 
-    saveMasterContent(updatedContent)
-    onContentUpdated()
-
-    setScheduleSuccess(`Programma-onderdeel "${editTitle}" is live gewijzigd en doorgevoerd op de kaart!`)
-    setEditingProgrammeId(null)
-    window.setTimeout(() => setScheduleSuccess(''), 4_000)
+    try {
+      await updateMasterContent(updatedContent, contentVersion)
+      onContentUpdated()
+      setScheduleSuccess(`Programma-onderdeel "${editTitle}" is centraal bijgewerkt. Alle rollen ontvangen de wijziging live.`)
+      setEditingProgrammeId(null)
+      window.setTimeout(() => setScheduleSuccess(''), 4_000)
+    } catch (reason) {
+      setScheduleError(reason instanceof Error ? reason.message : 'Het programma kon niet centraal worden opgeslagen.')
+    }
   }
 
   const filteredPeople = useMemo(() => {
@@ -495,6 +582,10 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
       return msgSortOrder === 'newest' ? timeB - timeA : timeA - timeB
     })
   }, [messages, msgSortOrder])
+
+  function toggleSelection(value: string, setter: Dispatch<SetStateAction<string[]>>) {
+    setter((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value])
+  }
 
   return (
     <div className="organizer-dashboard">
@@ -680,6 +771,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
               </div>
 
               {scheduleSuccess && <div className="notification-state notification-success">{scheduleSuccess}</div>}
+              {scheduleError && <div className="notification-state notification-error">{scheduleError}</div>}
 
               <div className="programme-editor-list">
                 {programmesList.map((item: any) => (
@@ -772,13 +864,13 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
             </section>
           )}
 
-          {/* TAB 4: BERICHTEN & BREVO */}
+          {/* TAB 4: BERICHTEN */}
           {activeTab === 'messages' && (
             <section className="dashboard-panel">
               <div className="panel-header">
                 <div>
-                  <h2>Berichten &amp; Brevo E-mail Sync</h2>
-                  <p>Verstuur live waarschuwingsbanners naar studenten en e-mails via Brevo.</p>
+                  <h2>Berichten &amp; pushmeldingen</h2>
+                  <p>Stuur gericht naar één of meer klassen, buddy’s en PO’ers.</p>
                 </div>
               </div>
 
@@ -798,16 +890,6 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                     />
                   </label>
 
-                  <label>
-                    <span>Doelgroep Klas</span>
-                    <select value={msgClass} onChange={(e) => setMsgClass(e.target.value)}>
-                      <option value="all">Alle klassen</option>
-                      {['LM1A', 'LM1B', 'LM1C', 'LM1D', 'LM1E', 'LM1F', 'LM1G', 'LM1H'].map((c) => (
-                        <option key={c} value={c}>{c}</option>
-                      ))}
-                    </select>
-                  </label>
-
                   <label className="full-width">
                     <span>Bericht inhoud</span>
                     <textarea
@@ -818,13 +900,60 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                     />
                   </label>
 
+                  <fieldset className="recipient-picker full-width">
+                    <legend>Doelgroep klassen (studenten)</legend>
+                    <button
+                      type="button"
+                      className={selectedClassCodes.length === activeClassCodes.length ? 'selection-shortcut active' : 'selection-shortcut'}
+                      onClick={() => setSelectedClassCodes(selectedClassCodes.length === activeClassCodes.length ? [] : activeClassCodes)}
+                    >Alle klassen</button>
+                    <div className="recipient-options">
+                      {activeClassCodes.map((classCode) => (
+                        <label key={classCode} className={selectedClassCodes.includes(classCode) ? 'recipient-option active' : 'recipient-option'}>
+                          <input type="checkbox" checked={selectedClassCodes.includes(classCode)} onChange={() => toggleSelection(classCode, setSelectedClassCodes)} />
+                          <span>{classCode}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="recipient-picker">
+                    <legend>Doelgroep buddy’s</legend>
+                    <button type="button" className={buddyRecipients.length > 0 && selectedBuddyIds.length === buddyRecipients.length ? 'selection-shortcut active' : 'selection-shortcut'} onClick={() => setSelectedBuddyIds(selectedBuddyIds.length === buddyRecipients.length ? [] : buddyRecipients.map((item) => item.id))}>Alle buddy’s</button>
+                    <div className="recipient-person-list">
+                      {buddyRecipients.map((recipient) => (
+                        <label key={recipient.id} className="recipient-person">
+                          <input type="checkbox" checked={selectedBuddyIds.includes(recipient.id)} onChange={() => toggleSelection(recipient.id, setSelectedBuddyIds)} />
+                          <span><b>{recipient.displayName}</b><small>{recipient.classCode ?? 'Geen klas'}</small></span>
+                        </label>
+                      ))}
+                      {!recipientsLoading && !buddyRecipients.length && <small>Geen buddy’s gevonden.</small>}
+                    </div>
+                  </fieldset>
+
+                  <fieldset className="recipient-picker">
+                    <legend>Doelgroep PO’ers</legend>
+                    <button type="button" className={poerRecipients.length > 0 && selectedPoerIds.length === poerRecipients.length ? 'selection-shortcut active' : 'selection-shortcut'} onClick={() => setSelectedPoerIds(selectedPoerIds.length === poerRecipients.length ? [] : poerRecipients.map((item) => item.id))}>Alle PO’ers</button>
+                    <div className="recipient-person-list">
+                      {poerRecipients.map((recipient) => (
+                        <label key={recipient.id} className="recipient-person">
+                          <input type="checkbox" checked={selectedPoerIds.includes(recipient.id)} onChange={() => toggleSelection(recipient.id, setSelectedPoerIds)} />
+                          <span><b>{recipient.displayName}</b><small>{recipient.classCode ?? 'Geen klas'}</small></span>
+                        </label>
+                      ))}
+                      {!recipientsLoading && !poerRecipients.length && <small>Geen PO’ers gevonden.</small>}
+                    </div>
+                  </fieldset>
+                  {recipientsLoading && <p className="recipient-help full-width">Ontvangers ophalen…</p>}
+                  {recipientsError && <p className="recipient-help recipient-error full-width">{recipientsError}</p>}
+
                   <label>
                     <span>Verzendkanaal</span>
-                    <select value={msgChannel} onChange={(e) => setMsgChannel(e.target.value as any)}>
-                      <option value="all">In-App + Brevo E-mail</option>
-                      <option value="in-app">Alleen In-App Notification</option>
-                      <option value="brevo-email">Alleen Brevo E-mail</option>
+                    <select value={msgChannel} onChange={(e) => setMsgChannel(e.target.value as OrganizerDeliveryChannel)}>
+                      <option value="both">In-app + pushmelding</option>
+                      <option value="in-app">Alleen in-app</option>
                     </select>
+                    <small>Push verschijnt als browsermelding wanneer de app actief is en toestemming heeft. Er blijft altijd een veilige kopie bij Meldingen staan.</small>
                   </label>
 
                   <label>
@@ -838,9 +967,9 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                 </div>
 
                 <div className="compose-actions">
-                  <button type="button" className="primary-button" onClick={handleSendBroadcast}>
+                  <button type="button" className="primary-button" onClick={() => { void handleSendBroadcast() }} disabled={msgSending}>
                     <Send aria-hidden="true" />
-                    <span>Verstuur Bericht &amp; Banner</span>
+                    <span>{msgSending ? 'Versturen…' : 'Verstuur bericht'}</span>
                   </button>
                 </div>
               </div>
@@ -867,7 +996,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                       </div>
                       <p>{msg.body}</p>
                       <div className="msg-badges">
-                        <span className="badge">Klas: {msg.classCode}</span>
+                        <span className="badge">Naar: {msg.targets.join(', ')}</span>
                         <span className="badge">Kanaal: {msg.channel}</span>
                         <span className="badge">Klikdoel: {msg.actionTarget}</span>
                       </div>

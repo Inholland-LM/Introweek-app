@@ -25,6 +25,40 @@ export function saveMasterContent(nextContent: MasterContent) {
   return next
 }
 
+async function broadcastContentVersion(version: number) {
+  if (!supabase) return
+  const channel = supabase.channel('app-content-updates')
+  await new Promise<void>((resolve) => {
+    const fallback = window.setTimeout(resolve, 1_500)
+    channel.subscribe((status) => {
+      if (status !== 'SUBSCRIBED') return
+      window.clearTimeout(fallback)
+      void channel.send({ type: 'broadcast', event: 'content-version', payload: { version } })
+        .finally(resolve)
+    })
+  })
+  await supabase.removeChannel(channel)
+}
+
+export async function updateMasterContent(nextContent: MasterContent, expectedVersion: number) {
+  if (!supabase || import.meta.env.VITE_AUTH_ENABLED !== 'true') {
+    return saveMasterContent(nextContent)
+  }
+
+  const { data, error } = await supabase.rpc('update_app_content', {
+    expected_content_version: expectedVersion,
+    updated_content: nextContent,
+  })
+  if (error) throw error
+
+  const version = Number(data?.version)
+  if (!Number.isFinite(version)) throw new Error('Supabase gaf geen geldig inhoudsversienummer terug.')
+  const next = { version, content: nextContent }
+  saveCache(next)
+  await broadcastContentVersion(version)
+  return next
+}
+
 export function useMasterContent() {
   const [cached, setCached] = useState<CachedContent | null>(readCache)
   const [lastCheckedAt, setLastCheckedAt] = useState(0)
@@ -58,6 +92,15 @@ export function useMasterContent() {
   useEffect(() => {
     const timer = window.setInterval(() => { if (document.visibilityState === 'visible') void refresh() }, MIN_VERSION_CHECK_MS)
     return () => window.clearInterval(timer)
+  }, [refresh])
+  useEffect(() => {
+    if (!supabase || import.meta.env.VITE_AUTH_ENABLED !== 'true') return
+    const client = supabase
+    const channel = client
+      .channel('app-content-updates')
+      .on('broadcast', { event: 'content-version' }, () => { void refresh(true) })
+      .subscribe()
+    return () => { void client.removeChannel(channel) }
   }, [refresh])
 
   return { content: cached?.content ?? null, version: cached?.version ?? 0, refresh }

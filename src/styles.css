@@ -72,76 +72,45 @@ button { color: inherit; cursor: pointer; }
   contain: paint;
 }
 
-.enter-electric-svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-}
-
-.incoming-lightning,
-.electric-x-result,
-.electric-collision {
+.electric-image {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: min(92%, 480px);
+  height: 96%;
+  object-fit: contain;
   opacity: 0;
-}
-
-.incoming-lightning {
-  animation: lightning-group 6.4s linear both;
-}
-
-.incoming-lightning path {
-  fill: none;
-  stroke-dasharray: 100;
-  stroke-dashoffset: 100;
-  stroke-linecap: round;
-  stroke-linejoin: bevel;
-  animation: lightning-arrive 6.4s cubic-bezier(0.16, 0.72, 0.16, 1) both;
-}
-
-.lightning-outer {
-  stroke: #ffd43b;
-  stroke-width: 6.5;
-}
-
-.lightning-inner {
-  stroke: #fffde8;
-  stroke-width: 2.6;
-}
-
-.electric-collision {
-  fill: #fff;
-  filter: drop-shadow(0 0 8px #fff7b2) drop-shadow(0 0 22px #ffcf33) drop-shadow(0 0 38px #e3006f);
-  transform-box: fill-box;
+  filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.92)) drop-shadow(0 0 20px rgba(227, 0, 111, 0.78));
   transform-origin: center;
-  animation: electric-collision 6.4s ease-out both;
+  will-change: opacity, transform, filter;
 }
 
-.electric-x-result {
-  animation: electric-x-presence 6.4s linear both;
-  transform-box: fill-box;
-  transform-origin: center;
+.electric-image-left {
+  clip-path: polygon(0 68%, 42% 47%, 54% 47%, 24% 100%, 0 100%);
+  animation: electric-bolt-left 6.4s cubic-bezier(0.18, 0.74, 0.12, 1) both;
 }
 
-.electric-x-result path {
-  fill: none;
-  stroke-linecap: round;
-  stroke-linejoin: bevel;
+.electric-image-right {
+  clip-path: polygon(46% 47%, 58% 47%, 100% 68%, 100% 100%, 76% 100%);
+  animation: electric-bolt-right 6.4s cubic-bezier(0.18, 0.74, 0.12, 1) both;
 }
 
-.electric-x-outer {
-  stroke: rgba(227, 0, 111, 0.58);
-  stroke-width: 10;
+.electric-image-complete {
+  animation: electric-image-presence 6.4s linear both;
 }
 
-.electric-x-inner {
-  stroke: #e3006f;
-  stroke-width: 6.5;
-}
-
-.electric-x-core {
-  stroke: #ff77bd;
-  stroke-width: 2.1;
-  animation: electric-x-core-flicker 0.16s steps(2, end) 1.05s 31 alternate;
+.electric-image-collision {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0;
+  box-shadow: 0 0 12px 5px #fff, 0 0 34px 16px #ff4bb0, 0 0 70px 36px rgba(227, 0, 111, 0.88);
+  transform: translate(-50%, -50%) scale(0.2);
+  animation: electric-image-collision 6.4s ease-out both;
 }
 
 .topbar {
@@ -802,37 +771,37 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   .enter-electric-stage { display: none; }
 }
 
-@keyframes lightning-group {
-  0%, 2%, 19%, 100% { opacity: 0; }
-  4%, 7%, 10%, 13%, 17% { opacity: 1; }
-  5.5%, 8.5%, 11.5%, 15% { opacity: 0.42; }
+@keyframes electric-bolt-left {
+  0%, 2% { opacity: 0; transform: translate(-72%, -18%) scale(0.72); }
+  4%, 7%, 10%, 13% { opacity: 0.96; }
+  5.5%, 8.5%, 11.5% { opacity: 0.42; }
+  16% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  20%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
 }
 
-@keyframes lightning-arrive {
-  0%, 2% { stroke-dashoffset: 100; }
-  16%, 100% { stroke-dashoffset: 0; }
+@keyframes electric-bolt-right {
+  0%, 2% { opacity: 0; transform: translate(-28%, -18%) scale(0.72); }
+  4%, 7%, 10%, 13% { opacity: 0.96; }
+  5.5%, 8.5%, 11.5% { opacity: 0.42; }
+  16% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  20%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
 }
 
-@keyframes electric-collision {
-  0%, 15%, 100% { opacity: 0; transform: scale(0.2); }
-  17% { opacity: 1; transform: scale(1); }
-  20% { opacity: 0.7; transform: scale(3.8); }
-  24% { opacity: 0; transform: scale(6.5); }
+@keyframes electric-image-collision {
+  0%, 15%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(0.2); }
+  17% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  20% { opacity: 0.76; transform: translate(-50%, -50%) scale(3.8); }
+  24% { opacity: 0; transform: translate(-50%, -50%) scale(6.5); }
 }
 
-@keyframes electric-x-presence {
-  0%, 16% { opacity: 0; transform: scale(0.68); }
-  18% { opacity: 1; transform: scale(1.03); }
-  20% { opacity: 0.7; transform: scale(0.98); }
-  22%, 34%, 48%, 62%, 76%, 90% { opacity: 1; transform: scale(1); }
-  28%, 42%, 56%, 70%, 84% { opacity: 0.78; transform: scale(1.015); }
-  95% { opacity: 0.92; transform: scale(1); }
-  100% { opacity: 0; transform: scale(1.08); }
-}
-
-@keyframes electric-x-core-flicker {
-  from { opacity: 0.35; stroke-width: 1.5; }
-  to { opacity: 1; stroke-width: 2.8; }
+@keyframes electric-image-presence {
+  0%, 16% { opacity: 0; transform: translate(-50%, -50%) scale(0.76); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.025); }
+  21% { opacity: 0.78; transform: translate(-50%, -50%) scale(0.99); }
+  24%, 34%, 48%, 62%, 76%, 90% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  28%, 42%, 56%, 70%, 84% { opacity: 0.84; transform: translate(-50%, -50%) scale(1.008); }
+  95% { opacity: 0.94; transform: translate(-50%, -50%) scale(1); filter: drop-shadow(0 0 7px rgba(255, 255, 255, 0.92)) drop-shadow(0 0 20px rgba(227, 0, 111, 0.78)); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.06); filter: drop-shadow(0 0 2px rgba(255, 255, 255, 0.2)) drop-shadow(0 0 8px rgba(227, 0, 111, 0.2)); }
 }
 
 @keyframes enter-x-glow {
@@ -2613,6 +2582,15 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   width: 100%;
 }
 
+/* De buitenste app-main is het enige verticale scrollvlak. Daardoor werkt het
+   muiswiel en touch-scrollen overal, niet alleen boven de zichtbare scrollbar. */
+.app-shell .dashboard-main {
+  display: block;
+  min-height: 0;
+  overflow: visible;
+  padding: 0;
+}
+
 .dashboard-sidebar {
   display: flex;
   flex-wrap: nowrap;
@@ -3503,6 +3481,33 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .form-grid label.full-width {
   grid-column: 1 / -1;
 }
+
+.recipient-picker {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  min-width: 0;
+  margin: 0;
+  padding: 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 16px;
+  background: #f8fafc;
+}
+
+.recipient-picker.full-width { grid-column: 1 / -1; }
+.recipient-picker legend { padding: 0 5px; color: #334155; font-size: 0.78rem; font-weight: 900; }
+.selection-shortcut { justify-self: start; padding: 7px 11px; border: 1px solid rgba(227, 0, 79, 0.28); border-radius: 999px; background: #fff; color: #be0042; font-size: 0.75rem; font-weight: 850; }
+.selection-shortcut.active { background: #e3004f; color: #fff; }
+.recipient-options { display: flex; flex-wrap: wrap; gap: 7px; }
+.recipient-option { display: inline-flex !important; grid-template-columns: none !important; align-items: center; gap: 6px !important; padding: 7px 10px; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; }
+.recipient-option.active { border-color: #e3004f; background: rgba(227, 0, 79, 0.07); color: #be0042; }
+.recipient-option input, .recipient-person input { width: 16px !important; height: 16px; margin: 0; accent-color: #e3004f; }
+.recipient-person-list { display: grid; gap: 7px; max-height: 210px; overflow: auto; }
+.recipient-person { display: flex !important; grid-template-columns: 18px 1fr !important; align-items: center; gap: 9px !important; padding: 8px; border-radius: 10px; background: #fff; }
+.recipient-person span { display: grid; gap: 1px; }
+.recipient-person b { color: #111827; }
+.recipient-person small, .recipient-help { color: #64748b; font-size: 0.72rem; }
+.recipient-error { color: #b91c1c; }
 
 .form-grid input,
 .form-grid select,
