@@ -87,7 +87,11 @@ export function AuthGate({ children }: AuthGateProps) {
   const [resendCooldown, setResendCooldown] = useState(() => pendingLogin
     ? Math.max(0, resendDelaySeconds - Math.floor((Date.now() - pendingLogin.requestedAt) / 1000))
     : 0)
-  const [demoProfileOverride, setDemoProfileOverride] = useState<AppProfile | null>(null)
+  const [demoProfileOverride, setDemoProfileOverride] = useState<AppProfile | null>(() => {
+    if (authEnabled) return null
+    const requestedRole = new URLSearchParams(window.location.search).get('demo') as keyof typeof demoProfiles | null
+    return requestedRole && demoProfiles[requestedRole] ? demoProfiles[requestedRole] : null
+  })
 
   async function logout() {
     setDemoProfileOverride(null)
