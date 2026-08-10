@@ -52,11 +52,30 @@ export const demoProfiles: Record<'student' | 'buddy' | 'poer' | 'organizer', Ap
 }
 
 const ProfileContext = createContext<AppProfile>(demoProfile)
+const ProfileLogoutContext = createContext<() => void>(() => undefined)
 
-export function ProfileProvider({ profile, children }: { profile: AppProfile; children: ReactNode }) {
-  return <ProfileContext.Provider value={profile}>{children}</ProfileContext.Provider>
+export function ProfileProvider({
+  profile,
+  onLogout,
+  children,
+}: {
+  profile: AppProfile
+  onLogout?: () => void
+  children: ReactNode
+}) {
+  return (
+    <ProfileContext.Provider value={profile}>
+      <ProfileLogoutContext.Provider value={onLogout ?? (() => undefined)}>
+        {children}
+      </ProfileLogoutContext.Provider>
+    </ProfileContext.Provider>
+  )
 }
 
 export function useAppProfile() {
   return useContext(ProfileContext)
+}
+
+export function useProfileLogout() {
+  return useContext(ProfileLogoutContext)
 }

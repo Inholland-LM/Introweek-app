@@ -28,8 +28,7 @@ import { defaultScoreHistories, getDefaultIntroDayId, standings, type ProgrammeD
 import { buildProgrammeDays, buildRouteDays, useMasterContent } from './content'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import { type AppNotification, useNotifications } from './notifications'
-import { useAppProfile } from './profile'
-import { supabase } from './lib/supabase'
+import { useAppProfile, useProfileLogout } from './profile'
 import { fetchClassContacts, type ClassContact } from './contacts'
 import type { MasterContent } from './import/parseWorkbook'
 import { PovPanel } from './PovPanel'
@@ -871,6 +870,7 @@ function MoreView({
   onToggleWidescreen,
 }: MoreViewProps) {
   const profile = useAppProfile()
+  const logout = useProfileLogout()
   const [notificationPreview, setNotificationPreview] = useState(true)
   const [vibrationEnabled, setVibrationEnabled] = useState(true)
   const classItems = Array.isArray(content?.classes) ? content.classes : []
@@ -1186,15 +1186,13 @@ function MoreView({
                 <i className={largeText ? 'toggle active' : 'toggle'}><b /></i>
               </button>
 
-              {profile.id && supabase && (
-                <button type="button" className="settings-item logout-action" onClick={() => { void supabase?.auth.signOut() }}>
-                  <div className="settings-copy">
-                    <strong style={{ color: '#e3004f' }}>Uitloggen</strong>
-                    <small>Sluit je persoonlijke programma op dit apparaat</small>
-                  </div>
-                  <LogOut aria-hidden="true" style={{ color: '#e3004f' }} />
-                </button>
-              )}
+              <button type="button" className="settings-item logout-action" onClick={logout}>
+                <div className="settings-copy">
+                  <strong style={{ color: '#e3004f' }}>Uitloggen</strong>
+                  <small>Sluit je persoonlijke programma op dit apparaat</small>
+                </div>
+                <LogOut aria-hidden="true" style={{ color: '#e3004f' }} />
+              </button>
             </div>
           </>
         )}

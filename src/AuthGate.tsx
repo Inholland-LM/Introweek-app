@@ -196,7 +196,17 @@ export function AuthGate({ children }: AuthGateProps) {
   }, [session])
 
   if (!authEnabled || demoProfileOverride) {
-    return <ProfileProvider profile={demoProfileOverride ?? demoProfile}>{children}</ProfileProvider>
+    return (
+      <ProfileProvider
+        profile={demoProfileOverride ?? demoProfile}
+        onLogout={() => {
+          setDemoProfileOverride(null)
+          if (session) void supabase?.auth.signOut()
+        }}
+      >
+        {children}
+      </ProfileProvider>
+    )
   }
 
   if (!isSupabaseConfigured || !supabase) {
@@ -233,7 +243,13 @@ export function AuthGate({ children }: AuthGateProps) {
     )
   }
 
-  if (session && profile) return <ProfileProvider profile={profile}>{children}</ProfileProvider>
+  if (session && profile) {
+    return (
+      <ProfileProvider profile={profile} onLogout={() => { void client.auth.signOut() }}>
+        {children}
+      </ProfileProvider>
+    )
+  }
 
   async function requestCode(event: FormEvent) {
     event.preventDefault()
