@@ -1368,6 +1368,11 @@ function App() {
   return (
     <div className={`app-shell enter-x-shell${largeText ? ' large-text-mode' : ''}${isWidescreenActive ? ' widescreen-dashboard' : ''}`}>
       <div className="map-texture" aria-hidden="true" />
+      <div className="enter-electric-x" aria-hidden="true">
+        <span className="electric-bolt electric-bolt-one" />
+        <span className="electric-bolt electric-bolt-two" />
+        <i className="electric-impact" />
+      </div>
       <header className="topbar">
         <AnimatedBrandLogo firstName={profile.firstName} />
         <div className="identity-row">

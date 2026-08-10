@@ -89,6 +89,25 @@ export function AuthGate({ children }: AuthGateProps) {
     : 0)
   const [demoProfileOverride, setDemoProfileOverride] = useState<AppProfile | null>(null)
 
+  async function logout() {
+    setDemoProfileOverride(null)
+    forgetPendingLogin()
+    setSession(null)
+    setProfile(null)
+    setProfileChecked(false)
+    setEmail('')
+    setCode('')
+    setStep('email')
+    setError('')
+    setNotice('')
+    setRequestedAt(0)
+    setResendCooldown(0)
+
+    if (supabase) {
+      await supabase.auth.signOut({ scope: 'local' })
+    }
+  }
+
   useEffect(() => {
     if (step !== 'code' || resendCooldown <= 0) return
 
@@ -199,10 +218,7 @@ export function AuthGate({ children }: AuthGateProps) {
     return (
       <ProfileProvider
         profile={demoProfileOverride ?? demoProfile}
-        onLogout={() => {
-          setDemoProfileOverride(null)
-          if (session) void supabase?.auth.signOut()
-        }}
+        onLogout={() => { void logout() }}
       >
         {children}
       </ProfileProvider>
@@ -245,7 +261,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
   if (session && profile) {
     return (
-      <ProfileProvider profile={profile} onLogout={() => { void client.auth.signOut() }}>
+      <ProfileProvider profile={profile} onLogout={() => { void logout() }}>
         {children}
       </ProfileProvider>
     )
