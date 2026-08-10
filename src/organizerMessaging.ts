@@ -12,6 +12,8 @@ export type OrganizerDeliveryChannel = 'in-app' | 'push' | 'both'
 
 export async function fetchOrganizerRecipients(): Promise<OrganizerRecipient[]> {
   if (!supabase || import.meta.env.VITE_AUTH_ENABLED !== 'true') return []
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return []
   const { data, error } = await supabase.rpc('get_organizer_message_recipients')
   if (error) throw error
   return (Array.isArray(data) ? data : []) as OrganizerRecipient[]
@@ -28,6 +30,9 @@ export async function sendOrganizerNotification(input: {
   if (!supabase || import.meta.env.VITE_AUTH_ENABLED !== 'true') {
     return { recipientCount: input.classCodes.length + input.recipientProfileIds.length }
   }
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return { recipientCount: input.classCodes.length + input.recipientProfileIds.length }
 
   const { data, error } = await supabase.rpc('send_organizer_notification', {
     message_title: input.title,
