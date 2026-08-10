@@ -371,22 +371,20 @@ export function AuthGate({ children }: AuthGateProps) {
             <button type="button" className="auth-secondary" onClick={() => setDemoProfileOverride(demoProfiles.student)}>
               <Sparkles aria-hidden="true" /> Direct openen in demo-modus (Sofia · Australië 🇦🇺)
             </button>
-            {import.meta.env.DEV && (
-              <div className="auth-role-tests" aria-label="Lokale testprofielen">
-                <span>Snel testen als</span>
-                <div className="auth-role-test-grid">
-                  <button type="button" onClick={() => setDemoProfileOverride(demoProfiles.poer)}>
-                    PO'er <small>Puck</small>
-                  </button>
-                  <button type="button" onClick={() => setDemoProfileOverride(demoProfiles.buddy)}>
-                    Buddy <small>Bo</small>
-                  </button>
-                  <button type="button" onClick={() => setDemoProfileOverride(demoProfiles.organizer)}>
-                    Organisatie <small>Jacco</small>
-                  </button>
-                </div>
+            <div className="auth-role-tests" aria-label="Testprofielen">
+              <span>Snel testen als</span>
+              <div className="auth-role-test-grid">
+                <button type="button" onClick={() => setDemoProfileOverride(demoProfiles.poer)}>
+                  PO'er <small>Puck</small>
+                </button>
+                <button type="button" onClick={() => setDemoProfileOverride(demoProfiles.buddy)}>
+                  Buddy <small>Bo</small>
+                </button>
+                <button type="button" onClick={() => setDemoProfileOverride(demoProfiles.organizer)}>
+                  Organisatie <small>Jacco</small>
+                </button>
               </div>
-            )}
+            </div>
             <p className="auth-help">De beveiligingscontrole van je schoolmail kan de bezorging vertragen. Controleer ook je spam of ongewenste e-mail.</p>
           </form>
         ) : (
