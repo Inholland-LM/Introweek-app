@@ -47,7 +47,18 @@ const expectedHeaders = [
 ]
 
 const classCodes = new Set(['LM1A', 'LM1B', 'LM1C', 'LM1D', 'LM1E', 'LM1F', 'LM1G', 'LM1H'])
-const sourceRoles = new Set(['student', 'buddy', 'poer', 'organisator'])
+const sourceRoles = new Map<string, ImportRole>([
+  ['student', 'student'],
+  ['buddy', 'buddy'],
+  ['poer', 'poer'],
+  ['interested_teacher', 'interested_teacher'],
+  ['geïnteresseerde docent', 'interested_teacher'],
+  ['geinteresseerde docent', 'interested_teacher'],
+  ['docent', 'interested_teacher'],
+  ['medewerker', 'interested_teacher'],
+  ['organisator', 'organizer'],
+  ['organizer', 'organizer'],
+])
 
 function normalize(value: string) {
   return value.trim()
@@ -150,12 +161,12 @@ function parseMasterContent(XLSX: typeof import('@e965/xlsx'), workbook: ReturnT
     registerId('Berichten', index + 2, row[0], messageIds, issues)
     const date = parseDate(row[1]); const time = parseTime(row[2]); const active = parseYesNo(row[9])
     const codes = row[5].toUpperCase() === 'ALLE' ? 'all' as const : splitList(row[5].toUpperCase())
-    const roles = splitList(row[6].toLowerCase()).map((role) => role === 'organisator' ? 'organizer' : role) as ImportRole[]
+    const roles = splitList(row[6].toLowerCase()).map((role) => sourceRoles.get(role) ?? role as ImportRole)
     const channel = row[7].toLowerCase() as 'in-app' | 'push'
     if (!date || !time) issues.push({ sheet: 'Berichten', row: index + 2, message: 'datum of tijd heeft geen geldig formaat' })
     if (!row[3] || !row[4]) issues.push({ sheet: 'Berichten', row: index + 2, message: 'titel en berichttekst zijn verplicht' })
     if (codes !== 'all' && (!codes.length || codes.some((code) => !validClasses.has(code)))) issues.push({ sheet: 'Berichten', row: index + 2, message: 'één of meer klassen bestaan niet' })
-    if (!roles.length || roles.some((role) => !['student', 'buddy', 'poer', 'organizer'].includes(role))) issues.push({ sheet: 'Berichten', row: index + 2, message: 'rollen zijn ongeldig' })
+    if (!roles.length || roles.some((role) => !['student', 'buddy', 'poer', 'interested_teacher', 'organizer'].includes(role))) issues.push({ sheet: 'Berichten', row: index + 2, message: 'rollen zijn ongeldig' })
     if (!['in-app', 'push'].includes(channel)) issues.push({ sheet: 'Berichten', row: index + 2, message: 'kanaal moet in-app of push zijn' })
     if (active === null) issues.push({ sheet: 'Berichten', row: index + 2, message: 'actief moet ja of nee zijn' })
     return { id: row[0], scheduledAt: date && time ? `${date}T${time}:00+02:00` : '', title: row[3], body: row[4], classCodes: codes, roles, channel, linkUrl: row[8] || null, active: active ?? false }
@@ -237,7 +248,8 @@ export async function parseImportWorkbook(file: File): Promise<ImportPreview> {
 
     const [studentNumber, firstName, namePrefix, lastName, rawEmail, rawRole, rawClassCode, rawActive] = values
     const email = normalizedEmail(rawEmail)
-    const role = rawRole.toLowerCase()
+    const sourceRole = rawRole.toLowerCase()
+    const role = sourceRoles.get(sourceRole)
     const classCode = rawClassCode.toUpperCase()
     const active = rawActive.toLowerCase()
 
@@ -246,9 +258,9 @@ export async function parseImportWorkbook(file: File): Promise<ImportPreview> {
     if (!lastName) rowIssues.push('achternaam ontbreekt')
     if (!email) rowIssues.push('e-mailadres ontbreekt')
     else if (!isSchoolEmail(email)) rowIssues.push('e-mailadres is ongeldig')
-    if (!sourceRoles.has(role)) rowIssues.push('rol is ongeldig')
+    if (!role) rowIssues.push('rol is ongeldig')
     if ((role === 'student' || role === 'buddy') && !studentNumber) rowIssues.push('studentnummer ontbreekt')
-    if (role !== 'organisator' && !classCode) rowIssues.push('klascode ontbreekt')
+    if (role && ['student', 'buddy', 'poer'].includes(role) && !classCode) rowIssues.push('klascode ontbreekt')
     if (classCode && !classCodes.has(classCode)) rowIssues.push('klascode is ongeldig')
     if (active !== 'ja' && active !== 'nee') rowIssues.push('actief moet ja of nee zijn')
 
@@ -275,7 +287,7 @@ export async function parseImportWorkbook(file: File): Promise<ImportPreview> {
       namePrefix: namePrefix || null,
       lastName,
       email,
-      role: role === 'organisator' ? 'organizer' : role as ImportRole,
+      role: role ?? 'student',
       classCode: classCode || null,
       active: active === 'ja',
     })

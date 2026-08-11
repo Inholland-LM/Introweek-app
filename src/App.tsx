@@ -795,7 +795,8 @@ function ContactHelpPanel({ classAppUrl }: { classAppUrl: string | null }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!profile.id) {
+    if (!profile.id || !profile.classCode) {
+      setContacts([])
       setLoading(false)
       return
     }
@@ -817,7 +818,7 @@ function ContactHelpPanel({ classAppUrl }: { classAppUrl: string | null }) {
     return () => {
       active = false
     }
-  }, [profile.id])
+  }, [profile.classCode, profile.id])
 
   const buddies = contacts.filter((contact) => contact.role === 'buddy')
   const poers = contacts.filter((contact) => contact.role === 'poer')
@@ -828,7 +829,7 @@ function ContactHelpPanel({ classAppUrl }: { classAppUrl: string | null }) {
       {loading && <div className="notification-state" aria-live="polite">Contactpersonen ophalen...</div>}
       {error && <div className="notification-state notification-error" role="alert"><p>{error}</p></div>}
       {!loading && !error && (
-        <div className="contact-list">
+        profile.classCode ? <div className="contact-list">
           <article>
             <strong>{profile.profileType === 'buddy' ? 'Buddyteam' : `Jouw buddy${buddies.length === 1 ? '' : "'s"}`}</strong>
             {buddies.length ? buddies.map((contact) => (
@@ -852,6 +853,11 @@ function ContactHelpPanel({ classAppUrl }: { classAppUrl: string | null }) {
                 <span><b>Open de klassenapp</b><small>Voor vragen, vertragingen en contact met je klas</small></span><ChevronRight aria-hidden="true" />
               </a>
             ) : <span>De organisatie heeft nog geen klassenapp aan {profile.classCode} gekoppeld.</span>}
+          </article>
+        </div> : <div className="contact-list">
+          <article>
+            <strong>Contact met de organisatie</strong>
+            <span>Je bent niet aan een klas gekoppeld. Algemene contactinformatie en belangrijke updates ontvang je via Meldingen.</span>
           </article>
         </div>
       )}
@@ -901,7 +907,7 @@ function MoreView({
     : activePovAssignments.filter((assignment) => assignment.classCodes === 'all' || assignment.classCodes.includes(profile.classCode))
   const practicalVisible = settingIsEnabled('toon_praktisch') && (content === null || Boolean(practicalItems?.length))
   const discountsVisible = settingIsEnabled('toon_kortingen') && (content === null || Boolean(discountItems?.length))
-  const povVisible = settingIsEnabled('toon_pov') && profile.profileType !== 'poer' && (
+  const povVisible = settingIsEnabled('toon_pov') && !['poer', 'interested_teacher'].includes(profile.profileType) && (
     content === null || Boolean(visiblePovAssignments.length) || Boolean(classContent?.povUrl)
   )
   const sections: Array<{ id: MoreSectionId; label: string; detail: string; icon: typeof Bell }> = [
@@ -942,7 +948,15 @@ function MoreView({
         <span className="profile-copy">
           <small>Ingelogd als</small>
           <strong>{profile.displayName}</strong>
-          <span>{profile.profileType === 'student' ? 'Student' : profile.profileType === 'buddy' ? 'Buddy' : profile.profileType === 'poer' ? 'PO’er' : 'Organisator'} · {profile.classCode} · {profile.country} {profile.flag}</span>
+          <span>{[
+            profile.profileType === 'student' ? 'Student'
+              : profile.profileType === 'buddy' ? 'Buddy'
+                : profile.profileType === 'poer' ? 'PO’er'
+                  : profile.profileType === 'interested_teacher' ? 'Geïnteresseerde docent'
+                    : 'Organisator',
+            profile.classCode,
+            `${profile.country} ${profile.flag}`.trim(),
+          ].filter(Boolean).join(' · ')}</span>
         </span>
         <ShieldCheck aria-label="Profiel gekoppeld" />
       </article>
@@ -1329,7 +1343,7 @@ function App() {
     electricXHideTimerRef.current = window.setTimeout(() => {
       setElectricXVisible(false)
       electricXHideTimerRef.current = null
-    }, 6_500)
+    }, 1_700)
   }
 
   useEffect(() => {
@@ -1426,8 +1440,10 @@ function App() {
         <AnimatedBrandLogo firstName={profile.firstName} onTriggerEnterX={triggerEnterX} />
         <div className="identity-row">
           <div className="identity">
-            <CountryFlagIcon country={profile.country} size={24} />
-            <span>{profile.classCode} · {profile.country}</span>
+            {profile.profileType === 'interested_teacher'
+              ? <UserRound aria-hidden="true" />
+              : <CountryFlagIcon country={profile.country} size={24} />}
+            <span>{profile.classCode ? `${profile.classCode} · ${profile.country}` : profile.country}</span>
           </div>
           <button
             className="icon-button notification"

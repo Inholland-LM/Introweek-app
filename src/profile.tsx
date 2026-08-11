@@ -4,7 +4,7 @@ export type AppProfile = {
   id: string | null
   firstName: string
   displayName: string
-  profileType: 'student' | 'buddy' | 'poer' | 'organizer'
+  profileType: 'student' | 'buddy' | 'poer' | 'interested_teacher' | 'organizer'
   classCode: string
   country: string
   flag: string

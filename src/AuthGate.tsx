@@ -178,9 +178,12 @@ export function AuthGate({ children }: AuthGateProps) {
           || userEmail.includes('jacco')
           || record?.profile_type === 'organizer'
 
+        const isInterestedTeacher = record?.profile_type === 'interested_teacher'
         const classInfo = record?.class_memberships?.[0]?.classes
           ?? (isOrganizerEmail
             ? { code: 'TEAM', country: 'Organisatie', flag: '🇳🇱' }
+            : isInterestedTeacher
+              ? { code: '', country: 'Geïnteresseerde docent', flag: '' }
             : null)
 
         if ((profileError || !record) && !isOrganizerEmail) {

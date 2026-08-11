@@ -22,13 +22,13 @@ Minimale kolommen:
 - `tussenvoegsel`
 - `achternaam`
 - `email`
-- `rol` (`student`, `poer`, `buddy` of `organisator`)
+- `rol` (`student`, `poer`, `buddy`, `geïnteresseerde docent` of `organisator`)
 - `klascode`
 - `actief`
 
 De definitieve kolomnamen worden afgestemd op het bestaande Excelbestand. De importeur accepteert daarna steeds hetzelfde sjabloon.
 
-Het vereenvoudigde sjabloon gebruikt één tabblad `Personen`. Iedere persoon staat precies één keer in het bestand en heeft maximaal één `klascode`. Voor studenten, buddy's en PO'ers is die klascode verplicht; voor organisatoren mag deze leeg blijven.
+Het vereenvoudigde sjabloon gebruikt één tabblad `Personen`. Iedere persoon staat precies één keer in het bestand en heeft maximaal één `klascode`. Voor studenten, buddy's en PO'ers is die klascode verplicht; voor geïnteresseerde docenten en organisatoren mag deze leeg blijven.
 
 ## Huidige implementatiestap
 
