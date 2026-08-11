@@ -166,7 +166,7 @@ export function AuthGate({ children }: AuthGateProps) {
     supabase
       .from('profiles')
       .select('id, first_name, name_prefix, last_name, profile_type, class_memberships(active, classes(code, country, flag))')
-      .eq('id', session.user.id)
+      .eq('auth_user_id', session.user.id)
       .eq('class_memberships.active', true)
       .maybeSingle()
       .then(({ data, error: profileError }) => {
@@ -280,7 +280,7 @@ export function AuthGate({ children }: AuthGateProps) {
     const normalizedEmail = email.trim().toLowerCase()
     const { error: requestError } = await client.auth.signInWithOtp({
       email: normalizedEmail,
-      options: { shouldCreateUser: false },
+      options: { shouldCreateUser: true },
     })
 
     setSubmitting(false)
@@ -304,7 +304,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
     const { error: requestError } = await client.auth.signInWithOtp({
       email,
-      options: { shouldCreateUser: false },
+      options: { shouldCreateUser: true },
     })
 
     setSubmitting(false)
