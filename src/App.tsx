@@ -42,7 +42,7 @@ export type WeatherInfo = {
   advice: string
 }
 
-const weatherCacheKey = 'lmyou-amsterdam-weather-v1'
+const weatherCacheKey = 'lmyou-amsterdam-weather-v2'
 const weatherCacheLifetimeMs = 30 * 60 * 1000
 
 function describeWeather(weatherCode: number, temperature: number, isDay: boolean): Omit<WeatherInfo, 'temperature' | 'weatherCode'> {
@@ -100,22 +100,41 @@ function describeWeather(weatherCode: number, temperature: number, isDay: boolea
   }
 }
 
-type WeatherCacheEntry = { fetchedAt: number; weather: WeatherInfo }
+type WeatherCacheEntry = { fetchedAt: number; weather: WeatherInfo; hourly?: HourlyWeather[] }
+
+type HourlyWeather = {
+  time: string
+  weather: WeatherInfo
+}
+
+type WeatherForecast = {
+  current: WeatherInfo | null
+  hourly: HourlyWeather[]
+}
+
+type ProgrammeWeatherSelection = {
+  day: ProgrammeDay
+  item: ProgrammeDay['items'][number]
+  weather: WeatherInfo | null
+}
 
 function readCachedWeatherEntry(): WeatherCacheEntry | null {
   try {
     const raw = window.localStorage.getItem(weatherCacheKey)
     if (!raw) return null
-    const cached = JSON.parse(raw) as { fetchedAt?: number; weather?: WeatherInfo }
+    const cached = JSON.parse(raw) as { fetchedAt?: number; weather?: WeatherInfo; hourly?: HourlyWeather[] }
     if (!cached.fetchedAt || !cached.weather || Date.now() - cached.fetchedAt >= weatherCacheLifetimeMs) return null
-    return { fetchedAt: cached.fetchedAt, weather: cached.weather }
+    return { fetchedAt: cached.fetchedAt, weather: cached.weather, hourly: cached.hourly ?? [] }
   } catch {
     return null
   }
 }
 
-function useAmsterdamWeather(): { weather: WeatherInfo | null; unavailable: boolean } {
-  const [weather, setWeather] = useState<WeatherInfo | null>(() => readCachedWeatherEntry()?.weather ?? null)
+function useAmsterdamWeather(): { forecast: WeatherForecast; unavailable: boolean } {
+  const [forecast, setForecast] = useState<WeatherForecast>(() => {
+    const cached = readCachedWeatherEntry() as (WeatherCacheEntry & { hourly?: HourlyWeather[] }) | null
+    return { current: cached?.weather ?? null, hourly: cached?.hourly ?? [] }
+  })
   const [unavailable, setUnavailable] = useState(false)
 
   useEffect(() => {
@@ -127,7 +146,7 @@ function useAmsterdamWeather(): { weather: WeatherInfo | null; unavailable: bool
       const cached = readCachedWeatherEntry()
       if (cached) {
         if (active) {
-          setWeather(cached.weather)
+          setForecast({ current: cached.weather, hourly: (cached as WeatherCacheEntry & { hourly?: HourlyWeather[] }).hourly ?? [] })
           setUnavailable(false)
           refreshTimer = window.setTimeout(() => { void refreshWeather() }, Math.max(1_000, weatherCacheLifetimeMs - (Date.now() - cached.fetchedAt)))
         }
@@ -137,7 +156,7 @@ function useAmsterdamWeather(): { weather: WeatherInfo | null; unavailable: bool
       controller = new AbortController()
       const timeout = window.setTimeout(() => controller?.abort(), 8_000)
       try {
-        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=52.3676&longitude=4.9041&current=temperature_2m,weather_code,is_day&timezone=Europe%2FAmsterdam&forecast_days=1', { signal: controller.signal })
+        const response = await fetch('https://api.open-meteo.com/v1/forecast?latitude=52.3676&longitude=4.9041&current=temperature_2m,weather_code,is_day&hourly=temperature_2m,weather_code,is_day&timezone=Europe%2FAmsterdam&past_days=3&forecast_days=16', { signal: controller.signal })
         if (!response.ok) throw new Error('Weather request failed')
         const data = await response.json()
         const temperature = Number(data?.current?.temperature_2m)
@@ -145,18 +164,35 @@ function useAmsterdamWeather(): { weather: WeatherInfo | null; unavailable: bool
         const isDay = Number(data?.current?.is_day) === 1
         if (!Number.isFinite(temperature) || !Number.isInteger(weatherCode)) throw new Error('Invalid weather response')
         const nextWeather = { temperature: Math.round(temperature), weatherCode, ...describeWeather(weatherCode, temperature, isDay) }
+        const hourlyTimes = Array.isArray(data?.hourly?.time) ? data.hourly.time : []
+        const hourlyTemperatures = Array.isArray(data?.hourly?.temperature_2m) ? data.hourly.temperature_2m : []
+        const hourlyCodes = Array.isArray(data?.hourly?.weather_code) ? data.hourly.weather_code : []
+        const hourlyIsDay = Array.isArray(data?.hourly?.is_day) ? data.hourly.is_day : []
+        const hourly = hourlyTimes.flatMap((time: unknown, index: number): HourlyWeather[] => {
+          const hourlyTemperature = Number(hourlyTemperatures[index])
+          const hourlyCode = Number(hourlyCodes[index])
+          if (typeof time !== 'string' || !Number.isFinite(hourlyTemperature) || !Number.isInteger(hourlyCode)) return []
+          return [{
+            time,
+            weather: {
+              temperature: Math.round(hourlyTemperature),
+              weatherCode: hourlyCode,
+              ...describeWeather(hourlyCode, hourlyTemperature, Number(hourlyIsDay[index]) === 1),
+            },
+          }]
+        })
         if (!active) return
-        setWeather(nextWeather)
+        setForecast({ current: nextWeather, hourly })
         setUnavailable(false)
         try {
-          window.localStorage.setItem(weatherCacheKey, JSON.stringify({ fetchedAt: Date.now(), weather: nextWeather }))
+          window.localStorage.setItem(weatherCacheKey, JSON.stringify({ fetchedAt: Date.now(), weather: nextWeather, hourly }))
         } catch {
           // Het weer blijft bruikbaar wanneer lokale opslag niet beschikbaar is.
         }
         refreshTimer = window.setTimeout(() => { void refreshWeather() }, weatherCacheLifetimeMs)
       } catch {
         if (active) {
-          setWeather(null)
+          setForecast({ current: null, hourly: [] })
           setUnavailable(true)
           refreshTimer = window.setTimeout(() => { void refreshWeather() }, 5 * 60 * 1000)
         }
@@ -174,7 +210,48 @@ function useAmsterdamWeather(): { weather: WeatherInfo | null; unavailable: bool
     }
   }, [])
 
-  return { weather, unavailable }
+  return { forecast, unavailable }
+}
+
+function getProgrammeWeather(forecast: WeatherForecast, dayId: ProgrammeDay['id'], time: string): WeatherInfo | null {
+  const [hour, minute] = time.split(':').map(Number)
+  if (!Number.isFinite(hour) || !Number.isFinite(minute)) return null
+  const nearestHour = minute >= 30 ? hour + 1 : hour
+  const date = new Date(`${introDateByDay[dayId]}T00:00:00+02:00`)
+  if (nearestHour >= 24) date.setDate(date.getDate() + 1)
+  const dateKey = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'Europe/Amsterdam',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date)
+  const hourKey = String(nearestHour % 24).padStart(2, '0')
+  return forecast.hourly.find((entry) => entry.time === `${dateKey}T${hourKey}:00`)?.weather ?? null
+}
+
+function ProgrammeWeatherButton({
+  day,
+  item,
+  forecast,
+  onOpen,
+}: {
+  day: ProgrammeDay
+  item: ProgrammeDay['items'][number]
+  forecast: WeatherForecast
+  onOpen: (selection: ProgrammeWeatherSelection) => void
+}) {
+  const weather = getProgrammeWeather(forecast, day.id, item.time)
+  return (
+    <button
+      type="button"
+      className="programme-weather-button"
+      aria-label={`Weersverwachting voor ${item.title} om ${item.time}`}
+      title={`Weersverwachting om ${item.time}`}
+      onClick={() => onOpen({ day, item, weather })}
+    >
+      <span aria-hidden="true">{weather?.icon ?? '🌡️'}</span>
+    </button>
+  )
 }
 
 export function CountryFlagIcon({ country, size = 32 }: { country: string; size?: number }) {
@@ -419,7 +496,15 @@ function getHomeProgramme(referenceDate: Date, programmeDays: ProgrammeDay[]) {
   }
 }
 
-function ProgrammeView({ programmeDays }: { programmeDays: ProgrammeDay[] }) {
+function ProgrammeView({
+  programmeDays,
+  weatherForecast,
+  onOpenWeather,
+}: {
+  programmeDays: ProgrammeDay[]
+  weatherForecast: WeatherForecast
+  onOpenWeather: (selection: ProgrammeWeatherSelection) => void
+}) {
   const profile = useAppProfile()
   const [selectedDayId, setSelectedDayId] = useState<ProgrammeDay['id']>(getDefaultIntroDayId)
   const selectedDay = programmeDays.find((day) => day.id === selectedDayId) ?? programmeDays[0]
@@ -475,12 +560,44 @@ function ProgrammeView({ programmeDays }: { programmeDays: ProgrammeDay[] }) {
                 </a>
               )}
             </div>
+            <ProgrammeWeatherButton day={selectedDay} item={item} forecast={weatherForecast} onOpen={onOpenWeather} />
           </li>
         ))}
       </ol>
 
       <p className="programme-note">Wijzigt er iets? Dan verschijnt de actuele informatie automatisch bovenaan.</p>
     </section>
+  )
+}
+
+function ProgrammeWeatherModal({ selection, onClose }: { selection: ProgrammeWeatherSelection; onClose: () => void }) {
+  const { day, item, weather } = selection
+
+  useEffect(() => {
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', closeOnEscape)
+    return () => window.removeEventListener('keydown', closeOnEscape)
+  }, [onClose])
+
+  return (
+    <div className="weather-modal-overlay" role="presentation" onClick={onClose}>
+      <div className="weather-modal-content" role="dialog" aria-modal="true" aria-labelledby="weather-modal-title" onClick={(event) => event.stopPropagation()}>
+        <button type="button" className="weather-modal-close" onClick={onClose} aria-label="Weersverwachting sluiten"><X aria-hidden="true" /></button>
+        <aside className="weather-widget-card programme-weather-popup">
+          <div className="weather-widget-header">
+            <span className="weather-widget-icon" aria-hidden="true">{weather?.icon ?? '🌡️'}</span>
+            <div>
+              <strong id="weather-modal-title">{weather ? `${weather.temperature}°C in Amsterdam · ${weather.description}` : 'Verwachting nog niet beschikbaar'}</strong>
+              <span className="weather-source-tag">{day.shortLabel} om {item.time} · {item.title}</span>
+            </div>
+          </div>
+          <p className="weather-widget-advice">{weather?.advice ?? 'Open-Meteo heeft voor dit moment nog geen uurverwachting gepubliceerd. Probeer het later opnieuw.'}</p>
+          <span className="weather-popup-source">Open-Meteo · maximaal 30 minuten lokaal gecachet</span>
+        </aside>
+      </div>
+    </div>
   )
 }
 
@@ -795,7 +912,8 @@ function ContactHelpPanel({ classAppUrl }: { classAppUrl: string | null }) {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    if (!profile.id) {
+    if (!profile.id || !profile.classCode) {
+      setContacts([])
       setLoading(false)
       return
     }
@@ -817,7 +935,7 @@ function ContactHelpPanel({ classAppUrl }: { classAppUrl: string | null }) {
     return () => {
       active = false
     }
-  }, [profile.id])
+  }, [profile.classCode, profile.id])
 
   const buddies = contacts.filter((contact) => contact.role === 'buddy')
   const poers = contacts.filter((contact) => contact.role === 'poer')
@@ -828,7 +946,7 @@ function ContactHelpPanel({ classAppUrl }: { classAppUrl: string | null }) {
       {loading && <div className="notification-state" aria-live="polite">Contactpersonen ophalen...</div>}
       {error && <div className="notification-state notification-error" role="alert"><p>{error}</p></div>}
       {!loading && !error && (
-        <div className="contact-list">
+        profile.classCode ? <div className="contact-list">
           <article>
             <strong>{profile.profileType === 'buddy' ? 'Buddyteam' : `Jouw buddy${buddies.length === 1 ? '' : "'s"}`}</strong>
             {buddies.length ? buddies.map((contact) => (
@@ -852,6 +970,11 @@ function ContactHelpPanel({ classAppUrl }: { classAppUrl: string | null }) {
                 <span><b>Open de klassenapp</b><small>Voor vragen, vertragingen en contact met je klas</small></span><ChevronRight aria-hidden="true" />
               </a>
             ) : <span>De organisatie heeft nog geen klassenapp aan {profile.classCode} gekoppeld.</span>}
+          </article>
+        </div> : <div className="contact-list">
+          <article>
+            <strong>Contact met de organisatie</strong>
+            <span>Je bent niet aan een klas gekoppeld. Algemene contactinformatie en belangrijke updates ontvang je via Meldingen.</span>
           </article>
         </div>
       )}
@@ -901,7 +1024,7 @@ function MoreView({
     : activePovAssignments.filter((assignment) => assignment.classCodes === 'all' || assignment.classCodes.includes(profile.classCode))
   const practicalVisible = settingIsEnabled('toon_praktisch') && (content === null || Boolean(practicalItems?.length))
   const discountsVisible = settingIsEnabled('toon_kortingen') && (content === null || Boolean(discountItems?.length))
-  const povVisible = settingIsEnabled('toon_pov') && profile.profileType !== 'poer' && (
+  const povVisible = settingIsEnabled('toon_pov') && !['poer', 'interested_teacher'].includes(profile.profileType) && (
     content === null || Boolean(visiblePovAssignments.length) || Boolean(classContent?.povUrl)
   )
   const sections: Array<{ id: MoreSectionId; label: string; detail: string; icon: typeof Bell }> = [
@@ -942,7 +1065,15 @@ function MoreView({
         <span className="profile-copy">
           <small>Ingelogd als</small>
           <strong>{profile.displayName}</strong>
-          <span>{profile.profileType === 'student' ? 'Student' : profile.profileType === 'buddy' ? 'Buddy' : profile.profileType === 'poer' ? 'PO’er' : 'Organisator'} · {profile.classCode} · {profile.country} {profile.flag}</span>
+          <span>{[
+            profile.profileType === 'student' ? 'Student'
+              : profile.profileType === 'buddy' ? 'Buddy'
+                : profile.profileType === 'poer' ? 'PO’er'
+                  : profile.profileType === 'interested_teacher' ? 'Geïnteresseerde docent'
+                    : 'Organisator',
+            profile.classCode,
+            `${profile.country} ${profile.flag}`.trim(),
+          ].filter(Boolean).join(' · ')}</span>
         </span>
         <ShieldCheck aria-label="Profiel gekoppeld" />
       </article>
@@ -1288,7 +1419,7 @@ function AnimatedBrandLogo({ firstName, onTriggerEnterX }: { firstName: string; 
 function App() {
   const profile = useAppProfile()
   const masterContent = useMasterContent()
-  const { weather, unavailable: weatherUnavailable } = useAmsterdamWeather()
+  const { forecast: weatherForecast } = useAmsterdamWeather()
   const currentProgrammeDays = buildProgrammeDays(masterContent.content, profile.classCode)
   const currentRouteDays = buildRouteDays(masterContent.content, profile.classCode)
   const notificationInbox = useNotifications(profile.id, profile.classCode, profile.profileType, masterContent.content?.messages)
@@ -1305,6 +1436,7 @@ function App() {
   const [refreshComplete, setRefreshComplete] = useState(false)
   const [electricXSequence, setElectricXSequence] = useState(0)
   const [electricXVisible, setElectricXVisible] = useState(false)
+  const [weatherSelection, setWeatherSelection] = useState<ProgrammeWeatherSelection | null>(null)
   const pullStartYRef = useRef<number | null>(null)
   const pullDistanceRef = useRef(0)
   const refreshResetTimerRef = useRef<number | null>(null)
@@ -1426,8 +1558,10 @@ function App() {
         <AnimatedBrandLogo firstName={profile.firstName} onTriggerEnterX={triggerEnterX} />
         <div className="identity-row">
           <div className="identity">
-            <CountryFlagIcon country={profile.country} size={24} />
-            <span>{profile.classCode} · {profile.country}</span>
+            {profile.profileType === 'interested_teacher'
+              ? <UserRound aria-hidden="true" />
+              : <CountryFlagIcon country={profile.country} size={24} />}
+            <span>{profile.classCode ? `${profile.classCode} · ${profile.country}` : profile.country}</span>
           </div>
           <button
             className="icon-button notification"
@@ -1474,30 +1608,6 @@ function App() {
               <h1 id="welcome-title">{homeProgramme.greeting}, {profile.firstName}</h1>
               <p className="welcome-copy">Alles wat je vandaag nodig hebt, staat hier voor je klaar.</p>
             </section>
-
-            {weather && (
-              <aside className="weather-widget-card" aria-label="Live weerbericht Amsterdam">
-                <div className="weather-widget-header">
-                  <span className="weather-widget-icon" aria-hidden="true">{weather.icon}</span>
-                  <div>
-                    <strong>{weather.temperature}°C in Amsterdam · {weather.description}</strong>
-                    <span className="weather-source-tag">Open-Meteo · maximaal 30 minuten oud</span>
-                  </div>
-                </div>
-                <p className="weather-widget-advice">{weather.advice}</p>
-              </aside>
-            )}
-            {!weather && weatherUnavailable && (
-              <aside className="weather-widget-card" aria-label="Weerbericht niet beschikbaar">
-                <div className="weather-widget-header">
-                  <span className="weather-widget-icon" aria-hidden="true">🌡️</span>
-                  <div>
-                    <strong>Weerbericht tijdelijk niet beschikbaar</strong>
-                    <span className="weather-source-tag">Probeer het later opnieuw</span>
-                  </div>
-                </div>
-              </aside>
-            )}
 
             <div className="time-travel-bar" aria-label="Tijdsimulatie voor testen">
               <div className="time-travel-label">
@@ -1611,7 +1721,15 @@ function App() {
                 </div>
               ) : (
                 <>
-                  <h2 id="next-title">{homeProgramme.activeItem.title}</h2>
+                  <div className="next-card-title-row">
+                    <h2 id="next-title">{homeProgramme.activeItem.title}</h2>
+                    <ProgrammeWeatherButton
+                      day={homeProgramme.nextDay ?? homeProgramme.day}
+                      item={homeProgramme.activeItem}
+                      forecast={weatherForecast}
+                      onOpen={setWeatherSelection}
+                    />
+                  </div>
                   <div className="next-details">
                     <div className="detail-row">
                       <Clock3 aria-hidden="true" />
@@ -1657,6 +1775,7 @@ function App() {
                           <strong>{item.title}</strong>
                           {item.location && <small>{item.location}</small>}
                         </div>
+                        <ProgrammeWeatherButton day={homeProgramme.day} item={item} forecast={weatherForecast} onOpen={setWeatherSelection} />
                         {(isCurrent || isNext) && (
                           <div className="timeline-badge-cell">
                             {isCurrent && <span className="now-active-pill"><i className="live-pulse-dot" /> Nu bezig</span>}
@@ -1690,7 +1809,7 @@ function App() {
           </>
         )}
 
-        {active === 'Programma' && <ProgrammeView programmeDays={currentProgrammeDays} />}
+        {active === 'Programma' && <ProgrammeView programmeDays={currentProgrammeDays} weatherForecast={weatherForecast} onOpenWeather={setWeatherSelection} />}
 
         {active === 'Kaart' && <MapView routeDays={currentRouteDays} />}
 
@@ -1721,6 +1840,8 @@ function App() {
           />
         )}
       </main>
+
+      {weatherSelection && <ProgrammeWeatherModal selection={weatherSelection} onClose={() => setWeatherSelection(null)} />}
 
       <nav className="bottom-nav" aria-label="Hoofdnavigatie">
         {navItems.map(({ label, icon: Icon }) => (
