@@ -4111,3 +4111,20 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   color: #475569;
   line-height: 1.35;
 }
+
+/* Import review: one explicit database action per detected Excel mutation. */
+.mutation-action { grid-column: 1 / -1; display: grid; gap: 5px; margin-top: 8px; padding-top: 9px; border-top: 1px solid rgba(0, 0, 0, 0.08); }
+.mutation-action > span { color: var(--gold); font-size: 0.66rem; font-weight: 850; text-transform: uppercase; }
+.mutation-action select { width: 100%; min-height: 42px; padding: 0 34px 0 11px; border: 1px solid rgba(227, 0, 79, 0.3); border-radius: 11px; outline: 0; color: #111827; background: #fff; font: inherit; font-size: 0.74rem; font-weight: 750; }
+.mutation-action select:focus { border-color: var(--gold); box-shadow: 0 0 0 3px rgba(227, 0, 79, 0.1); }
+.mutation-action-conflict { grid-column: 1 / -1; padding-top: 8px; border-top: 1px solid rgba(227, 0, 79, 0.18); color: #b4234b !important; font-weight: 800; }
+.content-mutation-review { display: grid; gap: 10px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(227, 0, 79, 0.16); }
+.content-mutation-review h4 { margin: 2px 0 0; color: #111827; font-family: Georgia, serif; font-size: 1.08rem; }
+.content-mutation-review > div > p:last-child { margin: 5px 0 0; color: var(--muted); font-size: 0.72rem; line-height: 1.45; }
+.content-mutation-review ul { display: grid; gap: 8px; max-height: 430px; margin: 0; padding: 0 4px 0 0; overflow-y: auto; list-style: none; scrollbar-color: var(--gold) #f1f5f9; }
+.content-mutation-review li { display: grid; grid-template-columns: 98px minmax(0, 1fr); gap: 3px 10px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.content-mutation-review li.changed .comparison-status { background: #b9d5ff; }
+.content-mutation-review li.missing .comparison-status { color: #fff; background: #b4234b; }
+.content-mutation-review li > strong { min-width: 0; overflow: hidden; color: #111827; font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
+.content-mutation-review li > small { color: var(--muted); font-size: 0.67rem; }
+.comparison-deactivation-note { margin: 10px 0 0; padding: 10px 12px; border-left: 3px solid var(--gold); border-radius: 8px; color: #5b2436; background: rgba(227, 0, 79, 0.06); font-size: 0.72rem; line-height: 1.45; }
