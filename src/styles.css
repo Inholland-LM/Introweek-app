@@ -114,22 +114,42 @@ button { color: inherit; cursor: pointer; }
 }
 
 .topbar {
-  position: relative;
-  z-index: 2;
+  position: sticky;
+  top: 0;
+  z-index: 20;
   flex: 0 0 auto;
-  padding: max(12px, env(safe-area-inset-top)) 18px 10px;
+  /* Keep the complete header below iOS/Android status bars and display cut-outs.
+     The regular spacing must be added to the safe area, not replace it. */
+  padding:
+    calc(12px + env(safe-area-inset-top, 0px))
+    calc(18px + env(safe-area-inset-right, 0px))
+    10px
+    calc(18px + env(safe-area-inset-left, 0px));
   border-bottom: 1px solid rgba(227, 0, 79, 0.2);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(18px);
 }
 
 .brand-lockup {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   min-height: 32px;
   align-items: center;
-  justify-content: space-between;
   gap: 12px;
   margin-bottom: 8px;
+}
+
+.brand-lockup .brand-toggle {
+  min-width: 0;
+  justify-self: start;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.brand-lockup .brand-edition {
+  justify-self: end;
+  white-space: nowrap;
 }
 
 .brand-mark, .signature-brand {
