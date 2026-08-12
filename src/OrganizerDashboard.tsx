@@ -102,7 +102,7 @@ export function OrganizerDashboard({
     { studentNumber: '689102', firstName: 'Sofia', namePrefix: null, lastName: 'Jansen', email: '689102@student.inholland.nl', role: 'student', classCode: 'LM1A', active: true },
     { studentNumber: '689103', firstName: 'Daan', namePrefix: 'de', lastName: 'Vries', email: 'daan.devries@inholland.nl', role: 'buddy', classCode: 'LM1A', active: true },
     { studentNumber: '689104', firstName: 'Mila', namePrefix: null, lastName: 'Bakker', email: 'mila.bakker@inholland.nl', role: 'poer', classCode: 'LM1A', active: true },
-    { studentNumber: '689105', firstName: 'Prof.', namePrefix: 'van', lastName: 'Dijk', email: 'kees.vandijk@inholland.nl', role: 'interested_teacher', classCode: 'LM1A', active: true },
+    { studentNumber: null, firstName: 'Prof.', namePrefix: 'van', lastName: 'Dijk', email: 'kees.vandijk@inholland.nl', role: 'interested_teacher', classCode: null, active: true },
   ])
   const [personSearch, setPersonSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
@@ -331,7 +331,7 @@ export function OrganizerDashboard({
         lastName: newLastName,
         email: newEmail,
         role: newRole,
-        classCode: newClassCode,
+        classCode: ['interested_teacher', 'organizer'].includes(newRole) ? null : newClassCode,
         active: true,
       },
     ])
@@ -349,7 +349,7 @@ export function OrganizerDashboard({
     setEditStudentNumber(person.studentNumber ?? '')
     setEditEmail(person.email)
     setEditRole(person.role)
-    setEditClassCode(person.classCode ?? 'LM1A')
+    setEditClassCode(person.classCode ?? '')
     setShowEditPersonModal(true)
   }
 
@@ -367,7 +367,7 @@ export function OrganizerDashboard({
               studentNumber: editStudentNumber.trim() || null,
               email: editEmail,
               role: editRole,
-              classCode: editClassCode,
+              classCode: ['interested_teacher', 'organizer'].includes(editRole) ? null : editClassCode,
             }
           : p
       )
@@ -1175,7 +1175,12 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
               </label>
               <label>
                 <span>Rol</span>
-                <select value={newRole} onChange={(e) => setNewRole(e.target.value as any)}>
+                <select value={newRole} onChange={(e) => {
+                  const nextRole = e.target.value as ImportRole
+                  setNewRole(nextRole)
+                  if (['interested_teacher', 'organizer'].includes(nextRole)) setNewClassCode('')
+                  else if (!newClassCode) setNewClassCode('LM1A')
+                }}>
                   <option value="student">Student</option>
                   <option value="buddy">Buddy</option>
                   <option value="poer">PO'er</option>
@@ -1184,8 +1189,13 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                 </select>
               </label>
               <label>
-                <span>Klas</span>
-                <select value={newClassCode} onChange={(e) => setNewClassCode(e.target.value)}>
+                <span>Klas {['interested_teacher', 'organizer'].includes(newRole) ? '(niet nodig)' : ''}</span>
+                <select
+                  value={newClassCode}
+                  disabled={['interested_teacher', 'organizer'].includes(newRole)}
+                  onChange={(e) => setNewClassCode(e.target.value)}
+                >
+                  <option value="">Geen klas</option>
                   {['LM1A', 'LM1B', 'LM1C', 'LM1D', 'LM1E', 'LM1F', 'LM1G', 'LM1H'].map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
@@ -1235,7 +1245,12 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
               </label>
               <label>
                 <span>Rol</span>
-                <select value={editRole} onChange={(e) => setEditRole(e.target.value as any)}>
+                <select value={editRole} onChange={(e) => {
+                  const nextRole = e.target.value as ImportRole
+                  setEditRole(nextRole)
+                  if (['interested_teacher', 'organizer'].includes(nextRole)) setEditClassCode('')
+                  else if (!editClassCode) setEditClassCode('LM1A')
+                }}>
                   <option value="student">Student</option>
                   <option value="buddy">Buddy</option>
                   <option value="poer">PO'er</option>
@@ -1244,8 +1259,13 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                 </select>
               </label>
               <label>
-                <span>Klas</span>
-                <select value={editClassCode} onChange={(e) => setEditClassCode(e.target.value)}>
+                <span>Klas {['interested_teacher', 'organizer'].includes(editRole) ? '(niet nodig)' : ''}</span>
+                <select
+                  value={editClassCode}
+                  disabled={['interested_teacher', 'organizer'].includes(editRole)}
+                  onChange={(e) => setEditClassCode(e.target.value)}
+                >
+                  <option value="">Geen klas</option>
                   {['LM1A', 'LM1B', 'LM1C', 'LM1D', 'LM1E', 'LM1F', 'LM1G', 'LM1H'].map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}

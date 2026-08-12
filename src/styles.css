@@ -396,6 +396,15 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   color: #111827;
 }
 
+.next-card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.next-card-title-row h2 { flex: 1; }
+
 .next-details {
   display: grid;
   gap: 8px;
@@ -589,6 +598,27 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   border: 1px solid rgba(0, 0, 0, 0.08);
   border-radius: 17px;
   background: #f8fafc;
+}
+
+.programme-weather-button {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  place-items: center;
+  align-self: center;
+  border: 1px solid rgba(227, 0, 79, 0.18);
+  border-radius: 14px;
+  background: linear-gradient(145deg, #ffffff, rgba(255, 237, 245, 0.94));
+  box-shadow: 0 5px 14px rgba(227, 0, 79, 0.09);
+  font-size: 1.45rem;
+  line-height: 1;
+}
+
+.programme-weather-button:hover,
+.programme-weather-button:focus-visible {
+  border-color: var(--gold);
+  transform: translateY(-1px);
 }
 
 .timeline-body {
@@ -832,10 +862,46 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .programme-list li {
   position: relative;
   display: grid;
-  grid-template-columns: 60px 1fr;
+  grid-template-columns: 60px minmax(0, 1fr) 42px;
   gap: 11px;
   align-items: start;
 }
+
+.weather-modal-overlay {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(9, 20, 42, 0.58);
+  backdrop-filter: blur(8px);
+}
+
+.weather-modal-content {
+  position: relative;
+  width: min(100%, 470px);
+}
+
+.weather-modal-close {
+  position: absolute;
+  z-index: 2;
+  top: 7px;
+  right: 7px;
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  color: #334155;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 3px 12px rgba(15, 23, 42, 0.15);
+}
+
+.weather-modal-close svg { width: 18px; height: 18px; }
+.programme-weather-popup { margin: 0; padding-right: 52px; box-shadow: 0 24px 70px rgba(9, 20, 42, 0.35); }
+.weather-popup-source { display: block; margin-top: 9px; color: #64748b; font-size: 0.67rem; }
 .programme-list time {
   position: relative;
   z-index: 1;
