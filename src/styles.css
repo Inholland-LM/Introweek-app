@@ -900,7 +900,16 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 }
 
 .weather-modal-close svg { width: 18px; height: 18px; }
-.programme-weather-popup { margin: 0; padding-right: 52px; box-shadow: 0 24px 70px rgba(9, 20, 42, 0.35); }
+.weather-widget-card.programme-weather-popup {
+  margin: 0;
+  padding-right: 52px;
+  border: 1px solid rgba(227, 0, 79, 0.24);
+  background-color: #ffffff;
+  background-image:
+    radial-gradient(circle at 92% 8%, rgba(227, 0, 79, 0.08), transparent 9rem),
+    linear-gradient(135deg, #eef9ff 0%, #fff5f9 54%, #ffffff 100%);
+  box-shadow: 0 24px 70px rgba(9, 20, 42, 0.35);
+}
 .weather-popup-source { display: block; margin-top: 9px; color: #64748b; font-size: 0.67rem; }
 .programme-list time {
   position: relative;
