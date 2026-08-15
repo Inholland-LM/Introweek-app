@@ -1438,6 +1438,8 @@ function App() {
   const [electricXVisible, setElectricXVisible] = useState(false)
   const [weatherSelection, setWeatherSelection] = useState<ProgrammeWeatherSelection | null>(null)
   const pullStartYRef = useRef<number | null>(null)
+  const pullStartXRef = useRef<number | null>(null)
+  const pullEligibleRef = useRef(false)
   const pullDistanceRef = useRef(0)
   const refreshResetTimerRef = useRef<number | null>(null)
   const electricXHideTimerRef = useRef<number | null>(null)
@@ -1478,15 +1480,29 @@ function App() {
   }
 
   function handlePullStart(event: TouchEvent<HTMLElement>) {
-    if (event.currentTarget.scrollTop > 0 || isRefreshing) return
-    pullStartYRef.current = event.touches[0]?.clientY ?? null
+    const touch = event.touches[0]
+    const mainTop = event.currentTarget.getBoundingClientRect().top
+    const startedInRefreshZone = touch !== undefined && touch.clientY <= mainTop + 56
+
+    pullEligibleRef.current = event.currentTarget.scrollTop <= 1 && !isRefreshing && startedInRefreshZone
+    pullStartYRef.current = pullEligibleRef.current ? touch?.clientY ?? null : null
+    pullStartXRef.current = pullEligibleRef.current ? touch?.clientX ?? null : null
   }
 
   function handlePullMove(event: TouchEvent<HTMLElement>) {
-    if (pullStartYRef.current === null || isRefreshing || event.currentTarget.scrollTop > 0) return
-    const currentY = event.touches[0]?.clientY
-    if (currentY === undefined) return
+    if (!pullEligibleRef.current || pullStartYRef.current === null || pullStartXRef.current === null || isRefreshing || event.currentTarget.scrollTop > 1) return
+    const touch = event.touches[0]
+    if (touch === undefined) return
+    const currentY = touch.clientY
     const distance = currentY - pullStartYRef.current
+
+    const horizontalDistance = Math.abs(touch.clientX - pullStartXRef.current)
+    if (distance < -8 || horizontalDistance > Math.max(18, distance * 0.75)) {
+      pullEligibleRef.current = false
+      updatePullDistance(0)
+      return
+    }
+
     updatePullDistance(distance > 0 ? Math.min(82, distance * 0.46) : 0)
   }
 
@@ -1514,8 +1530,11 @@ function App() {
   }
 
   function handlePullEnd() {
+    const shouldRefresh = pullEligibleRef.current && pullDistanceRef.current >= 58
+    pullEligibleRef.current = false
     pullStartYRef.current = null
-    if (pullDistanceRef.current >= 58) {
+    pullStartXRef.current = null
+    if (shouldRefresh) {
       void refreshAppData()
       return
     }

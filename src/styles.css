@@ -21,7 +21,10 @@
 
 * { box-sizing: border-box; }
 
-html { background: var(--navy-950); }
+html {
+  background: var(--navy-950);
+  overscroll-behavior-y: none;
+}
 
 body {
   margin: 0;
@@ -31,6 +34,7 @@ body {
   background:
     radial-gradient(circle at 80% 2%, rgba(227, 0, 79, 0.06), transparent 25rem),
     linear-gradient(180deg, #f4f6fa, #edf0f5);
+  overscroll-behavior-y: none;
 }
 
 button, a { font: inherit; }
@@ -128,6 +132,14 @@ button { color: inherit; cursor: pointer; }
   border-bottom: 1px solid rgba(227, 0, 79, 0.2);
   background: rgba(255, 255, 255, 0.95);
   backdrop-filter: blur(18px);
+}
+
+/* Android standalone PWAs can report a zero safe-area inset while their status
+   bar still overlays the web view. Keep the complete header below that bar. */
+@media (display-mode: standalone) {
+  .topbar {
+    padding-top: max(calc(12px + env(safe-area-inset-top, 0px)), 36px);
+  }
 }
 
 .brand-lockup {
