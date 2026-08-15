@@ -30,7 +30,7 @@ import {
 import type { AppProfile } from './profile'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import type { ImportPerson, ImportRole, MasterContent } from './import/parseWorkbook'
-import { createPovPhotoUrl, fetchPovSubmissions, reviewPovSubmission, type PovSubmission } from './povUploads'
+import { createPovPhotoUrl, deletePovSubmission, fetchPovSubmissions, reviewPovSubmission, type PovSubmission } from './povUploads'
 import { createInitialMasterContent, updateMasterContent } from './content'
 import {
   fetchOrganizerRecipients,
@@ -147,7 +147,6 @@ export function OrganizerDashboard({
   const [recipientsLoading, setRecipientsLoading] = useState(false)
   const [recipientsError, setRecipientsError] = useState('')
   const [msgChannel, setMsgChannel] = useState<OrganizerDeliveryChannel>('both')
-  const [msgAction, setMsgAction] = useState<'route' | 'programme' | 'notifications'>('programme')
   const [msgSortOrder, setMsgSortOrder] = useState<'newest' | 'oldest'>('newest')
   const [msgSuccess, setMsgSuccess] = useState('')
   const [msgSending, setMsgSending] = useState(false)
@@ -284,6 +283,18 @@ export function OrganizerDashboard({
     }
   }
 
+  async function handleDeletePov(submission: PovSubmission) {
+    if (!window.confirm(`Foto van ${submission.uploaderName} definitief verwijderen? Dit kan niet ongedaan worden gemaakt.`)) return
+    try {
+      await deletePovSubmission(submission.id)
+      setSubmissions((previous) => previous.filter((item) => item.id !== submission.id))
+      setSelectedPov(null)
+      setSelectedPovUrl('')
+    } catch {
+      window.alert('De foto kon niet worden verwijderd. Probeer het opnieuw.')
+    }
+  }
+
   async function openPovModal(submission: PovSubmission) {
     setSelectedPov(submission)
     setPointsInput('100')
@@ -399,7 +410,7 @@ export function OrganizerDashboard({
         classCodes: selectedClassCodes,
         recipientProfileIds,
         deliveryChannel: msgChannel,
-        actionTarget: msgAction,
+        actionTarget: 'notifications',
       })
       const targetLabels = [
         ...selectedClassCodes,
@@ -412,7 +423,7 @@ export function OrganizerDashboard({
       scheduledAt: new Date().toISOString(),
         targets: targetLabels,
       channel: msgChannel,
-      actionTarget: msgAction,
+      actionTarget: 'notifications',
       status: 'sent',
     }
 
@@ -952,17 +963,9 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                     <select value={msgChannel} onChange={(e) => setMsgChannel(e.target.value as OrganizerDeliveryChannel)}>
                       <option value="both">In-app + pushmelding</option>
                       <option value="in-app">Alleen in-app</option>
+                      <option value="push">Alleen pushmelding</option>
                     </select>
-                    <small>Push verschijnt als browsermelding wanneer de app actief is en toestemming heeft. Er blijft altijd een veilige kopie bij Meldingen staan.</small>
-                  </label>
-
-                  <label>
-                    <span>Banner Klikdoel op Telefoon</span>
-                    <select value={msgAction} onChange={(e) => setMsgAction(e.target.value as any)}>
-                      <option value="programme">Programma Tab (met ⚠️ GEWIJZIGD markering)</option>
-                      <option value="route">Directe Routeknop / Kaart</option>
-                      <option value="notifications">Meldingen Tab</option>
-                    </select>
+                    <small>Push verschijnt als browsermelding wanneer het apparaat toestemming heeft. Bij “alleen pushmelding” wordt geen kopie in Meldingen opgeslagen.</small>
                   </label>
                 </div>
 
@@ -998,7 +1001,6 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                       <div className="msg-badges">
                         <span className="badge">Naar: {msg.targets.join(', ')}</span>
                         <span className="badge">Kanaal: {msg.channel}</span>
-                        <span className="badge">Klikdoel: {msg.actionTarget}</span>
                       </div>
                     </div>
                   ))}
@@ -1141,6 +1143,14 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                     >
                       <X aria-hidden="true" />
                       <span>Afkeuren (plek komt vrij)</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="moderation-btn delete-btn"
+                      onClick={() => { void handleDeletePov(selectedPov) }}
+                    >
+                      <Trash2 aria-hidden="true" />
+                      <span>Foto definitief verwijderen</span>
                     </button>
                   </div>
                 </div>

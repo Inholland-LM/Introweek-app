@@ -152,3 +152,13 @@ export async function reviewPovSubmission(id: string, status: 'approved' | 'reje
   })
   if (error) throw error
 }
+
+export async function deletePovSubmission(id: string) {
+  if (!supabase) throw new Error('De beveiligde verbinding is niet beschikbaar.')
+  const { data, error } = await supabase.rpc('delete_pov_submission', { requested_submission_id: id })
+  if (error) throw error
+  const storagePath = String(data ?? '')
+  if (!storagePath) throw new Error('Het opslagpad van de foto ontbreekt.')
+  const { error: storageError } = await supabase.storage.from(bucketName).remove([storagePath])
+  if (storageError) throw storageError
+}

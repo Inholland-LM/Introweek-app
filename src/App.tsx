@@ -25,7 +25,7 @@ import {
   X,
 } from 'lucide-react'
 import { defaultScoreHistories, getDefaultIntroDayId, standings, type ProgrammeDay, type RouteDay, type Standing, type TeamScoreHistory } from './data'
-import { buildProgrammeDays, buildRouteDays, useMasterContent } from './content'
+import { buildProgrammeDays, buildRouteDays, createInitialMasterContent, useMasterContent } from './content'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import { type AppNotification, useNotifications } from './notifications'
 import { useAppProfile, useProfileLogout } from './profile'
@@ -33,6 +33,13 @@ import { fetchClassContacts, type ClassContact } from './contacts'
 import type { MasterContent } from './import/parseWorkbook'
 import { PovPanel } from './PovPanel'
 import { OrganizerDashboard } from './OrganizerDashboard'
+import { AvgPanel } from './AvgPanel'
+
+const COUNTRY_REVEAL_AT = new Date('2026-08-25T14:00:00+02:00').getTime()
+const STANDINGS_FREEZE_AT = new Date('2026-08-27T16:00:00+02:00').getTime()
+const INSTAGRAM_URL = 'https://www.instagram.com/introweeklm2026?igsh=MmdpcTl1b3FjOGRz&igsi=MmdpcTl1b3FjOGRz'
+const COUNTRY_REVEAL_PATTERN = /landenstrijd|vlaggenparade|landonthulling/i
+const FALLBACK_MASTER_CONTENT = createInitialMasterContent()
 
 export type WeatherInfo = {
   temperature: number
@@ -356,7 +363,7 @@ const navItems = [
 ] as const
 
 type NavLabel = (typeof navItems)[number]['label']
-type MoreSectionId = 'notifications' | 'practical' | 'discounts' | 'pov' | 'help' | 'settings' | 'import'
+type MoreSectionId = 'notifications' | 'practical' | 'discounts' | 'pov' | 'instagram' | 'avg' | 'help' | 'settings' | 'import'
 
 const introDateByDay: Record<ProgrammeDay['id'], string> = {
   dinsdag: '2026-08-25',
@@ -682,9 +689,26 @@ function MapView({ routeDays }: { routeDays: RouteDay[] }) {
 
 type CompetitionViewProps = {
   onNavigate: (destination: NavLabel, moreSection?: MoreSectionId) => void
+  referenceDate: Date
 }
 
-function CompetitionView({ onNavigate }: CompetitionViewProps) {
+function hideCountryRevealDetails(programmeDays: ProgrammeDay[]): ProgrammeDay[] {
+  return programmeDays.map((day) => ({
+    ...day,
+    items: day.items.map((item) => {
+      const searchableText = `${item.category ?? ''} ${item.title}`
+      if (!COUNTRY_REVEAL_PATTERN.test(searchableText)) return item
+
+      return {
+        ...item,
+        category: 'Verrassing',
+        title: 'Activiteit wordt om 14:00 onthuld',
+      }
+    }),
+  }))
+}
+
+function CompetitionView({ onNavigate, referenceDate }: CompetitionViewProps) {
   const profile = useAppProfile()
   const [selectedTeam, setSelectedTeam] = useState<Standing | null>(null)
   const leader = standings[0]
@@ -697,6 +721,15 @@ function CompetitionView({ onNavigate }: CompetitionViewProps) {
   const isLeader = isSoleLeader || isTiedFirst
   const otherTiedLeader = tiedLeaders.find((team) => team.classCode !== profile.classCode)
   const difference = leader.points - ownTeam.points
+  const countriesRevealed = isOrganizer || referenceDate.getTime() >= COUNTRY_REVEAL_AT
+  const standingsFrozen = !isOrganizer && referenceDate.getTime() >= STANDINGS_FREEZE_AT
+
+  if (!countriesRevealed) {
+    return <section className="competition-view country-reveal-teaser" aria-labelledby="competition-title">
+      <div className="page-intro"><p className="eyebrow">ENTER THE CHALLENGE</p><h1 id="competition-title">Er komt iets aan…</h1><p>Dinsdag om 14:00 uur ontdekt jouw klas wat de gezamenlijke uitdaging wordt.</p></div>
+      <article className="info-callout"><strong>Nog even geheim</strong><p>Tot de onthulling blijven de landen, vlaggen en tussenstand verborgen.</p></article>
+    </section>
+  }
 
   return (
     <section className="competition-view" aria-labelledby="competition-title">
@@ -755,9 +788,11 @@ function CompetitionView({ onNavigate }: CompetitionViewProps) {
       </article>
 
       <div className="score-meta">
-        <span><i className="status-pulse" /> Live klassement</span>
+        <span><i className={standingsFrozen ? '' : 'status-pulse'} /> {standingsFrozen ? 'Stand bevroren om 16:00 uur' : 'Live klassement'}</span>
         <small>💡 Tik op een land voor de exacte puntenopbouw</small>
       </div>
+
+      {standingsFrozen && <div className="info-callout standings-freeze-notice"><strong>De eindstand blijft geheim</strong><p>De organisatie kan nog punten verwerken. De definitieve uitslag wordt tijdens de afsluiting bekendgemaakt.</p></div>}
 
       <ol className="leaderboard" aria-label="Klassement van de landenstrijd">
         {standings.map((team) => {
@@ -860,7 +895,6 @@ function CompetitionView({ onNavigate }: CompetitionViewProps) {
           <button type="button" onClick={() => onNavigate('Meer', 'pov')}><Camera aria-hidden="true" /><div><strong>POV-foto’s</strong><span>Bekijk en plaats inzendingen</span></div><ChevronRight aria-hidden="true" /></button>
           <button type="button" onClick={() => onNavigate('Programma')}><Compass aria-hidden="true" /><div><strong>Experiences</strong><span>Bekijk waar en wanneer</span></div><ChevronRight aria-hidden="true" /></button>
           <button type="button" onClick={() => onNavigate('Kaart')}><Map aria-hidden="true" /><div><strong>City Game</strong><span>Open locaties en routes</span></div><ChevronRight aria-hidden="true" /></button>
-          <button type="button" onClick={() => onNavigate('Meer', 'notifications')}><Trophy aria-hidden="true" /><div><strong>Bonuspunten</strong><span>Bekijk acties en berichten</span></div><ChevronRight aria-hidden="true" /></button>
         </div>
       </section>
 
@@ -886,6 +920,7 @@ type MoreViewProps = {
   onToggleLargeText: () => void
   isWidescreen?: boolean
   onToggleWidescreen?: () => void
+  countriesRevealed: boolean
 }
 
 function formatNotificationTime(value: string) {
@@ -1000,32 +1035,34 @@ function MoreView({
   onToggleLargeText,
   isWidescreen = false,
   onToggleWidescreen,
+  countriesRevealed,
 }: MoreViewProps) {
   const profile = useAppProfile()
   const logout = useProfileLogout()
   const [notificationPreview, setNotificationPreview] = useState(true)
   const [vibrationEnabled, setVibrationEnabled] = useState(true)
-  const classItems = Array.isArray(content?.classes) ? content.classes : []
+  const resolvedContent = content ?? FALLBACK_MASTER_CONTENT
+  const classItems = Array.isArray(resolvedContent.classes) ? resolvedContent.classes : []
   const classContent = classItems.find((item) => item.active && item.classCode === profile.classCode) ?? null
-  const practicalItems = content
-    ? (Array.isArray(content.practical) ? content.practical : []).filter((item) => item.active).sort((left, right) => left.order - right.order)
-    : null
-  const discountItems = content
-    ? (Array.isArray(content.discounts) ? content.discounts : []).filter((item) => item.active).sort((left, right) => left.name.localeCompare(right.name, 'nl'))
-    : null
+  const practicalItems = (Array.isArray(resolvedContent.practical) ? resolvedContent.practical : [])
+    .filter((item) => item.active)
+    .sort((left, right) => left.order - right.order)
+  const discountItems = (Array.isArray(resolvedContent.discounts) ? resolvedContent.discounts : [])
+    .filter((item) => item.active)
+    .sort((left, right) => left.name.localeCompare(right.name, 'nl'))
   const settingIsEnabled = (key: string) => {
-    const value = content?.settings?.[key]
+    const value = resolvedContent.settings?.[key]
     return !['nee', 'false', '0', 'uit'].includes(typeof value === 'string' ? value.trim().toLowerCase() : '')
   }
-  const configuredPovAssignments = (Array.isArray(content?.povAssignments) ? content.povAssignments : []).filter((assignment) => assignment.active)
+  const configuredPovAssignments = (Array.isArray(resolvedContent.povAssignments) ? resolvedContent.povAssignments : []).filter((assignment) => assignment.active)
   const activePovAssignments = configuredPovAssignments.filter((assignment) => new Date(assignment.deadlineAt).getTime() >= Date.now())
   const visiblePovAssignments = profile.profileType === 'organizer'
     ? configuredPovAssignments
     : activePovAssignments.filter((assignment) => assignment.classCodes === 'all' || assignment.classCodes.includes(profile.classCode))
-  const practicalVisible = settingIsEnabled('toon_praktisch') && (content === null || Boolean(practicalItems?.length))
-  const discountsVisible = settingIsEnabled('toon_kortingen') && (content === null || Boolean(discountItems?.length))
+  const practicalVisible = settingIsEnabled('toon_praktisch') && Boolean(practicalItems.length)
+  const discountsVisible = settingIsEnabled('toon_kortingen') && Boolean(discountItems.length)
   const povVisible = settingIsEnabled('toon_pov') && !['poer', 'interested_teacher'].includes(profile.profileType) && (
-    content === null || Boolean(visiblePovAssignments.length) || Boolean(classContent?.povUrl)
+    Boolean(visiblePovAssignments.length) || Boolean(classContent?.povUrl)
   )
   const sections: Array<{ id: MoreSectionId; label: string; detail: string; icon: typeof Bell }> = [
     {
@@ -1035,6 +1072,8 @@ function MoreView({
       icon: Bell,
     },
     { id: 'help' as const, label: 'Contact & hulp', detail: 'Snel iemand vinden', icon: CircleHelp },
+    { id: 'instagram' as const, label: 'Instagram', detail: 'Volg de introweek', icon: Camera },
+    { id: 'avg' as const, label: 'AVG', detail: 'Jouw beeldkeuze', icon: ShieldCheck },
     { id: 'settings' as const, label: 'Instellingen', detail: 'Meldingen & tekst', icon: Settings },
   ]
   if (practicalVisible) sections.splice(1, 0, { id: 'practical', label: 'Praktisch', detail: 'Alles bij de hand', icon: CheckCircle2 })
@@ -1072,7 +1111,7 @@ function MoreView({
                   : profile.profileType === 'interested_teacher' ? 'Geïnteresseerde docent'
                     : 'Organisator',
             profile.classCode,
-            `${profile.country} ${profile.flag}`.trim(),
+            countriesRevealed ? `${profile.country} ${profile.flag}`.trim() : null,
           ].filter(Boolean).join(' · ')}</span>
         </span>
         <ShieldCheck aria-label="Profiel gekoppeld" />
@@ -1238,10 +1277,8 @@ function MoreView({
         {selected === 'discounts' && (
           <>
             <div className="more-panel-heading"><div><p className="eyebrow">Studentendeals</p><h2>Kortingen</h2></div><BadgePercent aria-hidden="true" /></div>
-            {discountItems === null && (
-              <div className="info-callout"><strong>Houd je polsbandje om</strong><p>Daarmee bewijs je bij deelnemende locaties dat je recht hebt op de introweekkorting.</p></div>
-            )}
-            {discountItems && discountItems.length > 0 && (
+            <div className="info-callout"><strong>Houd je polsbandje om</strong><p>Daarmee bewijs je bij deelnemende locaties dat je recht hebt op de introweekkorting.</p></div>
+            {discountItems.length > 0 && (
               <ul className="discount-list">
                 {discountItems.map((item) => (
                   <li key={item.id} className="discount-card">
@@ -1261,7 +1298,7 @@ function MoreView({
                 ))}
               </ul>
             )}
-            {discountItems?.length === 0 && <p className="panel-footnote">Er staan momenteel geen kortingen actief.</p>}
+            {discountItems.length === 0 && <p className="panel-footnote">Er staan momenteel geen kortingen actief.</p>}
           </>
         )}
 
@@ -1271,6 +1308,16 @@ function MoreView({
             <PovPanel profile={profile} assignments={visiblePovAssignments} fallbackUrl={classContent?.povUrl ?? null} />
           </>
         )}
+
+        {selected === 'instagram' && (
+          <>
+            <div className="more-panel-heading"><div><p className="eyebrow">ENTER THE FEED</p><h2>Instagram</h2></div><Camera aria-hidden="true" /></div>
+            <p>Volg de officiële Introweek LM 2026 voor foto’s, updates en terugblikken.</p>
+            <a className="primary-button more-link-button" href={content?.settings?.instagram_url || INSTAGRAM_URL} target="_blank" rel="noreferrer"><Camera aria-hidden="true" /><span>Open @introweeklm2026</span><ChevronRight aria-hidden="true" /></a>
+          </>
+        )}
+
+        {selected === 'avg' && <AvgPanel />}
 
         {selected === 'help' && (
           <ContactHelpPanel classAppUrl={classContent?.classAppUrl ?? null} />
@@ -1444,7 +1491,9 @@ function App() {
   const refreshResetTimerRef = useRef<number | null>(null)
   const electricXHideTimerRef = useRef<number | null>(null)
   const effectiveTime = simulatedDate ?? currentTime
-  const homeProgramme = getHomeProgramme(effectiveTime, currentProgrammeDays)
+  const countriesRevealed = profile.profileType === 'organizer' || effectiveTime.getTime() >= COUNTRY_REVEAL_AT
+  const visibleProgrammeDays = countriesRevealed ? currentProgrammeDays : hideCountryRevealDetails(currentProgrammeDays)
+  const homeProgramme = getHomeProgramme(effectiveTime, visibleProgrammeDays)
   const isWidescreenActive = widescreenDashboard && active === 'Meer' && moreSection === 'import' && profile.profileType === 'organizer'
 
   useEffect(() => {
@@ -1577,10 +1626,10 @@ function App() {
         <AnimatedBrandLogo firstName={profile.firstName} onTriggerEnterX={triggerEnterX} />
         <div className="identity-row">
           <div className="identity">
-            {profile.profileType === 'interested_teacher'
+            {profile.profileType === 'interested_teacher' || !countriesRevealed
               ? <UserRound aria-hidden="true" />
               : <CountryFlagIcon country={profile.country} size={24} />}
-            <span>{profile.classCode ? `${profile.classCode} · ${profile.country}` : profile.country}</span>
+            <span>{profile.classCode ? `${profile.classCode}${countriesRevealed ? ` · ${profile.country}` : ''}` : (countriesRevealed ? profile.country : 'Introweek')}</span>
           </div>
           <button
             className="icon-button notification"
@@ -1808,7 +1857,7 @@ function App() {
               </ol>
             </section>
 
-            <button className="standings-card" onClick={() => setActive('Strijd')}>
+            {countriesRevealed && <button className="standings-card" onClick={() => setActive('Strijd')}>
               <div className="standings-flag-wrapper waving-flag" aria-hidden="true">
                 <CountryFlagIcon country={profile.country} size={48} />
                 <div className="flag-wave-sheen" />
@@ -1824,15 +1873,15 @@ function App() {
                 <span>Bekijk</span>
                 <ChevronRight aria-hidden="true" />
               </span>
-            </button>
+            </button>}
           </>
         )}
 
-        {active === 'Programma' && <ProgrammeView programmeDays={currentProgrammeDays} weatherForecast={weatherForecast} onOpenWeather={setWeatherSelection} />}
+        {active === 'Programma' && <ProgrammeView programmeDays={visibleProgrammeDays} weatherForecast={weatherForecast} onOpenWeather={setWeatherSelection} />}
 
         {active === 'Kaart' && <MapView routeDays={currentRouteDays} />}
 
-        {active === 'Strijd' && <CompetitionView onNavigate={(destination, section) => {
+        {active === 'Strijd' && <CompetitionView referenceDate={effectiveTime} onNavigate={(destination, section) => {
           if (section) setMoreSection(section)
           setActive(destination)
           if (section === 'notifications') void notificationInbox.refresh()
@@ -1856,6 +1905,7 @@ function App() {
             onToggleLargeText={() => setLargeText((v) => !v)}
             isWidescreen={widescreenDashboard}
             onToggleWidescreen={() => setWidescreenDashboard((v) => !v)}
+            countriesRevealed={countriesRevealed}
           />
         )}
       </main>
