@@ -5,7 +5,11 @@ import type { MasterContent } from './import/parseWorkbook'
 
 type CachedContent = { version: number; content: MasterContent }
 
-const CACHE_KEY = 'lm-you-master-content:v1'
+// v2 voorkomt dat een oude inhoudssnapshot met toevallig hetzelfde
+// databaseversienummer als de huidige snapshot als actueel wordt gezien.
+// Dit veroorzaakt per apparaat eenmalig een volledige inhoudsdownload;
+// daarna blijven de egresszuinige versienummercontroles actief.
+const CACHE_KEY = 'lm-you-master-content:v2'
 const MIN_VERSION_CHECK_MS = 5 * 60 * 1000
 
 function readCache(): CachedContent | null {
