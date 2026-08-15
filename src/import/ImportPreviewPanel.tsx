@@ -16,8 +16,10 @@ import {
   type ImportComparison,
   type ImportChangeStatus,
   type PeopleMutationAction,
+  ImportAuthenticationError,
 } from './compareImport'
 import { parseImportWorkbook, type ImportPerson, type ImportPreview, type MasterContent } from './parseWorkbook'
+import { useProfileLogout } from '../profile'
 
 const statusLabels: Record<ImportChangeStatus, string> = {
   new: 'Nieuw',
@@ -162,12 +164,14 @@ function ContentActionSelect({ change, value, onChange }: { change: ContentChang
 }
 
 export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {}) {
+  const logout = useProfileLogout()
   const [preview, setPreview] = useState<ImportPreview | null>(null)
   const [loading, setLoading] = useState(false)
   const [comparing, setComparing] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [applying, setApplying] = useState(false)
   const [error, setError] = useState('')
+  const [authenticationRequired, setAuthenticationRequired] = useState(false)
   const [comparison, setComparison] = useState<ImportComparison | null>(null)
   const [contentComparison, setContentComparison] = useState<ContentComparison | null>(null)
   const [currentContent, setCurrentContent] = useState<MasterContent | null>(null)
@@ -185,6 +189,7 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
 
     setLoading(true)
     setError('')
+    setAuthenticationRequired(false)
     setPreview(null)
     setComparison(null)
     setContentComparison(null)
@@ -244,6 +249,7 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
     if (!preview || !ready) return
     setComparing(true)
     setError('')
+    setAuthenticationRequired(false)
     setComparison(null)
     setCurrentContent(null)
     setPeopleActions({})
@@ -267,6 +273,7 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
       setChangeSearch('')
       setChangePage(0)
     } catch (reason) {
+      setAuthenticationRequired(reason instanceof ImportAuthenticationError)
       setError(reason instanceof Error ? reason.message : 'Vergelijken lukt nu niet.')
     } finally {
       setComparing(false)
@@ -277,6 +284,7 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
     if (!preview || !comparison || !contentComparison || !currentContent || comparison.conflicts > 0) return
     setApplying(true)
     setError('')
+    setAuthenticationRequired(false)
     try {
       const resolvedRows = resolvePeopleMutations(preview.rows, comparison, peopleActions)
       if (resolvedRows.length === 0) throw new Error('Er moet minimaal één actief profiel in het definitieve importpakket overblijven.')
@@ -288,6 +296,7 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
       setConfirming(false)
       onApplied?.()
     } catch (reason) {
+      setAuthenticationRequired(reason instanceof ImportAuthenticationError)
       setError(reason instanceof Error ? reason.message : 'Verwerken lukt nu niet.')
     } finally {
       setApplying(false)
@@ -312,7 +321,15 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
         <input type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={selectFile} disabled={loading} />
       </label>
 
-      {error && <p className="import-error" role="alert"><AlertTriangle aria-hidden="true" />{error}</p>}
+      {error && (
+        <div className="import-error" role="alert">
+          <AlertTriangle aria-hidden="true" />
+          <span>{error}</span>
+          {authenticationRequired && (
+            <button type="button" onClick={logout}>Log veilig in als organisator</button>
+          )}
+        </div>
+      )}
 
       {preview && (
         <section className="import-result" aria-live="polite">
@@ -334,7 +351,7 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
           {ready ? (
             <>
               <div className="import-ready"><CheckCircle2 aria-hidden="true" /><p><strong>Klaar voor vergelijking</strong>Studenten {roleCounts.student ?? 0} · buddy’s {roleCounts.buddy ?? 0} · PO’ers {roleCounts.poer ?? 0} · organisatoren {roleCounts.organizer ?? 0}</p></div>
-              <button className="import-compare-button" onClick={compareWithCurrentData} disabled={comparing || applying}>
+              <button type="button" className="import-compare-button" onClick={compareWithCurrentData} disabled={comparing || applying}>
                 <span>{comparing ? 'Veilig vergelijken…' : comparison ? 'Vergelijk opnieuw' : 'Vergelijk met huidige gegevens'}</span><ArrowRight aria-hidden="true" />
               </button>
             </>

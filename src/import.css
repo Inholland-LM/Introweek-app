@@ -85,6 +85,7 @@
 .import-file-button input { position: absolute; width: 1px; height: 1px; overflow: hidden; opacity: 0; }
 
 .import-error {
+  flex-wrap: wrap;
   margin: 13px 0 0;
   padding: 12px;
   border: 1px solid #f2a8bc;
@@ -93,6 +94,22 @@
   background: #fff1f4;
   font-size: 0.77rem;
   line-height: 1.45;
+}
+
+.import-error span {
+  flex: 1;
+}
+
+.import-error button {
+  flex: 0 0 100%;
+  min-height: 42px;
+  border: 1px solid currentColor;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.78);
+  color: inherit;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
 }
 .import-error svg,
 .comparison-blocked svg { width: 19px; height: 19px; flex: 0 0 auto; color: #e3004f; }

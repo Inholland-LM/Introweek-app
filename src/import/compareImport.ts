@@ -68,6 +68,20 @@ export type MasterComparison = {
 export type PeopleMutationAction = 'apply' | 'keep' | 'skip' | 'deactivate'
 export type ContentMutationAction = 'apply' | 'keep' | 'skip' | 'remove'
 
+export class ImportAuthenticationError extends Error {
+  constructor() {
+    super('Je beveiligde inlogsessie ontbreekt of is verlopen. Log opnieuw in met je echte organisatoraccount. Testprofielen mogen de database bewust niet wijzigen.')
+    this.name = 'ImportAuthenticationError'
+  }
+}
+
+async function requireAuthenticatedImportSession() {
+  if (!supabase) throw new Error('De beveiligde databaseverbinding is nog niet geconfigureerd.')
+
+  const { data, error } = await supabase.auth.getSession()
+  if (error || !data.session) throw new ImportAuthenticationError()
+}
+
 function compareContent(current: Partial<MasterContent>, incoming: MasterContent, version: number): ContentComparison {
   const changes: ContentChange[] = []
   let unchanged = 0
@@ -144,6 +158,7 @@ export async function applyPeopleImport(rows: ImportPerson[], stateVersion: stri
 
 export async function compareMasterImport(rows: ImportPerson[], content: MasterContent): Promise<MasterComparison> {
   if (!supabase) throw new Error('De beveiligde databaseverbinding is nog niet geconfigureerd.')
+  await requireAuthenticatedImportSession()
   const [people, contentResponse] = await Promise.all([
     comparePeopleImport(rows),
     supabase.rpc('get_app_content'),
@@ -273,6 +288,7 @@ function validateResolvedContent(content: MasterContent) {
 
 export async function applyMasterImport(rows: ImportPerson[], peopleStateVersion: string, content: MasterContent, contentVersion: number) {
   if (!supabase) throw new Error('De beveiligde databaseverbinding is nog niet geconfigureerd.')
+  await requireAuthenticatedImportSession()
   const { data, error } = await supabase.rpc('apply_master_import', {
     import_rows: rows,
     expected_people_state_version: peopleStateVersion,
