@@ -9,7 +9,7 @@ type CachedContent = { version: number; content: MasterContent }
 // databaseversienummer als de huidige snapshot als actueel wordt gezien.
 // Dit veroorzaakt per apparaat eenmalig een volledige inhoudsdownload;
 // daarna blijven de egresszuinige versienummercontroles actief.
-const CACHE_KEY = 'lm-you-master-content:v2'
+const CACHE_KEY = 'lm-you-master-content:v3'
 const MIN_VERSION_CHECK_MS = 5 * 60 * 1000
 
 function readCache(): CachedContent | null {
@@ -167,16 +167,17 @@ export function buildRouteDays(content: MasterContent | null, classCode: string)
 }
 
 export function createInitialMasterContent(): MasterContent {
+  const classAppUrl = 'https://chat.whatsapp.com/KAAGsGCVnOD6fC1Is140pw'
   return {
     classes: [
-      { classCode: 'LM1A', country: 'Nederland', flag: '🇳🇱', povUrl: null, classAppUrl: null, active: true },
-      { classCode: 'LM1B', country: 'Duitsland', flag: '🇩🇪', povUrl: null, classAppUrl: null, active: true },
-      { classCode: 'LM1C', country: 'Frankrijk', flag: '🇫🇷', povUrl: null, classAppUrl: null, active: true },
-      { classCode: 'LM1D', country: 'Spanje', flag: '🇪🇸', povUrl: null, classAppUrl: null, active: true },
-      { classCode: 'LM1E', country: 'Italië', flag: '🇮🇹', povUrl: null, classAppUrl: null, active: true },
-      { classCode: 'LM1F', country: 'Zweden', flag: '🇸🇪', povUrl: null, classAppUrl: null, active: true },
-      { classCode: 'LM1G', country: 'Noorwegen', flag: '🇳🇴', povUrl: null, classAppUrl: null, active: true },
-      { classCode: 'LM1H', country: 'Denemarken', flag: '🇩🇰', povUrl: null, classAppUrl: null, active: true },
+      { classCode: 'LM1A', country: 'Nederland', flag: '🇳🇱', povUrl: null, classAppUrl, active: true },
+      { classCode: 'LM1B', country: 'Duitsland', flag: '🇩🇪', povUrl: null, classAppUrl, active: true },
+      { classCode: 'LM1C', country: 'Frankrijk', flag: '🇫🇷', povUrl: null, classAppUrl, active: true },
+      { classCode: 'LM1D', country: 'Spanje', flag: '🇪🇸', povUrl: null, classAppUrl, active: true },
+      { classCode: 'LM1E', country: 'Italië', flag: '🇮🇹', povUrl: null, classAppUrl, active: true },
+      { classCode: 'LM1F', country: 'Zweden', flag: '🇸🇪', povUrl: null, classAppUrl, active: true },
+      { classCode: 'LM1G', country: 'Noorwegen', flag: '🇳🇴', povUrl: null, classAppUrl, active: true },
+      { classCode: 'LM1H', country: 'Denemarken', flag: '🇩🇰', povUrl: null, classAppUrl, active: true },
     ],
     locations: [
       { id: 'loc-1', name: 'Inholland Amsterdam', address: 'Pina Bauschplein 4', postalCode: '1095 PN', city: 'Amsterdam', routeUrl: 'https://www.google.com/maps/search/?api=1&query=Hogeschool+Inholland+Amsterdam+Pina+Bauschplein+4', latitude: 52.3702, longitude: 4.9530, active: true },
@@ -200,10 +201,29 @@ export function createInitialMasterContent(): MasterContent {
     ],
     messages: [],
     povAssignments: [
-      { id: 'pov-1', title: 'Klasfoto op het NDSM-terrein', description: 'Maak een creatieve foto met de hele klas op de NDSM-werf.', classCodes: 'all', deadlineAt: '2026-08-27T16:00:00Z', maxUploads: 5, active: true },
+      { id: 'pov-01', title: 'Leukste teamfoto', description: 'Leg jullie team op zijn allerleukst vast.', classCodes: 'all', deadlineAt: '2026-08-27T16:00:00+02:00', maxUploads: 5, active: true },
+      { id: 'pov-02', title: 'Sportiefste foto tijdens SX', description: 'Maak de sportiefste foto tijdens SX.', classCodes: 'all', deadlineAt: '2026-08-27T16:00:00+02:00', maxUploads: 5, active: true },
+      { id: 'pov-03', title: 'Creatiefste foto tijdens HAG', description: 'Verras de jury met jullie creatiefste foto tijdens HAG.', classCodes: 'all', deadlineAt: '2026-08-27T16:00:00+02:00', maxUploads: 5, active: true },
+      { id: 'pov-04', title: 'Origineelste foto op de NDSM-werf', description: 'Maak op de NDSM-werf een foto die niemand anders bedenkt.', classCodes: 'all', deadlineAt: '2026-08-27T16:00:00+02:00', maxUploads: 5, active: true },
+      { id: 'pov-05', title: 'Grappigste foto bij ENTR', description: 'Leg het grappigste moment bij ENTR vast.', classCodes: 'all', deadlineAt: '2026-08-27T16:00:00+02:00', maxUploads: 5, active: true },
+      { id: 'pov-06', title: 'Opvallendste foto op de Nieuwmarkt', description: 'Val op met jullie foto op de Nieuwmarkt.', classCodes: 'all', deadlineAt: '2026-08-27T16:00:00+02:00', maxUploads: 5, active: true },
+      { id: 'pov-07', title: 'Gezelligste foto tijdens een borrel', description: 'Vang de gezelligste sfeer van een borrel.', classCodes: 'all', deadlineAt: '2026-08-27T16:00:00+02:00', maxUploads: 5, active: true },
+      { id: 'pov-08', title: 'Grappigste foto', description: 'Laat de jury lachen met jullie grappigste foto.', classCodes: 'all', deadlineAt: '2026-08-27T16:00:00+02:00', maxUploads: 5, active: true },
+      { id: 'pov-09', title: 'Uitblinker', description: 'Zet jullie uitblinker in de spotlight.', classCodes: 'all', deadlineAt: '2026-08-27T16:00:00+02:00', maxUploads: 5, active: true },
     ],
     practical: [],
-    discounts: [],
-    settings: { app_name: 'LM = YOU' },
+    discounts: [
+      { id: 'discount-beautiful-mess', name: 'A Beautiful Mess', description: '10% korting op het pakket met huisgemaakte dips, versgebakken flatbread, een kleine sweet treat en huisgemaakte limonade.', address: 'Oosterdokskade 227, 1011 DL Amsterdam', routeUrl: 'https://www.google.com/maps/search/?api=1&query=A+Beautiful+Mess+Oosterdokskade+227+Amsterdam', terms: 'Op vertoon van de introweekvoucher.', validFrom: '2026-08-25', validUntil: '2026-08-27', active: true },
+      { id: 'discount-we-are-edn', name: 'WE ARE EDN Restaurant', description: '20% korting op de totale bon.', address: 'Oosterdokskade 4, Ground Floor, 1011 DK Amsterdam', routeUrl: 'https://www.google.com/maps/search/?api=1&query=WE+ARE+EDN+Restaurant+Oosterdokskade+4+Amsterdam', terms: 'Op vertoon van de voucher.', validFrom: '2026-08-25', validUntil: '2026-08-27', active: true },
+      { id: 'discount-baanderij', name: 'De Baanderij', description: 'Een koffie voor € 1.', address: 'NDSM-Kade 5, 1033 PG Amsterdam', routeUrl: 'https://www.google.com/maps/search/?api=1&query=De+Baanderij+NDSM-Kade+5+Amsterdam', terms: 'Op vertoon van de introweekvoucher.', validFrom: '2026-08-25', validUntil: '2026-08-27', active: true },
+      { id: 'discount-ijver', name: 'IJver Amsterdam', description: '20% korting op de totale bon.', address: 'Scheepsbouwkade 72, 1033 WM Amsterdam', routeUrl: 'https://www.google.com/maps/search/?api=1&query=IJver+Amsterdam+Scheepsbouwkade+72', terms: 'Op vertoon van de introweekvoucher.', validFrom: '2026-08-25', validUntil: '2026-08-27', active: true },
+      { id: 'discount-waag', name: 'De Waag', description: '10% korting op eten en drinken.', address: 'Nieuwmarkt 4, 1012 CR Amsterdam', routeUrl: 'https://www.google.com/maps/search/?api=1&query=De+Waag+Nieuwmarkt+4+Amsterdam', terms: 'Op vertoon van de introweekvoucher.', validFrom: '2026-08-25', validUntil: '2026-08-27', active: true },
+    ],
+    settings: {
+      app_name: 'LM = YOU',
+      toon_kortingen: 'ja',
+      toon_pov: 'ja',
+      instagram_url: 'https://www.instagram.com/introweeklm2026?igsh=MmdpcTl1b3FjOGRz&igsi=MmdpcTl1b3FjOGRz',
+    },
   }
 }

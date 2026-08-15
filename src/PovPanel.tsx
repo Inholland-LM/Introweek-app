@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { Camera, CheckCircle2, ChevronRight, Image, LoaderCircle, Upload, X } from 'lucide-react'
+import { ArrowLeft, Camera, CheckCircle2, ChevronRight, Image, LoaderCircle, Trash2, Upload, X } from 'lucide-react'
 import type { MasterContent } from './import/parseWorkbook'
 import type { AppProfile } from './profile'
-import { createPovPhotoUrl, fetchClassPovSubmissions, fetchPovSubmissions, uploadPovPhoto, type PovSubmission } from './povUploads'
+import { createPovPhotoUrl, deletePovSubmission, fetchClassPovSubmissions, fetchPovSubmissions, uploadPovPhoto, type PovSubmission } from './povUploads'
 
 type Props = {
   profile: AppProfile
@@ -50,7 +50,7 @@ function ClassPovCard({ item, onOpen }: { item: PovSubmission; onOpen: (item: Po
 }
 
 function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
-  const [assignmentId, setAssignmentId] = useState(assignments[0]?.id ?? '')
+  const [assignmentId, setAssignmentId] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [caption, setCaption] = useState('')
   const [consent, setConsent] = useState(false)
@@ -61,7 +61,7 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
   const [galleryLoading, setGalleryLoading] = useState(false)
   const [photoUrl, setPhotoUrl] = useState('')
   const [photoTitle, setPhotoTitle] = useState('')
-  const selectedAssignment = assignments.find((item) => item.id === assignmentId) ?? assignments[0]
+  const selectedAssignment = assignments.find((item) => item.id === assignmentId)
   const submittedCount = submissions.filter((item) => item.reviewStatus !== 'rejected').length
   const remainingCount = Math.max(0, (selectedAssignment?.maxUploads ?? 0) - submittedCount)
 
@@ -84,6 +84,17 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
     ) : <p className="panel-footnote">Er staat voor {profile.classCode} momenteel geen POV-opdracht open.</p>
   }
 
+  if (!selectedAssignment) {
+    return <div className="pov-category-list" aria-label="POV-categorieën">
+      <p className="pov-category-intro">Kies eerst een categorie. Daarna zie je de opdracht, de inzendingen van jouw klas en de uploadmogelijkheid.</p>
+      {assignments.map((assignment, index) => <button key={assignment.id} type="button" onClick={() => setAssignmentId(assignment.id)}>
+        <span className="pov-category-number">{String(index + 1).padStart(2, '0')}</span>
+        <span><strong>{assignment.title}</strong><small>Open categorie</small></span>
+        <ChevronRight aria-hidden="true" />
+      </button>)}
+    </div>
+  }
+
   async function submit() {
     if (!selectedAssignment || !file || !consent) return
     setBusy(true); setError(''); setSuccess('')
@@ -101,11 +112,8 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
 
   return (
     <div className="pov-upload-flow">
+      <button type="button" className="pov-category-back" onClick={() => setAssignmentId('')}><ArrowLeft aria-hidden="true" /> Alle categorieën</button>
       <div className="pov-assignment">
-        <label htmlFor="pov-assignment">Opdracht</label>
-        <select id="pov-assignment" value={selectedAssignment?.id ?? ''} onChange={(event) => setAssignmentId(event.target.value)}>
-          {assignments.map((assignment) => <option key={assignment.id} value={assignment.id}>{assignment.title}</option>)}
-        </select>
         {selectedAssignment && (
           <>
             <strong>{selectedAssignment.title}</strong>
@@ -126,7 +134,7 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
       </label>
       <label className="pov-caption">Bijschrift (optioneel)<textarea maxLength={240} value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Wat zien we op deze foto?" /></label>
       <label className="pov-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span>Ik heb toestemming van herkenbare personen op de foto.</span></label>
-      <p className="pov-privacy-note">De app verkleint de foto vóór verzending. Alleen jouw klas en de organisatie kunnen de inzendingen bekijken.</p>
+      <p className="pov-privacy-note">De app verkleint de foto vóór verzending. De organisatie bekijkt iedere foto eerst; pas na goedkeuring kan jouw klas de foto openen.</p>
       {error && <div className="notification-state notification-error" role="alert">{error}</div>}
       {success && <div className="pov-success" role="status"><CheckCircle2 aria-hidden="true" />{success}</div>}
       <button className="primary-button pov-submit" type="button" disabled={!file || !consent || busy} onClick={() => { void submit() }}>
@@ -198,6 +206,16 @@ function OrganizerPovPanel({ assignments }: Pick<Props, 'assignments'>) {
     }
   }
 
+  async function remove(item: PovSubmission) {
+    if (!window.confirm(`Foto “${item.assignmentTitle}” van ${item.uploaderName} definitief verwijderen?`)) return
+    setLoading(true); setError('')
+    try {
+      await deletePovSubmission(item.id)
+      setSubmissions((current) => current.filter((submission) => submission.id !== item.id))
+      if (photoTitle.includes(item.uploaderName)) { setPhotoUrl(''); setPhotoTitle('') }
+    } catch (reason) { setError(friendlyUploadError(reason)) } finally { setLoading(false) }
+  }
+
   return (
     <div className="pov-organizer">
       <div className="info-callout"><strong>{assignments.length} actieve opdracht{assignments.length === 1 ? '' : 'en'}</strong><p>Foto’s worden niet automatisch geladen. Dat houdt dataverbruik en egress laag.</p></div>
@@ -207,7 +225,7 @@ function OrganizerPovPanel({ assignments }: Pick<Props, 'assignments'>) {
         <input className="pov-search" type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Zoek op klas, naam of opdracht" />
         <small className="pov-result-count">{filtered.length} van {submissions.length} getoond</small>
         <ul className="pov-submission-list">
-          {filtered.map((item) => <li key={item.id}><div><strong>{item.assignmentTitle}</strong><span>{item.classCode} · {item.uploaderName}</span>{item.caption && <p>{item.caption}</p>}<small>{new Intl.DateTimeFormat('nl-NL', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.uploadedAt))}</small></div><button type="button" onClick={() => { void openPhoto(item) }}>Bekijk foto</button></li>)}
+          {filtered.map((item) => <li key={item.id}><div><strong>{item.assignmentTitle}</strong><span>{item.classCode} · {item.uploaderName}</span>{item.caption && <p>{item.caption}</p>}<small>{new Intl.DateTimeFormat('nl-NL', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(item.uploadedAt))}</small></div><span className="pov-organizer-actions"><button type="button" onClick={() => { void openPhoto(item) }}>Bekijk foto</button><button type="button" className="danger" onClick={() => { void remove(item) }}><Trash2 aria-hidden="true" /> Verwijder</button></span></li>)}
         </ul>
         {!filtered.length && <p className="panel-footnote">Geen inzendingen gevonden.</p>}
       </>}
