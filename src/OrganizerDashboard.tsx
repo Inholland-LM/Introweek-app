@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import {
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
   Bell,
   Calendar,
   Camera,
@@ -78,6 +81,9 @@ type MessageHistoryFilters = {
   channel: 'all' | OrganizerDeliveryChannel
 }
 
+type PeopleSortKey = 'firstName' | 'lastName' | 'studentNumber' | 'email' | 'role' | 'classCode' | 'active'
+type SortDirection = 'asc' | 'desc'
+
 const EMPTY_MESSAGE_FILTERS: MessageHistoryFilters = { day: '', time: '', target: '', channel: 'all' }
 
 function deliveryChannelLabel(channel: OrganizerDeliveryChannel) {
@@ -128,6 +134,14 @@ function programmeAudienceLabel(classCodes: string[] | 'all') {
   return classCodes === 'all' ? 'Alle klassen' : classCodes.join(', ')
 }
 
+function organizerRoleLabel(role: ImportRole) {
+  if (role === 'student') return 'Student'
+  if (role === 'buddy') return 'Buddy'
+  if (role === 'poer') return "PO'er"
+  if (role === 'interested_teacher') return 'Docent / Medewerker'
+  return 'Organisator'
+}
+
 export function OrganizerDashboard({
   profile,
   content,
@@ -149,6 +163,10 @@ export function OrganizerDashboard({
   const [personSearch, setPersonSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [classFilter, setClassFilter] = useState<string>('all')
+  const [peopleSort, setPeopleSort] = useState<{ key: PeopleSortKey; direction: SortDirection }>({
+    key: 'lastName',
+    direction: 'asc',
+  })
 
   // New Person Modal
   const [newFirstName, setNewFirstName] = useState('')
@@ -168,6 +186,7 @@ export function OrganizerDashboard({
   const [editEmail, setEditEmail] = useState('')
   const [editRole, setEditRole] = useState<ImportRole>('student')
   const [editClassCode, setEditClassCode] = useState('LM1A')
+  const [editActive, setEditActive] = useState(true)
   const [showEditPersonModal, setShowEditPersonModal] = useState(false)
   const [editSendNotification, setEditSendNotification] = useState(true)
   const [editNotificationChannel, setEditNotificationChannel] = useState<OrganizerDeliveryChannel>('both')
@@ -475,6 +494,7 @@ export function OrganizerDashboard({
     setEditEmail(person.email)
     setEditRole(person.role)
     setEditClassCode(person.classCode ?? '')
+    setEditActive(person.active)
     setEditSendNotification(true)
     setEditNotificationChannel('both')
     setShowEditPersonModal(true)
@@ -496,9 +516,9 @@ export function OrganizerDashboard({
         email: editEmail.trim(),
         role: editRole,
         classCode: nextClassCode,
-        active: true,
+        active: editActive,
       }, editingPersonId)
-      if (editSendNotification) {
+      if (editSendNotification && editActive) {
         const classChanged = (original?.classCode ?? null) !== nextClassCode
         await notifyOrganizerPersonChange({
           profileId: editingPersonId,
@@ -512,7 +532,13 @@ export function OrganizerDashboard({
       setShowEditPersonModal(false)
       setEditingPersonId(null)
       await loadOrganizerPeople()
-      setPeopleSuccess(editSendNotification ? 'Wijziging opgeslagen en notificatie verstuurd.' : 'Wijziging opgeslagen.')
+      setPeopleSuccess(
+        editSendNotification && editActive
+          ? 'Wijziging opgeslagen en notificatie verstuurd.'
+          : editActive
+            ? 'Wijziging opgeslagen.'
+            : 'Wijziging opgeslagen. De persoon is nu inactief.',
+      )
     } catch (reason) {
       setPeopleError(reason instanceof Error ? reason.message : 'De wijzigingen konden niet worden opgeslagen.')
     } finally {
@@ -998,13 +1024,43 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
   }, [programmeDayFilter, programmeSearch, programmesList])
 
   const filteredPeople = useMemo(() => {
+    const collator = new Intl.Collator('nl-NL', { sensitivity: 'base', numeric: true })
+    const direction = peopleSort.direction === 'asc' ? 1 : -1
+
+    function sortValue(person: OrganizerPerson) {
+      if (peopleSort.key === 'role') return organizerRoleLabel(person.role)
+      if (peopleSort.key === 'active') return person.active ? 'Actief' : 'Inactief'
+      return person[peopleSort.key] ?? ''
+    }
+
     return people.filter((p) => {
-      const matchQuery = `${p.firstName} ${p.lastName} ${p.studentNumber ?? ''} ${p.email} ${p.classCode}`.toLowerCase().includes(personSearch.toLowerCase())
+      const matchQuery = `${p.firstName} ${p.namePrefix ?? ''} ${p.lastName} ${p.studentNumber ?? ''} ${p.email} ${p.classCode}`.toLowerCase().includes(personSearch.toLowerCase())
       const matchRole = roleFilter === 'all' || p.role === roleFilter
       const matchClass = classFilter === 'all' || p.classCode === classFilter
       return matchQuery && matchRole && matchClass
+    }).sort((left, right) => {
+      const primary = collator.compare(String(sortValue(left)), String(sortValue(right)))
+      if (primary !== 0) return primary * direction
+
+      return collator.compare(left.lastName, right.lastName)
+        || collator.compare(left.namePrefix ?? '', right.namePrefix ?? '')
+        || collator.compare(left.firstName, right.firstName)
     })
-  }, [people, personSearch, roleFilter, classFilter])
+  }, [people, personSearch, roleFilter, classFilter, peopleSort])
+
+  function togglePeopleSort(key: PeopleSortKey) {
+    setPeopleSort((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'asc' ? 'desc' : 'asc',
+    }))
+  }
+
+  function renderPeopleSortIcon(key: PeopleSortKey) {
+    if (peopleSort.key !== key) return <ArrowUpDown aria-hidden="true" />
+    return peopleSort.direction === 'asc'
+      ? <ArrowUp aria-hidden="true" />
+      : <ArrowDown aria-hidden="true" />
+  }
 
   function filterMessages(items: AnnouncementMessage[], filters: MessageHistoryFilters) {
     return items.filter((message) => {
@@ -1161,31 +1217,70 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                 <table className="dashboard-table">
                   <thead>
                     <tr>
-                      <th>Naam</th>
-                      <th>Studentnummer</th>
-                      <th>E-mailadres</th>
-                      <th>Rol</th>
-                      <th>Klas</th>
-                      <th>Status</th>
+                      <th aria-sort={peopleSort.key === 'firstName' ? (peopleSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <button type="button" className="table-sort-button" onClick={() => togglePeopleSort('firstName')}>
+                          Voornaam
+                          {renderPeopleSortIcon('firstName')}
+                        </button>
+                      </th>
+                      <th>Tussenvoegsel</th>
+                      <th aria-sort={peopleSort.key === 'lastName' ? (peopleSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <button type="button" className="table-sort-button" onClick={() => togglePeopleSort('lastName')}>
+                          Achternaam
+                          {renderPeopleSortIcon('lastName')}
+                        </button>
+                      </th>
+                      <th className="student-number-column" aria-sort={peopleSort.key === 'studentNumber' ? (peopleSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <button type="button" className="table-sort-button" onClick={() => togglePeopleSort('studentNumber')}>
+                          Stud. nr.
+                          {renderPeopleSortIcon('studentNumber')}
+                        </button>
+                      </th>
+                      <th aria-sort={peopleSort.key === 'email' ? (peopleSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <button type="button" className="table-sort-button" onClick={() => togglePeopleSort('email')}>
+                          E-mailadres
+                          {renderPeopleSortIcon('email')}
+                        </button>
+                      </th>
+                      <th aria-sort={peopleSort.key === 'role' ? (peopleSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <button type="button" className="table-sort-button" onClick={() => togglePeopleSort('role')}>
+                          Rol
+                          {renderPeopleSortIcon('role')}
+                        </button>
+                      </th>
+                      <th aria-sort={peopleSort.key === 'classCode' ? (peopleSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <button type="button" className="table-sort-button" onClick={() => togglePeopleSort('classCode')}>
+                          Klas
+                          {renderPeopleSortIcon('classCode')}
+                        </button>
+                      </th>
+                      <th aria-sort={peopleSort.key === 'active' ? (peopleSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
+                        <button type="button" className="table-sort-button" onClick={() => togglePeopleSort('active')}>
+                          Status
+                          {renderPeopleSortIcon('active')}
+                        </button>
+                      </th>
                       <th style={{ textAlign: 'right' }}>Acties</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredPeople.map((person) => (
                       <tr key={person.profileId}>
-                        <td>
-                          <div className="person-name-cell"><strong>{[person.firstName, person.namePrefix, person.lastName].filter(Boolean).join(' ')}</strong></div>
-                        </td>
-                        <td>{person.studentNumber || '—'}</td>
+                        <td><strong>{person.firstName || '—'}</strong></td>
+                        <td>{person.namePrefix || '—'}</td>
+                        <td><strong>{person.lastName || '—'}</strong></td>
+                        <td className="student-number-column">{person.studentNumber || '—'}</td>
                         <td>{person.email}</td>
                         <td>
                           <span className={`role-badge role-${person.role}`}>
-                            {person.role === 'interested_teacher' ? 'Docent / Medewerker' : person.role.toUpperCase()}
+                            {organizerRoleLabel(person.role)}
                           </span>
                         </td>
                         <td><strong>{person.classCode ?? 'Geen'}</strong></td>
                         <td>
-                          <span className="status-dot-active">● Actief</span>
+                          <span className={person.active ? 'status-dot-active' : 'status-dot-inactive'}>
+                            ● {person.active ? 'Actief' : 'Inactief'}
+                          </span>
                         </td>
                         <td style={{ textAlign: 'right' }}>
                           <div className="table-row-actions">
@@ -1194,25 +1289,28 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                               className="secondary-button icon-only-btn"
                               onClick={() => openEditPersonModal(person)}
                               title="Persoon bewerken"
+                              aria-label={`Bewerk ${[person.firstName, person.namePrefix, person.lastName].filter(Boolean).join(' ')}`}
                             >
                               <Edit3 aria-hidden="true" />
-                              <span>Bewerken</span>
                             </button>
-                            <button
-                              type="button"
-                              className="danger-button icon-only-btn"
-                              onClick={() => void handleDeletePerson(person)}
-                              disabled={peopleSaving}
-                              title="Persoon verwijderen"
-                            >
-                              <Trash2 aria-hidden="true" />
-                            </button>
+                            {person.active && (
+                              <button
+                                type="button"
+                                className="danger-button icon-only-btn"
+                                onClick={() => void handleDeletePerson(person)}
+                                disabled={peopleSaving}
+                                title="Persoon inactief zetten"
+                                aria-label={`Zet ${[person.firstName, person.namePrefix, person.lastName].filter(Boolean).join(' ')} inactief`}
+                              >
+                                <Trash2 aria-hidden="true" />
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
                     ))}
                     {!peopleLoading && filteredPeople.length === 0 && (
-                      <tr><td colSpan={7}>Geen personen gevonden.</td></tr>
+                      <tr><td colSpan={9}>Geen personen gevonden.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1848,15 +1946,28 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                   ))}
                 </select>
               </label>
+              <label>
+                <span>Status</span>
+                <select value={editActive ? 'active' : 'inactive'} onChange={(e) => {
+                  const nextActive = e.target.value === 'active'
+                  setEditActive(nextActive)
+                  if (!nextActive) setEditSendNotification(false)
+                }}>
+                  <option value="active">Actief</option>
+                  <option value="inactive">Inactief</option>
+                </select>
+              </label>
               <fieldset className="person-notification-options full-width">
                 <label className="person-notification-toggle">
                   <input
                     type="checkbox"
                     checked={editSendNotification}
+                    disabled={!editActive}
                     onChange={(e) => setEditSendNotification(e.target.checked)}
                   />
                   <span>Stuur notificatie over deze wijziging</span>
                 </label>
+                {!editActive && <small>Een inactief profiel ontvangt geen app- of pushmeldingen.</small>}
                 {editSendNotification && (
                   <label>
                     <span>Verzendkanaal</span>

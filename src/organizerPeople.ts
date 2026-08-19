@@ -36,6 +36,7 @@ export async function saveOrganizerPerson(person: ImportPerson, profileId: strin
     person_email: person.email,
     person_role: person.role,
     person_class_code: person.classCode,
+    person_active: person.active,
   })
   if (error) throw new Error(friendlyOrganizerError(error, 'De persoon kon niet worden opgeslagen.'))
   return data as OrganizerPerson
