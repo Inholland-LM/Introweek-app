@@ -43,6 +43,7 @@ import { supabase } from './lib/supabase'
 import {
   deactivateOrganizerPerson,
   fetchOrganizerPeople,
+  notifyOrganizerPersonChange,
   saveOrganizerPerson,
   type OrganizerPerson,
 } from './organizerPeople'
@@ -133,6 +134,7 @@ export function OrganizerDashboard({
   const [peopleLoading, setPeopleLoading] = useState(false)
   const [peopleSaving, setPeopleSaving] = useState(false)
   const [peopleError, setPeopleError] = useState('')
+  const [peopleSuccess, setPeopleSuccess] = useState('')
   const [personSearch, setPersonSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [classFilter, setClassFilter] = useState<string>('all')
@@ -156,6 +158,8 @@ export function OrganizerDashboard({
   const [editRole, setEditRole] = useState<ImportRole>('student')
   const [editClassCode, setEditClassCode] = useState('LM1A')
   const [showEditPersonModal, setShowEditPersonModal] = useState(false)
+  const [editSendNotification, setEditSendNotification] = useState(true)
+  const [editNotificationChannel, setEditNotificationChannel] = useState<OrganizerDeliveryChannel>('both')
 
   // POV Submissions State
   const [submissions, setSubmissions] = useState<PovSubmission[]>([])
@@ -439,6 +443,8 @@ export function OrganizerDashboard({
     setEditEmail(person.email)
     setEditRole(person.role)
     setEditClassCode(person.classCode ?? '')
+    setEditSendNotification(true)
+    setEditNotificationChannel('both')
     setShowEditPersonModal(true)
   }
 
@@ -446,7 +452,10 @@ export function OrganizerDashboard({
     if (!editingPersonId || !editFirstName.trim() || !editLastName.trim() || !editEmail.trim() || peopleSaving) return
     setPeopleSaving(true)
     setPeopleError('')
+    setPeopleSuccess('')
     try {
+      const original = people.find((person) => person.profileId === editingPersonId)
+      const nextClassCode = ['interested_teacher', 'organizer'].includes(editRole) ? null : editClassCode
       await saveOrganizerPerson({
         studentNumber: ['student', 'buddy'].includes(editRole) ? editStudentNumber.trim() || null : null,
         firstName: editFirstName.trim(),
@@ -454,12 +463,24 @@ export function OrganizerDashboard({
         lastName: editLastName.trim(),
         email: editEmail.trim(),
         role: editRole,
-        classCode: ['interested_teacher', 'organizer'].includes(editRole) ? null : editClassCode,
+        classCode: nextClassCode,
         active: true,
       }, editingPersonId)
+      if (editSendNotification) {
+        const classChanged = (original?.classCode ?? null) !== nextClassCode
+        await notifyOrganizerPersonChange({
+          profileId: editingPersonId,
+          title: classChanged ? 'Je klas is gewijzigd' : 'Je profiel is bijgewerkt',
+          body: classChanged
+            ? `Je gaat van ${original?.classCode || 'geen klas'} naar ${nextClassCode || 'geen klas'}. Je programma en contactpersonen zijn bijgewerkt.`
+            : 'De organisatie heeft je profielgegevens bijgewerkt.',
+          deliveryChannel: editNotificationChannel,
+        })
+      }
       setShowEditPersonModal(false)
       setEditingPersonId(null)
       await loadOrganizerPeople()
+      setPeopleSuccess(editSendNotification ? 'Wijziging opgeslagen en notificatie verstuurd.' : 'Wijziging opgeslagen.')
     } catch (reason) {
       setPeopleError(reason instanceof Error ? reason.message : 'De wijzigingen konden niet worden opgeslagen.')
     } finally {
@@ -1015,6 +1036,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
               </div>
 
               {peopleError && <div className="notification-state notification-error">{peopleError}</div>}
+              {peopleSuccess && <div className="notification-state notification-success">{peopleSuccess}</div>}
               {peopleLoading && <div className="notification-state">Personen uit de beveiligde database laden…</div>}
 
               {/* Filters Bar */}
@@ -1675,6 +1697,29 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                   ))}
                 </select>
               </label>
+              <fieldset className="person-notification-options full-width">
+                <label className="person-notification-toggle">
+                  <input
+                    type="checkbox"
+                    checked={editSendNotification}
+                    onChange={(e) => setEditSendNotification(e.target.checked)}
+                  />
+                  <span>Stuur notificatie over deze wijziging</span>
+                </label>
+                {editSendNotification && (
+                  <label>
+                    <span>Verzendkanaal</span>
+                    <select
+                      value={editNotificationChannel}
+                      onChange={(e) => setEditNotificationChannel(e.target.value as OrganizerDeliveryChannel)}
+                    >
+                      <option value="both">Beide (push en in-app)</option>
+                      <option value="push">Alleen push</option>
+                      <option value="in-app">Alleen in-app</option>
+                    </select>
+                  </label>
+                )}
+              </fieldset>
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
               <button type="button" className="secondary-button" onClick={() => setShowEditPersonModal(false)}>

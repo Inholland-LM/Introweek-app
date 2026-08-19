@@ -41,6 +41,22 @@ export async function saveOrganizerPerson(person: ImportPerson, profileId: strin
   return data as OrganizerPerson
 }
 
+export async function notifyOrganizerPersonChange(input: {
+  profileId: string
+  title: string
+  body: string
+  deliveryChannel: 'in-app' | 'push' | 'both'
+}): Promise<void> {
+  const client = requireClient()
+  const { error } = await client.rpc('notify_organizer_person_change', {
+    target_profile_id: input.profileId,
+    message_title: input.title,
+    message_body: input.body,
+    delivery_channel: input.deliveryChannel,
+  })
+  if (error) throw new Error(friendlyOrganizerError(error, 'De wijziging is opgeslagen, maar de notificatie kon niet worden verstuurd.'))
+}
+
 export async function deactivateOrganizerPerson(profileId: string): Promise<void> {
   const client = requireClient()
   const { error } = await client.rpc('deactivate_organizer_person', { target_profile_id: profileId })
