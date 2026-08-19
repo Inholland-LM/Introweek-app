@@ -173,24 +173,20 @@ export function AuthGate({ children }: AuthGateProps) {
         if (!active) return
         const record = data as ProfileRecord | null
 
-        const userEmail = session.user.email?.toLowerCase() ?? ''
-        const isOrganizerEmail = userEmail.includes('jacco.borsch@inholland.nl')
-          || userEmail.includes('jacco')
-          || record?.profile_type === 'organizer'
-
-        const isInterestedTeacher = record?.profile_type === 'interested_teacher'
-        const classInfo = record?.class_memberships?.[0]?.classes
-          ?? (isOrganizerEmail
-            ? { code: 'TEAM', country: 'Organisatie', flag: '🇳🇱' }
-            : isInterestedTeacher
-              ? { code: '', country: 'Geïnteresseerde docent', flag: '' }
-            : null)
-
-        if ((profileError || !record) && !isOrganizerEmail) {
+        if (profileError || !record) {
           setProfile(null)
           setProfileChecked(true)
           return
         }
+
+        const isOrganizer = record.profile_type === 'organizer'
+        const isInterestedTeacher = record.profile_type === 'interested_teacher'
+        const classInfo = record?.class_memberships?.[0]?.classes
+          ?? (isOrganizer
+            ? { code: 'TEAM', country: 'Organisatie', flag: '🇳🇱' }
+            : isInterestedTeacher
+              ? { code: '', country: 'Geïnteresseerde docent', flag: '' }
+            : null)
 
         if (!classInfo) {
           setProfile(null)
@@ -198,17 +194,14 @@ export function AuthGate({ children }: AuthGateProps) {
           return
         }
 
-        const firstName = record?.first_name ?? (userEmail.includes('jacco') ? 'Jacco' : 'Organisator')
-        const lastName = record?.last_name ?? (userEmail.includes('jacco') ? 'Borsch' : '')
-        const displayName = record
-          ? [record.first_name, record.name_prefix, record.last_name].filter(Boolean).join(' ')
-          : [firstName, lastName].filter(Boolean).join(' ')
+        const firstName = record.first_name
+        const displayName = [record.first_name, record.name_prefix, record.last_name].filter(Boolean).join(' ')
 
         setProfile({
-          id: record?.id ?? session.user.id,
+          id: record.id,
           firstName,
           displayName,
-          profileType: isOrganizerEmail ? 'organizer' : (record?.profile_type ?? 'student'),
+          profileType: record.profile_type,
           classCode: classInfo.code,
           country: classInfo.country,
           flag: classInfo.flag,
