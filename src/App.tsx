@@ -24,7 +24,8 @@ import {
   Trophy,
   X,
 } from 'lucide-react'
-import { defaultScoreHistories, getDefaultIntroDayId, standings, type ProgrammeDay, type RouteDay, type Standing, type TeamScoreHistory } from './data'
+import { getDefaultIntroDayId, type ProgrammeDay, type RouteDay, type Standing, type TeamScoreHistory } from './data'
+import { useCompetitionStandings } from './competitionScores'
 import { buildProgrammeDays, buildRouteDays, createInitialMasterContent, useMasterContent } from './content'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import { type AppNotification, useNotifications } from './notifications'
@@ -690,6 +691,7 @@ function MapView({ routeDays }: { routeDays: RouteDay[] }) {
 type CompetitionViewProps = {
   onNavigate: (destination: NavLabel, moreSection?: MoreSectionId) => void
   referenceDate: Date
+  standings: Standing[]
 }
 
 function hideCountryRevealDetails(programmeDays: ProgrammeDay[]): ProgrammeDay[] {
@@ -708,7 +710,7 @@ function hideCountryRevealDetails(programmeDays: ProgrammeDay[]): ProgrammeDay[]
   }))
 }
 
-function CompetitionView({ onNavigate, referenceDate }: CompetitionViewProps) {
+function CompetitionView({ onNavigate, referenceDate, standings }: CompetitionViewProps) {
   const profile = useAppProfile()
   const [selectedTeam, setSelectedTeam] = useState<Standing | null>(null)
   const leader = standings[0]
@@ -820,7 +822,7 @@ function CompetitionView({ onNavigate, referenceDate }: CompetitionViewProps) {
                 </div>
                 <small>{team.classCode}</small>
                 <span className="score-track" aria-hidden="true">
-                  <i style={{ width: `${Math.round((team.points / leader.points) * 100)}%` }} />
+                  <i style={{ width: `${leader.points > 0 ? Math.round((team.points / leader.points) * 100) : 0}%` }} />
                 </span>
               </span>
               <span className="standing-points">
@@ -856,7 +858,7 @@ function CompetitionView({ onNavigate, referenceDate }: CompetitionViewProps) {
               </div>
 
               <div className="score-history-list">
-                {(selectedTeam.history ?? defaultScoreHistories[selectedTeam.classCode] ?? []).map((entry: TeamScoreHistory, idx: number) => (
+                {(selectedTeam.history ?? []).map((entry: TeamScoreHistory, idx: number) => (
                   <div key={entry.id || idx} className="score-history-card">
                     <div className="score-badge-col">
                       <span className="points-pill">+{entry.points} pt</span>
@@ -1482,6 +1484,7 @@ function App() {
   const currentProgrammeDays = buildProgrammeDays(masterContent.content, profile.classCode)
   const currentRouteDays = buildRouteDays(masterContent.content, profile.classCode)
   const notificationInbox = useNotifications(profile.id, profile.classCode, profile.profileType, masterContent.content?.messages, masterContent.content?.classes)
+  const standings = useCompetitionStandings(masterContent.content?.classes)
   const ownStanding = standings.find((team) => team.classCode === profile.classCode)
   const [active, setActive] = useState<NavLabel>('Vandaag')
   const [moreSection, setMoreSection] = useState<MoreSectionId>('notifications')
@@ -1911,7 +1914,7 @@ function App() {
 
         {active === 'Kaart' && <MapView routeDays={currentRouteDays} />}
 
-        {active === 'Strijd' && <CompetitionView referenceDate={effectiveTime} onNavigate={(destination, section) => {
+        {active === 'Strijd' && <CompetitionView referenceDate={effectiveTime} standings={standings} onNavigate={(destination, section) => {
           if (section) setMoreSection(section)
           setActive(destination)
           if (section === 'notifications') void notificationInbox.refresh()

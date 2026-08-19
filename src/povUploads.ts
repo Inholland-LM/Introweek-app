@@ -16,6 +16,7 @@ export type PovSubmission = {
   uploadedAt: string
   reviewStatus: 'pending' | 'approved' | 'rejected'
   rejectionReason: string | null
+  awardedPoints: number
 }
 
 function mapPovSubmission(item: Record<string, unknown>): PovSubmission {
@@ -31,6 +32,7 @@ function mapPovSubmission(item: Record<string, unknown>): PovSubmission {
     uploadedAt: String(item.uploaded_at),
     reviewStatus: item.review_status === 'approved' || item.review_status === 'rejected' ? item.review_status : 'pending',
     rejectionReason: item.rejection_reason ? String(item.rejection_reason) : null,
+    awardedPoints: Number(item.awarded_points ?? 0),
   }
 }
 
@@ -151,6 +153,22 @@ export async function reviewPovSubmission(id: string, status: 'approved' | 'reje
     requested_rejection_reason: reason,
   })
   if (error) throw error
+}
+
+export async function approvePovSubmissionWithPoints(id: string, points: number) {
+  if (!supabase) throw new Error('De beveiligde verbinding is niet beschikbaar.')
+  const { data, error } = await supabase.rpc('review_pov_submission_with_points', {
+    requested_submission_id: id,
+    requested_points: points,
+  })
+  if (error) throw error
+
+  const result = data as { scoreVersion?: number }
+  window.dispatchEvent(new CustomEvent('competition-score-changed', { detail: result }))
+  const channel = supabase.channel('competition-score-updates')
+  await channel.send({ type: 'broadcast', event: 'score-changed', payload: result })
+  await supabase.removeChannel(channel)
+  return result
 }
 
 export async function deletePovSubmission(id: string) {

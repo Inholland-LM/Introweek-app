@@ -40,7 +40,7 @@ function ClassPovCard({ item, onOpen }: { item: PovSubmission; onOpen: (item: Po
         {url ? <img src={url} alt={item.caption || item.assignmentTitle} loading="lazy" /> : <Image aria-hidden="true" />}
       </button>
       <div className="class-submission-info">
-        <span className={`pov-review-status status-${item.reviewStatus}`}>{reviewLabels[item.reviewStatus]}</span>
+        <span className={`pov-review-status status-${item.reviewStatus}`}>{reviewLabels[item.reviewStatus]}{item.reviewStatus === 'approved' ? ` · +${item.awardedPoints} punten` : ''}</span>
         <strong>{item.uploaderName}</strong>
         {item.caption && <p>{item.caption}</p>}
         {item.reviewStatus === 'rejected' && item.rejectionReason && <small>{item.rejectionReason}</small>}
