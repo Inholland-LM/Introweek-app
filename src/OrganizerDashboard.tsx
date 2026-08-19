@@ -359,6 +359,17 @@ export function OrganizerDashboard({
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [selectedPov, pointsInput])
 
+  useEffect(() => {
+    if (!selectedPov) return
+
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+
+    return () => {
+      document.body.style.overflow = previousOverflow
+    }
+  }, [selectedPov])
+
   async function handleRejectPov(povId: string) {
     try {
       await reviewPovSubmission(povId, 'rejected', 'Afgekeurd door de organisatie.')
@@ -1623,11 +1634,21 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
 
       {/* LIGHTBOX / POV REVIEW MODAL */}
       {selectedPov && (
-        <div className="modal-overlay" onClick={() => setSelectedPov(null)}>
-          <div className="modal-content pov-modal" onClick={(e) => e.stopPropagation()}>
-            <button type="button" className="modal-close" onClick={() => setSelectedPov(null)}>
-              <X aria-hidden="true" />
-            </button>
+        <div className="modal-overlay pov-modal-overlay" onClick={() => setSelectedPov(null)}>
+          <div
+            className="modal-content pov-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Ingestuurde foto voor ${selectedPov.assignmentTitle}`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="pov-modal-header">
+              <strong>Ingestuurde foto</strong>
+              <button type="button" className="pov-modal-close" onClick={() => setSelectedPov(null)} aria-label="Foto sluiten">
+                <X aria-hidden="true" />
+                <span>Sluiten</span>
+              </button>
+            </div>
 
             <div className="pov-modal-body">
               <div className="pov-modal-photo">
