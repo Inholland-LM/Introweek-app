@@ -105,7 +105,7 @@ button { color: inherit; cursor: pointer; }
 }
 
 .enter-xxx-mark-left {
-  animation: enter-xxx-left 3s cubic-bezier(0.16, 0.78, 0.22, 1) both;
+  animation: enter-xxx-left 6s cubic-bezier(0.16, 0.78, 0.22, 1) both;
 }
 
 .enter-xxx-mark-middle {
@@ -115,11 +115,11 @@ button { color: inherit; cursor: pointer; }
   filter:
     drop-shadow(0 0 6px rgba(255, 255, 255, 0.94))
     drop-shadow(0 0 22px rgba(72, 225, 255, 0.72));
-  animation: enter-xxx-middle 3s cubic-bezier(0.16, 0.78, 0.22, 1) both;
+  animation: enter-xxx-middle 6s cubic-bezier(0.16, 0.78, 0.22, 1) both;
 }
 
 .enter-xxx-mark-right {
-  animation: enter-xxx-right 3s cubic-bezier(0.16, 0.78, 0.22, 1) both;
+  animation: enter-xxx-right 6s cubic-bezier(0.16, 0.78, 0.22, 1) both;
 }
 
 .enter-xxx-glow {
@@ -133,7 +133,7 @@ button { color: inherit; cursor: pointer; }
   filter: blur(14px);
   opacity: 0;
   transform: translate(-50%, -50%) scale(0.72);
-  animation: enter-xxx-glow 3s ease-out both;
+  animation: enter-xxx-glow 6s ease-out both;
 }
 
 .topbar {
@@ -854,30 +854,30 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 
 @keyframes enter-xxx-left {
   0% { opacity: 0; transform: translate(calc(-50% - 110vw), -50%) scale(0.7) rotate(-7deg); }
-  17% { opacity: 0.92; transform: translate(calc(-50% - min(23vw, 112px)), -50%) scale(1.035) rotate(1deg); }
-  20%, 87% { opacity: 0.78; transform: translate(calc(-50% - min(22vw, 106px)), -50%) scale(1) rotate(0); }
-  97%, 100% { opacity: 0; transform: translate(calc(-50% - min(22vw, 106px)), -50%) scale(1.025); }
+  8.5% { opacity: 0.92; transform: translate(calc(-50% - min(23vw, 112px)), -50%) scale(1.035) rotate(1deg); }
+  10%, 93% { opacity: 0.78; transform: translate(calc(-50% - min(22vw, 106px)), -50%) scale(1) rotate(0); }
+  98.5%, 100% { opacity: 0; transform: translate(calc(-50% - min(22vw, 106px)), -50%) scale(1.025); }
 }
 
 @keyframes enter-xxx-middle {
-  0%, 4% { opacity: 0; transform: translate(-50%, calc(-50% - 110vh)) scale(0.68); }
-  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.045); }
-  21%, 87% { opacity: 0.92; transform: translate(-50%, -50%) scale(1); }
-  97%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.025); }
+  0%, 2% { opacity: 0; transform: translate(-50%, calc(-50% - 110vh)) scale(0.68); }
+  9% { opacity: 1; transform: translate(-50%, -50%) scale(1.045); }
+  10.5%, 93% { opacity: 0.92; transform: translate(-50%, -50%) scale(1); }
+  98.5%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.025); }
 }
 
 @keyframes enter-xxx-right {
   0% { opacity: 0; transform: translate(calc(-50% + 110vw), -50%) scale(0.7) rotate(7deg); }
-  17% { opacity: 0.92; transform: translate(calc(-50% + min(23vw, 112px)), -50%) scale(1.035) rotate(-1deg); }
-  20%, 87% { opacity: 0.78; transform: translate(calc(-50% + min(22vw, 106px)), -50%) scale(1) rotate(0); }
-  97%, 100% { opacity: 0; transform: translate(calc(-50% + min(22vw, 106px)), -50%) scale(1.025); }
+  8.5% { opacity: 0.92; transform: translate(calc(-50% + min(23vw, 112px)), -50%) scale(1.035) rotate(-1deg); }
+  10%, 93% { opacity: 0.78; transform: translate(calc(-50% + min(22vw, 106px)), -50%) scale(1) rotate(0); }
+  98.5%, 100% { opacity: 0; transform: translate(calc(-50% + min(22vw, 106px)), -50%) scale(1.025); }
 }
 
 @keyframes enter-xxx-glow {
-  0%, 14% { opacity: 0; transform: translate(-50%, -50%) scale(0.72); }
-  19% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
-  22%, 87% { opacity: 0.88; transform: translate(-50%, -50%) scale(1); }
-  97%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15); }
+  0%, 7% { opacity: 0; transform: translate(-50%, -50%) scale(0.72); }
+  9.5% { opacity: 1; transform: translate(-50%, -50%) scale(1.06); }
+  11%, 93% { opacity: 0.88; transform: translate(-50%, -50%) scale(1); }
+  98.5%, 100% { opacity: 0; transform: translate(-50%, -50%) scale(1.15); }
 }
 
 @keyframes enter-x-glow {
