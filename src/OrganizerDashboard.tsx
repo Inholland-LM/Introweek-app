@@ -117,6 +117,17 @@ function compareMessageMoment(date: string, time: string) {
   return 'now' as const
 }
 
+function programmeDayLabel(value: string) {
+  if (!value) return 'Dag niet ingesteld'
+  const date = new Date(`${value}T12:00:00`)
+  if (Number.isNaN(date.getTime())) return value
+  return date.toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })
+}
+
+function programmeAudienceLabel(classCodes: string[] | 'all') {
+  return classCodes === 'all' ? 'Alle klassen' : classCodes.join(', ')
+}
+
 export function OrganizerDashboard({
   profile,
   content,
@@ -194,17 +205,19 @@ export function OrganizerDashboard({
   const composeMessageRef = useRef<HTMLDivElement | null>(null)
 
   // Schedule CMS State
-  const [programmesList, setProgrammesList] = useState<any[]>([
-    { id: 'prog-1', startTime: '13:00', title: 'Ontvangst eerstejaars', locationId: 'Inholland Amsterdam - Aula', description: 'Ontvangst, klasindeling en begeleiding naar de lokalen.' },
-    { id: 'prog-2', startTime: '14:30', title: 'Ontdek de Sluisbuurt', locationId: 'Sluisbuurt Campus', description: 'Ontdek de school en voer de foto-opdracht uit.' },
-    { id: 'prog-3', startTime: '15:00', title: 'Openingsceremonie', locationId: 'Balkon 2e verdieping', description: 'Gezamenlijke opening op het balkon van de tweede verdieping.' },
-    { id: 'prog-4', startTime: '16:00', title: 'Vlaggenparade', locationId: 'Baggerbeest', description: 'Vertrek per klas richting Baggerbeest.' },
-  ])
+  const [programmesList, setProgrammesList] = useState<MasterContent['programmes']>(() =>
+    createInitialMasterContent().programmes.map((item) => ({ ...item })),
+  )
   const [editingProgrammeId, setEditingProgrammeId] = useState<string | null>(null)
+  const [editDate, setEditDate] = useState('')
   const [editTime, setEditTime] = useState('')
+  const [editEndTime, setEditEndTime] = useState('')
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [editLocation, setEditLocation] = useState('')
+  const [programmeSearch, setProgrammeSearch] = useState('')
+  const [programmeDayFilter, setProgrammeDayFilter] = useState('all')
+  const [scheduleSaving, setScheduleSaving] = useState(false)
   const [scheduleSuccess, setScheduleSuccess] = useState('')
   const [scheduleError, setScheduleError] = useState('')
 
@@ -219,7 +232,7 @@ export function OrganizerDashboard({
   const poerRecipients = messageRecipients.filter((recipient) => recipient.role === 'poer')
 
   useEffect(() => {
-    if (!content?.programmes?.length) return
+    if (!content?.programmes) return
     setProgrammesList(content.programmes.map((item) => ({ ...item })))
   }, [content?.programmes])
 
@@ -841,9 +854,22 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
   }
 }
 
-  async function handleSaveProgrammeItem() {
-    if (!editingProgrammeId || !editTitle) return
+  function openEditProgrammeModal(item: MasterContent['programmes'][number]) {
+    setEditingProgrammeId(item.id)
+    setEditDate(item.date)
+    setEditTime(item.startTime)
+    setEditEndTime(item.endTime ?? '')
+    setEditTitle(item.title)
+    setEditDescription(item.description ?? '')
+    setEditLocation(item.locationId ?? '')
     setScheduleError('')
+  }
+
+  async function handleSaveProgrammeItem() {
+    if (!editingProgrammeId || !editTitle.trim() || scheduleSaving) return
+    setScheduleSaving(true)
+    setScheduleError('')
+    setScheduleSuccess('')
 
     const baseContent = content ?? createInitialMasterContent()
     const currentLocations = [...(baseContent.locations ?? [])]
@@ -863,16 +889,16 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
       item.id === editingProgrammeId
         ? {
             ...item,
-            date: item.date ?? '2026-08-25',
+            date: editDate || item.date || '2026-08-25',
             startTime: editTime || '13:00',
-            endTime: item.endTime ?? null,
-            title: editTitle || 'Activiteit',
+            endTime: editEndTime || null,
+            title: editTitle.trim() || 'Activiteit',
             category: item.category ?? 'Programma',
             locationId: targetLocId,
             classCodes: item.classCodes ?? 'all',
-            description: editDescription ?? null,
+            description: editDescription.trim() || null,
             order: item.order ?? 1,
-            active: true,
+            active: item.active ?? true,
           }
         : {
             ...item,
@@ -885,11 +911,9 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
             classCodes: item.classCodes ?? 'all',
             description: item.description ?? null,
             order: item.order ?? 1,
-            active: true,
+            active: item.active ?? true,
           }
     )
-
-    setProgrammesList(updatedProgrammes)
 
     // Build next MasterContent & save
     const updatedContent: MasterContent = {
@@ -900,14 +924,59 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
 
     try {
       await updateMasterContent(updatedContent, contentVersion)
+      setProgrammesList(updatedProgrammes)
       onContentUpdated()
-      setScheduleSuccess(`Programma-onderdeel "${editTitle}" is centraal bijgewerkt. Alle rollen ontvangen de wijziging live.`)
+      setScheduleSuccess(`Programma-onderdeel "${editTitle.trim()}" is centraal bijgewerkt.`)
       setEditingProgrammeId(null)
       window.setTimeout(() => setScheduleSuccess(''), 4_000)
     } catch (reason) {
       setScheduleError(reason instanceof Error ? reason.message : 'Het programma kon niet centraal worden opgeslagen.')
+    } finally {
+      setScheduleSaving(false)
     }
   }
+
+  async function handleDeleteProgrammeItem(item: MasterContent['programmes'][number]) {
+    if (scheduleSaving || !window.confirm(`Weet je zeker dat je "${item.title}" uit het programma wilt verwijderen?`)) return
+    setScheduleSaving(true)
+    setScheduleError('')
+    setScheduleSuccess('')
+    const baseContent = content ?? createInitialMasterContent()
+    const updatedProgrammes = programmesList.filter((programme) => programme.id !== item.id)
+    const updatedContent: MasterContent = { ...baseContent, programmes: updatedProgrammes }
+
+    try {
+      await updateMasterContent(updatedContent, contentVersion)
+      setProgrammesList(updatedProgrammes)
+      onContentUpdated()
+      setScheduleSuccess(`Programma-onderdeel "${item.title}" is verwijderd.`)
+      window.setTimeout(() => setScheduleSuccess(''), 4_000)
+    } catch (reason) {
+      setScheduleError(reason instanceof Error ? reason.message : 'Het programma-onderdeel kon niet worden verwijderd.')
+    } finally {
+      setScheduleSaving(false)
+    }
+  }
+
+  const programmeDays = useMemo(() => [...new Set(programmesList.map((item) => item.date).filter(Boolean))].sort(), [programmesList])
+
+  const filteredProgrammes = useMemo(() => {
+    const query = programmeSearch.trim().toLowerCase()
+    return programmesList
+      .filter((item) => programmeDayFilter === 'all' || item.date === programmeDayFilter)
+      .filter((item) => !query || [
+        item.title,
+        item.category,
+        item.locationId ?? '',
+        item.description ?? '',
+        programmeAudienceLabel(item.classCodes),
+      ].join(' ').toLowerCase().includes(query))
+      .sort((left, right) => (
+        left.date.localeCompare(right.date)
+        || left.startTime.localeCompare(right.startTime)
+        || left.order - right.order
+      ))
+  }, [programmeDayFilter, programmeSearch, programmesList])
 
   const filteredPeople = useMemo(() => {
     return people.filter((p) => {
@@ -1137,44 +1206,105 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
             <section className="dashboard-panel">
               <div className="panel-header">
                 <div>
-                  <h2>Programma &amp; Locaties CMS</h2>
-                  <p>Pas tijden en locaties live aan. Wijzigingen worden direct doorgevoerd in alle webapps.</p>
+                  <h2>Programma</h2>
+                  <p>Bekijk, bewerk en verwijder programmaonderdelen. De wijzigingen worden centraal opgeslagen.</p>
                 </div>
               </div>
 
               {scheduleSuccess && <div className="notification-state notification-success">{scheduleSuccess}</div>}
               {scheduleError && <div className="notification-state notification-error">{scheduleError}</div>}
 
-              <div className="programme-editor-list">
-                {programmesList.map((item: any) => (
-                  <div key={item.id} className="programme-editor-card">
-                    <div className="card-left">
-                      <Clock aria-hidden="true" />
-                      <strong>{item.startTime}</strong>
-                      <div>
-                        <h3>{item.title}</h3>
-                        {item.description && <p style={{ margin: '4px 0', fontSize: '0.82rem', color: '#64748b' }}>{item.description}</p>}
-                        <span className="prog-location-tag">
-                          <MapPin aria-hidden="true" />
-                          <span>{item.locationId || 'Locatie niet ingesteld'}</span>
-                        </span>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      className="secondary-button"
-                      onClick={() => {
-                        setEditingProgrammeId(item.id)
-                        setEditTime(item.startTime)
-                        setEditTitle(item.title)
-                        setEditDescription(item.description ?? '')
-                        setEditLocation(item.locationId ?? 'Inholland')
-                      }}
-                    >
-                      <Edit3 aria-hidden="true" /> Live bewerken
-                    </button>
-                  </div>
-                ))}
+              <div className="table-filters-bar">
+                <div className="search-input-wrapper">
+                  <Search aria-hidden="true" />
+                  <input
+                    type="text"
+                    placeholder="Zoek op onderdeel, categorie, locatie of klas..."
+                    value={programmeSearch}
+                    onChange={(event) => setProgrammeSearch(event.target.value)}
+                  />
+                </div>
+                <div className="select-filters">
+                  <select value={programmeDayFilter} onChange={(event) => setProgrammeDayFilter(event.target.value)}>
+                    <option value="all">Alle dagen</option>
+                    {programmeDays.map((day) => <option key={day} value={day}>{programmeDayLabel(day)}</option>)}
+                  </select>
+                </div>
+              </div>
+
+              <div className="table-responsive-wrapper programme-table-wrapper">
+                <table className="dashboard-table programme-dashboard-table">
+                  <thead>
+                    <tr>
+                      <th>Dag</th>
+                      <th>Tijd</th>
+                      <th>Onderdeel</th>
+                      <th>Locatie</th>
+                      <th>Voor wie</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: 'right' }}>Acties</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProgrammes.map((item) => (
+                      <tr key={item.id}>
+                        <td><strong className="programme-day-cell">{programmeDayLabel(item.date)}</strong></td>
+                        <td>
+                          <span className="programme-time-cell">
+                            <Clock aria-hidden="true" />
+                            <strong>{item.startTime}</strong>
+                            {item.endTime && <span>– {item.endTime}</span>}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="programme-title-cell">
+                            <strong>{item.title}</strong>
+                            <span>{item.category}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="programme-location-cell">
+                            <MapPin aria-hidden="true" />
+                            <span>{item.locationId || 'Niet ingesteld'}</span>
+                          </span>
+                        </td>
+                        <td>{programmeAudienceLabel(item.classCodes)}</td>
+                        <td>
+                          <span className={item.active ? 'status-dot-active' : 'status-dot-inactive'}>
+                            ● {item.active ? 'Actief' : 'Verborgen'}
+                          </span>
+                        </td>
+                        <td style={{ textAlign: 'right' }}>
+                          <div className="table-row-actions">
+                            <button
+                              type="button"
+                              className="secondary-button icon-only-btn"
+                              onClick={() => openEditProgrammeModal(item)}
+                              disabled={scheduleSaving}
+                              title="Programmaonderdeel bewerken"
+                            >
+                              <Edit3 aria-hidden="true" />
+                              <span>Bewerken</span>
+                            </button>
+                            <button
+                              type="button"
+                              className="danger-button icon-only-btn"
+                              onClick={() => void handleDeleteProgrammeItem(item)}
+                              disabled={scheduleSaving}
+                              title="Programmaonderdeel verwijderen"
+                              aria-label={`${item.title} verwijderen`}
+                            >
+                              <Trash2 aria-hidden="true" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredProgrammes.length === 0 && (
+                      <tr><td colSpan={7}>Geen programmaonderdelen gevonden.</td></tr>
+                    )}
+                  </tbody>
+                </table>
               </div>
             </section>
           )}
@@ -1746,12 +1876,20 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
             </div>
             <div className="form-grid">
               <label>
-                <span>Tijdstip</span>
-                <input type="text" placeholder="bijv. 13:00" value={editTime} onChange={(e) => setEditTime(e.target.value)} />
+                <span>Dag</span>
+                <input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} />
               </label>
               <label>
-                <span>Titel van activiteit</span>
+                <span>Naam van onderdeel</span>
                 <input type="text" placeholder="bijv. Ontvangst eerstejaars" value={editTitle} onChange={(e) => setEditTitle(e.target.value)} />
+              </label>
+              <label>
+                <span>Starttijd</span>
+                <input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)} />
+              </label>
+              <label>
+                <span>Eindtijd</span>
+                <input type="time" value={editEndTime} onChange={(e) => setEditEndTime(e.target.value)} />
               </label>
               <label className="full-width">
                 <span>Omschrijving</span>
@@ -1766,9 +1904,9 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
               <button type="button" className="secondary-button" onClick={() => setEditingProgrammeId(null)}>
                 Annuleren
               </button>
-              <button type="button" className="primary-button" onClick={handleSaveProgrammeItem}>
+              <button type="button" className="primary-button" onClick={() => void handleSaveProgrammeItem()} disabled={scheduleSaving}>
                 <Edit3 aria-hidden="true" />
-                <span>Opslaan &amp; Live Doorvoeren</span>
+                <span>{scheduleSaving ? 'Opslaan…' : 'Wijzigingen opslaan'}</span>
               </button>
             </div>
           </div>
