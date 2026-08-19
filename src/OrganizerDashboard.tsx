@@ -29,7 +29,7 @@ import {
 } from 'lucide-react'
 import type { AppProfile } from './profile'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
-import type { ImportPerson, ImportRole, MasterContent } from './import/parseWorkbook'
+import type { ImportRole, MasterContent } from './import/parseWorkbook'
 import { createPovPhotoUrl, deletePovSubmission, fetchPovSubmissions, reviewPovSubmission, type PovSubmission } from './povUploads'
 import { createInitialMasterContent, updateMasterContent } from './content'
 import {
@@ -39,6 +39,12 @@ import {
   type OrganizerRecipient,
 } from './organizerMessaging'
 import { supabase } from './lib/supabase'
+import {
+  deactivateOrganizerPerson,
+  fetchOrganizerPeople,
+  saveOrganizerPerson,
+  type OrganizerPerson,
+} from './organizerPeople'
 
 type Props = {
   profile: AppProfile
@@ -98,12 +104,10 @@ export function OrganizerDashboard({
   const [showImportModal, setShowImportModal] = useState(false)
 
   // People State
-  const [people, setPeople] = useState<ImportPerson[]>([
-    { studentNumber: '689102', firstName: 'Sofia', namePrefix: null, lastName: 'Jansen', email: '689102@student.inholland.nl', role: 'student', classCode: 'LM1A', active: true },
-    { studentNumber: '689103', firstName: 'Daan', namePrefix: 'de', lastName: 'Vries', email: 'daan.devries@inholland.nl', role: 'buddy', classCode: 'LM1A', active: true },
-    { studentNumber: '689104', firstName: 'Mila', namePrefix: null, lastName: 'Bakker', email: 'mila.bakker@inholland.nl', role: 'poer', classCode: 'LM1A', active: true },
-    { studentNumber: null, firstName: 'Prof.', namePrefix: 'van', lastName: 'Dijk', email: 'kees.vandijk@inholland.nl', role: 'interested_teacher', classCode: null, active: true },
-  ])
+  const [people, setPeople] = useState<OrganizerPerson[]>([])
+  const [peopleLoading, setPeopleLoading] = useState(false)
+  const [peopleSaving, setPeopleSaving] = useState(false)
+  const [peopleError, setPeopleError] = useState('')
   const [personSearch, setPersonSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
   const [classFilter, setClassFilter] = useState<string>('all')
@@ -111,13 +115,14 @@ export function OrganizerDashboard({
   // New Person Modal
   const [newFirstName, setNewFirstName] = useState('')
   const [newLastName, setNewLastName] = useState('')
+  const [newStudentNumber, setNewStudentNumber] = useState('')
   const [newEmail, setNewEmail] = useState('')
   const [newRole, setNewRole] = useState<ImportRole>('interested_teacher')
   const [newClassCode, setNewClassCode] = useState('LM1A')
   const [showNewPersonModal, setShowNewPersonModal] = useState(false)
 
   // Edit Person Modal
-  const [editingPersonEmail, setEditingPersonEmail] = useState<string | null>(null)
+  const [editingPersonId, setEditingPersonId] = useState<string | null>(null)
   const [editFirstName, setEditFirstName] = useState('')
   const [editNamePrefix, setEditNamePrefix] = useState('')
   const [editLastName, setEditLastName] = useState('')
@@ -182,6 +187,10 @@ export function OrganizerDashboard({
   }, [content?.programmes])
 
   useEffect(() => {
+    if (activeTab === 'people') void loadOrganizerPeople()
+  }, [activeTab])
+
+  useEffect(() => {
     if (activeTab !== 'messages') return
     let active = true
     setRecipientsLoading(true)
@@ -211,6 +220,18 @@ export function OrganizerDashboard({
       void loadPovSubmissions()
     }
   }, [activeTab])
+
+  async function loadOrganizerPeople() {
+    setPeopleLoading(true)
+    setPeopleError('')
+    try {
+      setPeople(await fetchOrganizerPeople())
+    } catch (reason) {
+      setPeopleError(reason instanceof Error ? reason.message : 'De personenlijst kon niet worden opgehaald.')
+    } finally {
+      setPeopleLoading(false)
+    }
+  }
 
   async function loadPovSubmissions() {
     setLoadingPov(true)
@@ -331,29 +352,36 @@ export function OrganizerDashboard({
     }
   }
 
-  function handleAddPerson() {
-    if (!newFirstName || !newEmail) return
-    setPeople((prev) => [
-      ...prev,
-      {
-        studentNumber: String(Math.floor(100_000 + Math.random() * 900_000)),
-        firstName: newFirstName,
+  async function handleAddPerson() {
+    if (!newFirstName.trim() || !newLastName.trim() || !newEmail.trim() || peopleSaving) return
+    setPeopleSaving(true)
+    setPeopleError('')
+    try {
+      await saveOrganizerPerson({
+        studentNumber: ['student', 'buddy'].includes(newRole) ? newStudentNumber.trim() || null : null,
+        firstName: newFirstName.trim(),
         namePrefix: null,
-        lastName: newLastName,
-        email: newEmail,
+        lastName: newLastName.trim(),
+        email: newEmail.trim(),
         role: newRole,
         classCode: ['interested_teacher', 'organizer'].includes(newRole) ? null : newClassCode,
         active: true,
-      },
-    ])
-    setNewFirstName('')
-    setNewLastName('')
-    setNewEmail('')
-    setShowNewPersonModal(false)
+      }, null)
+      setNewFirstName('')
+      setNewLastName('')
+      setNewStudentNumber('')
+      setNewEmail('')
+      setShowNewPersonModal(false)
+      await loadOrganizerPeople()
+    } catch (reason) {
+      setPeopleError(reason instanceof Error ? reason.message : 'De persoon kon niet worden toegevoegd.')
+    } finally {
+      setPeopleSaving(false)
+    }
   }
 
-  function openEditPersonModal(person: ImportPerson) {
-    setEditingPersonEmail(person.email)
+  function openEditPersonModal(person: OrganizerPerson) {
+    setEditingPersonId(person.profileId)
     setEditFirstName(person.firstName)
     setEditNamePrefix(person.namePrefix ?? '')
     setEditLastName(person.lastName)
@@ -364,33 +392,42 @@ export function OrganizerDashboard({
     setShowEditPersonModal(true)
   }
 
-  function handleSaveEditedPerson() {
-    if (!editingPersonEmail || !editFirstName || !editEmail) return
-
-    setPeople((prev) =>
-      prev.map((p) =>
-        p.email === editingPersonEmail
-          ? {
-              ...p,
-              firstName: editFirstName,
-              namePrefix: editNamePrefix.trim() || null,
-              lastName: editLastName,
-              studentNumber: editStudentNumber.trim() || null,
-              email: editEmail,
-              role: editRole,
-              classCode: ['interested_teacher', 'organizer'].includes(editRole) ? null : editClassCode,
-            }
-          : p
-      )
-    )
-
-    setShowEditPersonModal(false)
-    setEditingPersonEmail(null)
+  async function handleSaveEditedPerson() {
+    if (!editingPersonId || !editFirstName.trim() || !editLastName.trim() || !editEmail.trim() || peopleSaving) return
+    setPeopleSaving(true)
+    setPeopleError('')
+    try {
+      await saveOrganizerPerson({
+        studentNumber: ['student', 'buddy'].includes(editRole) ? editStudentNumber.trim() || null : null,
+        firstName: editFirstName.trim(),
+        namePrefix: editNamePrefix.trim() || null,
+        lastName: editLastName.trim(),
+        email: editEmail.trim(),
+        role: editRole,
+        classCode: ['interested_teacher', 'organizer'].includes(editRole) ? null : editClassCode,
+        active: true,
+      }, editingPersonId)
+      setShowEditPersonModal(false)
+      setEditingPersonId(null)
+      await loadOrganizerPeople()
+    } catch (reason) {
+      setPeopleError(reason instanceof Error ? reason.message : 'De wijzigingen konden niet worden opgeslagen.')
+    } finally {
+      setPeopleSaving(false)
+    }
   }
 
-  function handleDeletePerson(email: string) {
-    if (window.confirm(`Weet je zeker dat je ${email} wilt verwijderen uit de lijst?`)) {
-      setPeople((prev) => prev.filter((p) => p.email !== email))
+  async function handleDeletePerson(person: OrganizerPerson) {
+    if (!window.confirm(`Weet je zeker dat je ${person.email} wilt deactiveren? De historie blijft bewaard.`)) return
+    setPeopleSaving(true)
+    setPeopleError('')
+    try {
+      await deactivateOrganizerPerson(person.profileId)
+      await loadOrganizerPeople()
+    } catch (reason) {
+      setPeopleError(reason instanceof Error ? reason.message : 'De persoon kon niet worden gedeactiveerd.')
+    } finally {
+      setPeopleSaving(false)
     }
   }
 
@@ -681,6 +718,9 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                 </div>
               </div>
 
+              {peopleError && <div className="notification-state notification-error">{peopleError}</div>}
+              {peopleLoading && <div className="notification-state">Personen uit de beveiligde database laden…</div>}
+
               {/* Filters Bar */}
               <div className="table-filters-bar">
                 <div className="search-input-wrapper">
@@ -703,7 +743,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                   </select>
                   <select value={classFilter} onChange={(e) => setClassFilter(e.target.value)}>
                     <option value="all">Alle klassen</option>
-                    {['LM1A', 'LM1B', 'LM1C', 'LM1D', 'LM1E', 'LM1F', 'LM1G', 'LM1H'].map((c) => (
+                    {activeClassCodes.map((c) => (
                       <option key={c} value={c}>{c}</option>
                     ))}
                   </select>
@@ -724,8 +764,8 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredPeople.map((person, idx) => (
-                      <tr key={`${person.email}-${idx}`}>
+                    {filteredPeople.map((person) => (
+                      <tr key={person.profileId}>
                         <td>
                           <div className="person-name-cell">
                             <strong>{[person.firstName, person.namePrefix, person.lastName].filter(Boolean).join(' ')}</strong>
@@ -756,7 +796,8 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                             <button
                               type="button"
                               className="danger-button icon-only-btn"
-                              onClick={() => handleDeletePerson(person.email)}
+                              onClick={() => void handleDeletePerson(person)}
+                              disabled={peopleSaving}
                               title="Persoon verwijderen"
                             >
                               <Trash2 aria-hidden="true" />
@@ -765,6 +806,9 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                         </td>
                       </tr>
                     ))}
+                    {!peopleLoading && filteredPeople.length === 0 && (
+                      <tr><td colSpan={6}>Geen personen gevonden.</td></tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -1179,6 +1223,15 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                 <span>Achternaam</span>
                 <input type="text" value={newLastName} onChange={(e) => setNewLastName(e.target.value)} />
               </label>
+              <label>
+                <span>Studentnummer {['student', 'buddy'].includes(newRole) ? '(verplicht)' : '(niet nodig)'}</span>
+                <input
+                  type="text"
+                  value={newStudentNumber}
+                  disabled={!['student', 'buddy'].includes(newRole)}
+                  onChange={(e) => setNewStudentNumber(e.target.value)}
+                />
+              </label>
               <label className="full-width">
                 <span>E-mailadres</span>
                 <input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
@@ -1206,14 +1259,14 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                   onChange={(e) => setNewClassCode(e.target.value)}
                 >
                   <option value="">Geen klas</option>
-                  {['LM1A', 'LM1B', 'LM1C', 'LM1D', 'LM1E', 'LM1F', 'LM1G', 'LM1H'].map((c) => (
+                  {activeClassCodes.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </label>
             </div>
             <div className="modal-footer">
-              <button type="button" className="primary-button" onClick={handleAddPerson}>
+              <button type="button" className="primary-button" onClick={() => void handleAddPerson()} disabled={peopleSaving}>
                 <Plus aria-hidden="true" />
                 <span>Toevoegen</span>
               </button>
@@ -1276,7 +1329,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                   onChange={(e) => setEditClassCode(e.target.value)}
                 >
                   <option value="">Geen klas</option>
-                  {['LM1A', 'LM1B', 'LM1C', 'LM1D', 'LM1E', 'LM1F', 'LM1G', 'LM1H'].map((c) => (
+                  {activeClassCodes.map((c) => (
                     <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
@@ -1286,7 +1339,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
               <button type="button" className="secondary-button" onClick={() => setShowEditPersonModal(false)}>
                 Annuleren
               </button>
-              <button type="button" className="primary-button" onClick={handleSaveEditedPerson}>
+              <button type="button" className="primary-button" onClick={() => void handleSaveEditedPerson()} disabled={peopleSaving}>
                 <Edit3 aria-hidden="true" />
                 <span>Wijzigingen opslaan</span>
               </button>
@@ -1384,6 +1437,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
               onApplied={() => {
                 setShowImportModal(false)
                 onContentUpdated()
+                void loadOrganizerPeople()
               }}
             />
           </div>
