@@ -2,6 +2,14 @@
 
 Het masterbestand is de gecontroleerde bron voor deelnemers én organisatorische inhoud. De organisatie uploadt steeds een volledig bijgewerkte `.xlsx`.
 
+## Begin met de actuele export
+
+Gebruik in het organisatiedashboard bij `Personen` de knop `Excel exporteren`. De app maakt dan één momentopname van alle personen en de volledige actuele organisatie-inhoud. Het gedownloade bestand bevat dezelfde tabbladen, kolomnamen en vaste ID's als de import en kan daarom direct worden aangevuld of gewijzigd en daarna weer worden geïmporteerd.
+
+De export gebeurt alleen wanneer een organisator op de knop drukt. Er draait hiervoor geen extra synchronisatie of polling.
+
+De optionele kolom `ontvanger_profiel_ids` in `Berichten` bewaart gerichte berichten aan specifiek geselecteerde personen. Laat bestaande waarden ongewijzigd wanneer je alleen de tekst of planning van zo'n bericht aanpast.
+
 ## Tabbladen
 
 - `Personen`: studenten, buddy’s, PO’ers en organisatie.
