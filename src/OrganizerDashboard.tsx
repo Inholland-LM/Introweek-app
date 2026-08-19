@@ -97,6 +97,25 @@ function localTimePart(value: string) {
   return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
+function currentLocalMessageMoment() {
+  const now = new Date()
+  return {
+    date: localDatePart(now.toISOString()),
+    time: localTimePart(now.toISOString()),
+  }
+}
+
+function compareMessageMoment(date: string, time: string) {
+  if (!date || !time) return 'invalid' as const
+  const selected = new Date(`${date}T${time}:00`)
+  if (Number.isNaN(selected.getTime())) return 'invalid' as const
+  const currentMinute = new Date()
+  currentMinute.setSeconds(0, 0)
+  if (selected.getTime() < currentMinute.getTime()) return 'past' as const
+  if (selected.getTime() > currentMinute.getTime()) return 'future' as const
+  return 'now' as const
+}
+
 export function OrganizerDashboard({
   profile,
   content,
@@ -160,8 +179,11 @@ export function OrganizerDashboard({
   const [msgChannel, setMsgChannel] = useState<OrganizerDeliveryChannel>('both')
   const [msgDeliveryTiming, setMsgDeliveryTiming] = useState<'now' | 'scheduled'>('now')
   const [editingScheduledMessageId, setEditingScheduledMessageId] = useState<string | null>(null)
-  const [msgScheduledDate, setMsgScheduledDate] = useState('')
-  const [msgScheduledTime, setMsgScheduledTime] = useState('')
+  const [msgScheduledDate, setMsgScheduledDate] = useState(() => currentLocalMessageMoment().date)
+  const [msgScheduledTime, setMsgScheduledTime] = useState(() => currentLocalMessageMoment().time)
+  const effectiveMessageDeliveryTiming = !editingScheduledMessageId && compareMessageMoment(msgScheduledDate, msgScheduledTime) === 'future'
+    ? 'scheduled'
+    : msgDeliveryTiming
   const [scheduledFilters, setScheduledFilters] = useState<MessageHistoryFilters>(EMPTY_MESSAGE_FILTERS)
   const [sentFilters, setSentFilters] = useState<MessageHistoryFilters>(EMPTY_MESSAGE_FILTERS)
   const [msgSuccess, setMsgSuccess] = useState('')
@@ -496,11 +518,7 @@ export function OrganizerDashboard({
 
     setMessages((prev) => [newMsg, ...prev])
       setMsgSuccess(`Melding verzonden naar ${result.recipientCount} ontvanger${result.recipientCount === 1 ? '' : 's'}.`)
-    setMsgTitle('')
-    setMsgBody('')
-      setSelectedClassCodes([])
-      setSelectedBuddyIds([])
-      setSelectedPoerIds([])
+      clearMessageComposer()
     window.setTimeout(() => setMsgSuccess(''), 4_000)
     } catch (reason) {
       setMsgSuccess(reason instanceof Error ? reason.message : 'De melding kon niet worden verzonden.')
@@ -510,16 +528,53 @@ export function OrganizerDashboard({
   }
 
   function clearMessageComposer() {
+    const currentMoment = currentLocalMessageMoment()
     setEditingScheduledMessageId(null)
     setMsgTitle('')
     setMsgBody('')
-    setMsgScheduledDate('')
-    setMsgScheduledTime('')
+    setMsgScheduledDate(currentMoment.date)
+    setMsgScheduledTime(currentMoment.time)
     setMsgDeliveryTiming('now')
     setSelectedClassCodes([])
     setSelectedBuddyIds([])
     setSelectedPoerIds([])
     setMsgChannel('both')
+  }
+
+  function setMessageMomentToNow() {
+    const currentMoment = currentLocalMessageMoment()
+    setMsgScheduledDate(currentMoment.date)
+    setMsgScheduledTime(currentMoment.time)
+    setMsgDeliveryTiming('now')
+  }
+
+  function handleMessageDeliveryTimingChange(value: 'now' | 'scheduled') {
+    if (value === 'now') {
+      setMessageMomentToNow()
+      return
+    }
+    setMsgDeliveryTiming('scheduled')
+    if (!msgScheduledDate || !msgScheduledTime) {
+      const currentMoment = currentLocalMessageMoment()
+      setMsgScheduledDate(currentMoment.date)
+      setMsgScheduledTime(currentMoment.time)
+    }
+  }
+
+  function handleMessageDateChange(value: string) {
+    setMsgScheduledDate(value)
+    if (editingScheduledMessageId) return
+    const relation = compareMessageMoment(value, msgScheduledTime)
+    if (relation === 'future') setMsgDeliveryTiming('scheduled')
+    if (relation === 'now') setMsgDeliveryTiming('now')
+  }
+
+  function handleMessageTimeChange(value: string) {
+    setMsgScheduledTime(value)
+    if (editingScheduledMessageId) return
+    const relation = compareMessageMoment(msgScheduledDate, value)
+    if (relation === 'future') setMsgDeliveryTiming('scheduled')
+    if (relation === 'now') setMsgDeliveryTiming('now')
   }
 
   function startEditingScheduledMessage(message: AnnouncementMessage) {
@@ -714,7 +769,16 @@ export function OrganizerDashboard({
 
   function handleSubmitMessage() {
     if (editingScheduledMessageId) return void handleSaveScheduledMessage()
-    if (msgDeliveryTiming === 'scheduled') return void handleScheduleBroadcast()
+    const moment = compareMessageMoment(msgScheduledDate, msgScheduledTime)
+    if (moment === 'invalid') {
+      setMsgSuccess('Vul dag en tijd volledig in.')
+      return
+    }
+    if (moment === 'past') {
+      setMsgSuccess('Kies de huidige minuut of een tijdstip in de toekomst.')
+      return
+    }
+    if (effectiveMessageDeliveryTiming === 'scheduled') return void handleScheduleBroadcast()
     return void handleSendBroadcast()
   }
 
@@ -947,7 +1011,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
             <Camera aria-hidden="true" />
             <span>POV-foto's</span>
           </button>
-          <button type="button" className={activeTab === 'messages' ? 'active' : ''} onClick={() => setActiveTab('messages')}>
+          <button type="button" className={activeTab === 'messages' ? 'active' : ''} onClick={() => { if (activeTab !== 'messages' && !editingScheduledMessageId) setMessageMomentToNow(); setActiveTab('messages') }}>
             <Bell aria-hidden="true" />
             <span>Berichten</span>
           </button>
@@ -1224,25 +1288,22 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                   {!editingScheduledMessageId && (
                     <label>
                       <span>Verzendmoment</span>
-                      <select value={msgDeliveryTiming} onChange={(event) => setMsgDeliveryTiming(event.target.value as 'now' | 'scheduled')}>
+                      <select value={effectiveMessageDeliveryTiming} onChange={(event) => handleMessageDeliveryTimingChange(event.target.value as 'now' | 'scheduled')}>
                         <option value="now">Direct verzenden</option>
                         <option value="scheduled">Inplannen voor later</option>
                       </select>
                     </label>
                   )}
 
-                  {(editingScheduledMessageId || msgDeliveryTiming === 'scheduled') && (
-                    <>
-                      <label>
-                        <span>Dag</span>
-                        <input type="date" min={localDatePart(new Date().toISOString())} value={msgScheduledDate} onChange={(event) => setMsgScheduledDate(event.target.value)} />
-                      </label>
-                      <label>
-                        <span>Tijd</span>
-                        <input type="time" value={msgScheduledTime} onChange={(event) => setMsgScheduledTime(event.target.value)} />
-                      </label>
-                    </>
-                  )}
+                  <label>
+                    <span>Dag</span>
+                    <input type="date" min={localDatePart(new Date().toISOString())} value={msgScheduledDate} onChange={(event) => handleMessageDateChange(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>Tijd</span>
+                    <input type="time" value={msgScheduledTime} onChange={(event) => handleMessageTimeChange(event.target.value)} />
+                    {!editingScheduledMessageId && <small>Direct verzenden vult automatisch de huidige dag en tijd in. Kies een later moment om het bericht in te plannen.</small>}
+                  </label>
 
                   <fieldset className="recipient-picker full-width">
                     <legend>Doelgroep klassen (studenten)</legend>
@@ -1304,8 +1365,8 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
 
                 <div className="compose-actions">
                   <button type="button" className="primary-button" onClick={handleSubmitMessage} disabled={msgSending}>
-                    {editingScheduledMessageId ? <Check aria-hidden="true" /> : msgDeliveryTiming === 'scheduled' ? <Calendar aria-hidden="true" /> : <Send aria-hidden="true" />}
-                    <span>{msgSending ? 'Opslaan…' : editingScheduledMessageId ? 'Wijzigingen opslaan' : msgDeliveryTiming === 'scheduled' ? 'Bericht inplannen' : 'Nu versturen'}</span>
+                    {editingScheduledMessageId ? <Check aria-hidden="true" /> : effectiveMessageDeliveryTiming === 'scheduled' ? <Calendar aria-hidden="true" /> : <Send aria-hidden="true" />}
+                    <span>{msgSending ? 'Opslaan…' : editingScheduledMessageId ? 'Wijzigingen opslaan' : effectiveMessageDeliveryTiming === 'scheduled' ? 'Bericht inplannen' : 'Nu versturen'}</span>
                   </button>
                 </div>
               </div>
