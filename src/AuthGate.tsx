@@ -1,4 +1,4 @@
-import { type FormEvent, type ReactNode, useEffect, useState } from 'react'
+import { type FormEvent, type ReactNode, useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowLeft, KeyRound, LogOut, Mail, ShieldCheck, Sparkles } from 'lucide-react'
 import type { Session } from '@supabase/supabase-js'
 import { isSupabaseConfigured, supabase } from './lib/supabase'
@@ -14,14 +14,14 @@ type ProfileRecord = {
   name_prefix: string | null
   last_name: string
   profile_type: AppProfile['profileType']
-  class_memberships: Array<{
-    active: boolean
-    classes: {
-      code: string
-      country: string
-      flag: string
-    } | null
-  }>
+}
+
+type MembershipRecord = {
+  classes: {
+    code: string
+    country: string
+    flag: string
+  } | null
 }
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true'
@@ -77,6 +77,7 @@ export function AuthGate({ children }: AuthGateProps) {
   const [profile, setProfile] = useState<AppProfile | null>(null)
   const [loading, setLoading] = useState(authEnabled)
   const [profileChecked, setProfileChecked] = useState(false)
+  const profileRequestRef = useRef(0)
   const [email, setEmail] = useState(pendingLogin?.email ?? '')
   const [code, setCode] = useState('')
   const [step, setStep] = useState<'email' | 'code'>(pendingLogin ? 'code' : 'email')
@@ -157,62 +158,103 @@ export function AuthGate({ children }: AuthGateProps) {
     }
   }, [])
 
+  const loadProfile = useCallback(async (showLoading = false) => {
+    if (!authEnabled || !supabase || !session) return
+    const requestId = ++profileRequestRef.current
+    if (showLoading) setProfileChecked(false)
+
+    const { data, error: profileError } = await supabase
+      .from('profiles')
+      .select('id, first_name, name_prefix, last_name, profile_type')
+      .eq('auth_user_id', session.user.id)
+      .maybeSingle()
+    if (requestId !== profileRequestRef.current) return
+    const record = data as ProfileRecord | null
+
+    if (profileError || !record) {
+      setProfile(null)
+      setProfileChecked(true)
+      return
+    }
+
+    const isOrganizer = record.profile_type === 'organizer'
+    const isInterestedTeacher = record.profile_type === 'interested_teacher'
+    let classInfo = isOrganizer
+      ? { code: 'TEAM', country: 'Organisatie', flag: '🇳🇱' }
+      : isInterestedTeacher
+        ? { code: '', country: 'Geïnteresseerde docent', flag: '' }
+        : null
+
+    if (!classInfo) {
+      const { data: membershipData, error: membershipError } = await supabase
+        .from('class_memberships')
+        .select('classes(code, country, flag)')
+        .eq('profile_id', record.id)
+        .eq('active', true)
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      if (requestId !== profileRequestRef.current) return
+      if (membershipError) {
+        setProfile(null)
+        setProfileChecked(true)
+        return
+      }
+      classInfo = (membershipData as MembershipRecord | null)?.classes ?? null
+    }
+
+    if (!classInfo) {
+      setProfile(null)
+      setProfileChecked(true)
+      return
+    }
+
+    setProfile({
+      id: record.id,
+      firstName: record.first_name,
+      displayName: [record.first_name, record.name_prefix, record.last_name].filter(Boolean).join(' '),
+      profileType: record.profile_type,
+      classCode: classInfo.code,
+      country: classInfo.country,
+      flag: classInfo.flag,
+    })
+    setProfileChecked(true)
+  }, [session])
+
   useEffect(() => {
     if (!authEnabled || !supabase || !session) return
+    void loadProfile(true)
 
-    let active = true
-    setProfileChecked(false)
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void loadProfile()
+    }
+    window.addEventListener('focus', refreshWhenVisible)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
 
-    supabase
-      .from('profiles')
-      .select('id, first_name, name_prefix, last_name, profile_type, class_memberships(active, classes(code, country, flag))')
-      .eq('auth_user_id', session.user.id)
-      .eq('class_memberships.active', true)
-      .maybeSingle()
-      .then(({ data, error: profileError }) => {
-        if (!active) return
-        const record = data as ProfileRecord | null
-
-        if (profileError || !record) {
-          setProfile(null)
-          setProfileChecked(true)
-          return
-        }
-
-        const isOrganizer = record.profile_type === 'organizer'
-        const isInterestedTeacher = record.profile_type === 'interested_teacher'
-        const classInfo = record?.class_memberships?.[0]?.classes
-          ?? (isOrganizer
-            ? { code: 'TEAM', country: 'Organisatie', flag: '🇳🇱' }
-            : isInterestedTeacher
-              ? { code: '', country: 'Geïnteresseerde docent', flag: '' }
-            : null)
-
-        if (!classInfo) {
-          setProfile(null)
-          setProfileChecked(true)
-          return
-        }
-
-        const firstName = record.first_name
-        const displayName = [record.first_name, record.name_prefix, record.last_name].filter(Boolean).join(' ')
-
-        setProfile({
-          id: record.id,
-          firstName,
-          displayName,
-          profileType: record.profile_type,
-          classCode: classInfo.code,
-          country: classInfo.country,
-          flag: classInfo.flag,
-        })
-        setProfileChecked(true)
-      })
+    const channel = supabase
+      .channel(`own-profile:${session.user.id}`)
+      .on('postgres_changes', {
+        event: 'UPDATE', schema: 'public', table: 'profiles', filter: `auth_user_id=eq.${session.user.id}`,
+      }, () => { void loadProfile() })
+      .subscribe()
 
     return () => {
-      active = false
+      window.removeEventListener('focus', refreshWhenVisible)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+      void supabase?.removeChannel(channel)
     }
-  }, [session])
+  }, [loadProfile, session])
+
+  useEffect(() => {
+    if (!authEnabled || !supabase || !profile?.id) return
+    const channel = supabase
+      .channel(`own-class:${profile.id}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'class_memberships', filter: `profile_id=eq.${profile.id}`,
+      }, () => { void loadProfile() })
+      .subscribe()
+    return () => { void supabase?.removeChannel(channel) }
+  }, [loadProfile, profile?.id])
 
   if (!authEnabled || demoProfileOverride) {
     return (

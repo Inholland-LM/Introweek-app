@@ -3697,6 +3697,31 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   grid-column: 1 / -1;
 }
 
+.person-notification-options {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  padding: 14px;
+  border: 1px solid rgba(227, 0, 79, 0.22);
+  border-radius: 14px;
+  background: rgba(227, 0, 79, 0.045);
+}
+
+.person-notification-options .person-notification-toggle {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+  font-weight: 800;
+}
+
+.person-notification-options .person-notification-toggle input {
+  width: 20px;
+  height: 20px;
+  margin: 0;
+  accent-color: var(--accent);
+}
+
 .recipient-picker {
   display: grid;
   align-content: start;
