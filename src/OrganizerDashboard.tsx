@@ -482,11 +482,15 @@ export function OrganizerDashboard({
 
   async function handleAddPerson() {
     if (!newFirstName.trim() || !newLastName.trim() || !newEmail.trim() || peopleSaving) return
+    if (['student', 'buddy'].includes(newRole) && !newStudentNumber.trim()) {
+      setPeopleError('Voor studenten en buddy’s is een studentnummer verplicht.')
+      return
+    }
     setPeopleSaving(true)
     setPeopleError('')
     try {
       await saveOrganizerPerson({
-        studentNumber: ['student', 'buddy'].includes(newRole) ? newStudentNumber.trim() || null : null,
+        studentNumber: newStudentNumber.trim() || null,
         firstName: newFirstName.trim(),
         namePrefix: null,
         lastName: newLastName.trim(),
@@ -525,6 +529,10 @@ export function OrganizerDashboard({
 
   async function handleSaveEditedPerson() {
     if (!editingPersonId || !editFirstName.trim() || !editLastName.trim() || !editEmail.trim() || peopleSaving) return
+    if (['student', 'buddy'].includes(editRole) && !editStudentNumber.trim()) {
+      setPeopleError('Voor studenten en buddy’s is een studentnummer verplicht.')
+      return
+    }
     setPeopleSaving(true)
     setPeopleError('')
     setPeopleSuccess('')
@@ -532,7 +540,7 @@ export function OrganizerDashboard({
       const original = people.find((person) => person.profileId === editingPersonId)
       const nextClassCode = ['interested_teacher', 'organizer'].includes(editRole) ? null : editClassCode
       await saveOrganizerPerson({
-        studentNumber: ['student', 'buddy'].includes(editRole) ? editStudentNumber.trim() || null : null,
+        studentNumber: editStudentNumber.trim() || null,
         firstName: editFirstName.trim(),
         namePrefix: editNamePrefix.trim() || null,
         lastName: editLastName.trim(),
@@ -1842,11 +1850,10 @@ export function OrganizerDashboard({
                 <input type="text" value={newLastName} onChange={(e) => setNewLastName(e.target.value)} />
               </label>
               <label>
-                <span>Studentnummer {['student', 'buddy'].includes(newRole) ? '(verplicht)' : '(niet nodig)'}</span>
+                <span>Studentnummer {['student', 'buddy'].includes(newRole) ? '(verplicht)' : '(optioneel)'}</span>
                 <input
                   type="text"
                   value={newStudentNumber}
-                  disabled={!['student', 'buddy'].includes(newRole)}
                   onChange={(e) => setNewStudentNumber(e.target.value)}
                 />
               </label>
@@ -1917,7 +1924,7 @@ export function OrganizerDashboard({
                 <input type="text" value={editLastName} onChange={(e) => setEditLastName(e.target.value)} />
               </label>
               <label>
-                <span>Studentnummer</span>
+                <span>Studentnummer {['student', 'buddy'].includes(editRole) ? '(verplicht)' : '(optioneel)'}</span>
                 <input type="text" placeholder="bijv. 689102" value={editStudentNumber} onChange={(e) => setEditStudentNumber(e.target.value)} />
               </label>
               <label className="full-width">
