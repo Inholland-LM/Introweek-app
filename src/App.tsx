@@ -1524,7 +1524,7 @@ function App() {
     electricXHideTimerRef.current = window.setTimeout(() => {
       setElectricXVisible(false)
       electricXHideTimerRef.current = null
-    }, 1_700)
+    }, 3_100)
   }
 
   useEffect(() => {
