@@ -32,6 +32,7 @@ import {
 } from 'lucide-react'
 import type { AppProfile } from './profile'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
+import { exportCurrentMasterWorkbook } from './import/exportWorkbook'
 import type { ImportRole, MasterContent } from './import/parseWorkbook'
 import { approvePovSubmissionWithPoints, createPovPhotoUrl, deletePovSubmission, fetchPovSubmissions, reviewPovSubmission, type PovSubmission } from './povUploads'
 import { createInitialMasterContent, updateMasterContent } from './content'
@@ -157,6 +158,7 @@ export function OrganizerDashboard({
   // People State
   const [people, setPeople] = useState<OrganizerPerson[]>([])
   const [peopleLoading, setPeopleLoading] = useState(false)
+  const [peopleExporting, setPeopleExporting] = useState(false)
   const [peopleSaving, setPeopleSaving] = useState(false)
   const [peopleError, setPeopleError] = useState('')
   const [peopleSuccess, setPeopleSuccess] = useState('')
@@ -321,6 +323,21 @@ export function OrganizerDashboard({
       setPeopleError(reason instanceof Error ? reason.message : 'De personenlijst kon niet worden opgehaald.')
     } finally {
       setPeopleLoading(false)
+    }
+  }
+
+  async function handleMasterExport() {
+    if (peopleExporting) return
+    setPeopleExporting(true)
+    setPeopleError('')
+    setPeopleSuccess('')
+    try {
+      const result = await exportCurrentMasterWorkbook()
+      setPeopleSuccess(`Masterbestand gedownload met ${result.peopleCount} personen en alle actuele organisatie-inhoud.`)
+    } catch (reason) {
+      setPeopleError(reason instanceof Error ? reason.message : 'Het actuele masterbestand kon niet worden gemaakt.')
+    } finally {
+      setPeopleExporting(false)
     }
   }
 
@@ -1153,6 +1170,10 @@ export function OrganizerDashboard({
                   <p>Beheer studenten, buddy's, PO'ers en geïnteresseerde docenten.</p>
                 </div>
                 <div className="header-button-group">
+                  <button type="button" className="secondary-button" onClick={() => void handleMasterExport()} disabled={peopleExporting}>
+                    <Download aria-hidden="true" />
+                    <span>{peopleExporting ? 'Excel maken…' : 'Excel exporteren'}</span>
+                  </button>
                   <button type="button" className="secondary-button" onClick={() => setShowImportModal(true)}>
                     <FileSpreadsheet aria-hidden="true" />
                     <span>Excel importeren</span>

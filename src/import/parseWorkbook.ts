@@ -182,7 +182,7 @@ function parseMasterContent(XLSX: typeof import('@e965/xlsx'), workbook: ReturnT
     'Berichten',
     ['bericht_id', 'datum', 'tijd', 'titel', 'berichttekst', 'klassen', 'rollen', 'kanaal', 'link_url', 'actief'],
     issues,
-    ['geldig_tot_datum', 'geldig_tot_tijd', 'inhalen_bij_klaswissel', 'prioriteit'],
+    ['geldig_tot_datum', 'geldig_tot_tijd', 'inhalen_bij_klaswissel', 'prioriteit', 'ontvanger_profiel_ids'],
   )
   const messages = messageRows.map((row, index) => {
     registerId('Berichten', index + 2, row[0], messageIds, issues)
@@ -194,6 +194,7 @@ function parseMasterContent(XLSX: typeof import('@e965/xlsx'), workbook: ReturnT
     const expiresTime = row[11] ? parseTime(row[11]) : null
     const backfill = row[12] ? parseYesNo(row[12]) : false
     const priority = (row[13] || 'normaal').toLowerCase()
+    const recipientProfileIds = splitList(row[14])
     if (!date || !time) issues.push({ sheet: 'Berichten', row: index + 2, message: 'datum of tijd heeft geen geldig formaat' })
     if (!row[3] || !row[4]) issues.push({ sheet: 'Berichten', row: index + 2, message: 'titel en berichttekst zijn verplicht' })
     if (codes !== 'all' && (!codes.length || codes.some((code) => !validClasses.has(code)))) issues.push({ sheet: 'Berichten', row: index + 2, message: 'één of meer klassen bestaan niet' })
@@ -202,11 +203,12 @@ function parseMasterContent(XLSX: typeof import('@e965/xlsx'), workbook: ReturnT
     if ((row[10] && !expiresDate) || (row[11] && !expiresTime) || Boolean(row[10]) !== Boolean(row[11])) issues.push({ sheet: 'Berichten', row: index + 2, message: 'geldig_tot_datum en geldig_tot_tijd moeten samen een geldige datum en tijd bevatten' })
     if (row[12] && backfill === null) issues.push({ sheet: 'Berichten', row: index + 2, message: 'inhalen_bij_klaswissel moet ja of nee zijn' })
     if (!['normaal', 'belangrijk'].includes(priority)) issues.push({ sheet: 'Berichten', row: index + 2, message: 'prioriteit moet normaal of belangrijk zijn' })
+    if (recipientProfileIds.some((profileId) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(profileId))) issues.push({ sheet: 'Berichten', row: index + 2, message: 'ontvanger_profiel_ids bevat een ongeldige profiel-ID' })
     if (active === null) issues.push({ sheet: 'Berichten', row: index + 2, message: 'actief moet ja of nee zijn' })
     const scheduledAt = date && time ? `${date}T${time}:00+02:00` : ''
     const expiresAt = expiresDate && expiresTime ? `${expiresDate}T${expiresTime}:00+02:00` : null
     if (scheduledAt && expiresAt && new Date(expiresAt).getTime() <= new Date(scheduledAt).getTime()) issues.push({ sheet: 'Berichten', row: index + 2, message: 'geldig_tot moet na het verzendmoment liggen' })
-    return { id: row[0], scheduledAt, expiresAt, title: row[3], body: row[4], classCodes: codes, roles, channel, linkUrl: row[8] || null, backfillOnClassChange: backfill ?? false, priority: priority === 'belangrijk' ? 'important' as const : 'normal' as const, active: active ?? false }
+    return { id: row[0], scheduledAt, expiresAt, title: row[3], body: row[4], classCodes: codes, roles, recipientProfileIds: recipientProfileIds.length ? recipientProfileIds : undefined, channel, linkUrl: row[8] || null, backfillOnClassChange: backfill ?? false, priority: priority === 'belangrijk' ? 'important' as const : 'normal' as const, active: active ?? false }
   })
 
   const povIds = new Set<string>()
