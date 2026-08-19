@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react'
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from 'react'
 import {
   AlertTriangle,
   Bell,
@@ -67,6 +67,34 @@ type AnnouncementMessage = {
   channel: OrganizerDeliveryChannel
   actionTarget: 'route' | 'programme' | 'notifications'
   status: 'sent' | 'scheduled'
+  source: 'master' | 'history'
+}
+
+type MessageHistoryFilters = {
+  day: string
+  time: string
+  target: string
+  channel: 'all' | OrganizerDeliveryChannel
+}
+
+const EMPTY_MESSAGE_FILTERS: MessageHistoryFilters = { day: '', time: '', target: '', channel: 'all' }
+
+function deliveryChannelLabel(channel: OrganizerDeliveryChannel) {
+  if (channel === 'both') return 'In-app + push'
+  if (channel === 'push') return 'Alleen push'
+  return 'Alleen in-app'
+}
+
+function localDatePart(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+}
+
+function localTimePart(value: string) {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
 }
 
 export function OrganizerDashboard({
@@ -130,9 +158,15 @@ export function OrganizerDashboard({
   const [recipientsLoading, setRecipientsLoading] = useState(false)
   const [recipientsError, setRecipientsError] = useState('')
   const [msgChannel, setMsgChannel] = useState<OrganizerDeliveryChannel>('both')
-  const [msgSortOrder, setMsgSortOrder] = useState<'newest' | 'oldest'>('newest')
+  const [msgDeliveryTiming, setMsgDeliveryTiming] = useState<'now' | 'scheduled'>('now')
+  const [editingScheduledMessageId, setEditingScheduledMessageId] = useState<string | null>(null)
+  const [msgScheduledDate, setMsgScheduledDate] = useState('')
+  const [msgScheduledTime, setMsgScheduledTime] = useState('')
+  const [scheduledFilters, setScheduledFilters] = useState<MessageHistoryFilters>(EMPTY_MESSAGE_FILTERS)
+  const [sentFilters, setSentFilters] = useState<MessageHistoryFilters>(EMPTY_MESSAGE_FILTERS)
   const [msgSuccess, setMsgSuccess] = useState('')
   const [msgSending, setMsgSending] = useState(false)
+  const composeMessageRef = useRef<HTMLDivElement | null>(null)
 
   // Schedule CMS State
   const [programmesList, setProgrammesList] = useState<any[]>([
@@ -190,12 +224,17 @@ export function OrganizerDashboard({
           title: message.title,
           body: message.body,
           scheduledAt: message.scheduledAt,
-          targets: message.classCodes === 'all' ? ['Alle klassen'] : message.classCodes,
+          targets: [
+            ...(message.roles.includes('student') ? (message.classCodes === 'all' ? ['Alle klassen'] : message.classCodes) : []),
+            ...(message.roles.includes('buddy') ? ['Buddy’s'] : []),
+            ...(message.roles.includes('poer') ? ['PO’ers'] : []),
+          ],
           channel: message.channel,
           actionTarget: 'notifications',
           status: new Date(message.scheduledAt).getTime() > Date.now() ? 'scheduled' : 'sent',
+          source: 'master',
         }))
-        const sent = history.map((message): AnnouncementMessage => ({ ...message, actionTarget: 'notifications' }))
+        const sent = history.map((message): AnnouncementMessage => ({ ...message, actionTarget: 'notifications', source: 'history' }))
         setMessages([...planned, ...sent].filter((message, index, all) => all.findIndex((candidate) => candidate.id === message.id) === index))
       })
       .catch((reason) => {
@@ -452,6 +491,7 @@ export function OrganizerDashboard({
       channel: msgChannel,
       actionTarget: 'notifications',
       status: 'sent',
+      source: 'history',
     }
 
     setMessages((prev) => [newMsg, ...prev])
@@ -467,6 +507,215 @@ export function OrganizerDashboard({
     } finally {
       setMsgSending(false)
     }
+  }
+
+  function clearMessageComposer() {
+    setEditingScheduledMessageId(null)
+    setMsgTitle('')
+    setMsgBody('')
+    setMsgScheduledDate('')
+    setMsgScheduledTime('')
+    setMsgDeliveryTiming('now')
+    setSelectedClassCodes([])
+    setSelectedBuddyIds([])
+    setSelectedPoerIds([])
+    setMsgChannel('both')
+  }
+
+  function startEditingScheduledMessage(message: AnnouncementMessage) {
+    if (message.source !== 'master' || !message.id.startsWith('master:')) return
+    const masterId = message.id.slice('master:'.length)
+    const source = content?.messages.find((item) => item.id === masterId)
+    if (!source) {
+      setMsgSuccess('Dit ingeplande bericht kon niet in de centrale inhoud worden gevonden.')
+      return
+    }
+
+    const classCodes = source.classCodes === 'all' ? activeClassCodes : source.classCodes
+    const explicitRecipientIds = source.recipientProfileIds ?? []
+    setEditingScheduledMessageId(masterId)
+    setMsgTitle(source.title)
+    setMsgBody(source.body)
+    setMsgScheduledDate(localDatePart(source.scheduledAt))
+    setMsgScheduledTime(localTimePart(source.scheduledAt))
+    setMsgDeliveryTiming('scheduled')
+    setSelectedClassCodes(source.roles.includes('student') ? classCodes : [])
+    setSelectedBuddyIds(source.roles.includes('buddy')
+      ? buddyRecipients.filter((recipient) => explicitRecipientIds.length > 0
+        ? explicitRecipientIds.includes(recipient.id)
+        : !recipient.classCode || classCodes.includes(recipient.classCode)).map((recipient) => recipient.id)
+      : [])
+    setSelectedPoerIds(source.roles.includes('poer')
+      ? poerRecipients.filter((recipient) => explicitRecipientIds.length > 0
+        ? explicitRecipientIds.includes(recipient.id)
+        : !recipient.classCode || classCodes.includes(recipient.classCode)).map((recipient) => recipient.id)
+      : [])
+    setMsgChannel(source.channel ?? 'both')
+    setMsgSuccess('')
+    window.setTimeout(() => composeMessageRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0)
+  }
+
+  async function handleSaveScheduledMessage() {
+    if (!editingScheduledMessageId || !content || msgSending) return
+    const recipientProfileIds = [...new Set([...selectedBuddyIds, ...selectedPoerIds])]
+    if (!msgTitle.trim() || !msgBody.trim() || !msgScheduledDate || !msgScheduledTime) {
+      setMsgSuccess('Vul titel, berichtinhoud, dag en tijd volledig in.')
+      return
+    }
+    if (selectedClassCodes.length === 0 && recipientProfileIds.length === 0) {
+      setMsgSuccess('Kies eerst minimaal één klas, buddy of PO’er.')
+      return
+    }
+
+    const current = content.messages.find((message) => message.id === editingScheduledMessageId)
+    if (!current) {
+      setMsgSuccess('Dit ingeplande bericht bestaat niet meer in de centrale inhoud.')
+      return
+    }
+
+    const roles = [
+      ...(selectedClassCodes.length ? ['student' as const] : []),
+      ...(selectedBuddyIds.length ? ['buddy' as const] : []),
+      ...(selectedPoerIds.length ? ['poer' as const] : []),
+    ]
+    const audienceClassCodes = [...new Set([
+      ...selectedClassCodes,
+      ...messageRecipients
+        .filter((recipient) => recipientProfileIds.includes(recipient.id) && recipient.classCode)
+        .map((recipient) => recipient.classCode as string),
+    ])]
+    const classCodes = audienceClassCodes.length === activeClassCodes.length ? 'all' as const : audienceClassCodes
+    const scheduledDate = new Date(`${msgScheduledDate}T${msgScheduledTime}:00`)
+    if (Number.isNaN(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now()) {
+      setMsgSuccess('Kies een geldig moment in de toekomst.')
+      return
+    }
+    const scheduledAt = scheduledDate.toISOString()
+    const updatedMessage = {
+      ...current,
+      title: msgTitle.trim(),
+      body: msgBody.trim(),
+      scheduledAt,
+      classCodes,
+      roles,
+      recipientProfileIds,
+      channel: msgChannel,
+    }
+    const updatedContent: MasterContent = {
+      ...content,
+      messages: content.messages.map((message) => message.id === editingScheduledMessageId ? updatedMessage : message),
+    }
+
+    setMsgSending(true)
+    setMsgSuccess('')
+    try {
+      await updateMasterContent(updatedContent, contentVersion)
+      setMessages((currentMessages) => currentMessages.map((message) => message.id === `master:${editingScheduledMessageId}` ? {
+        ...message,
+        title: updatedMessage.title,
+        body: updatedMessage.body,
+        scheduledAt,
+        channel: msgChannel,
+        targets: [
+          ...(selectedClassCodes.length === activeClassCodes.length ? ['Alle klassen'] : selectedClassCodes),
+          ...(selectedBuddyIds.length ? ['Buddy’s'] : []),
+          ...(selectedPoerIds.length ? ['PO’ers'] : []),
+        ],
+      } : message))
+      onContentUpdated()
+      clearMessageComposer()
+      setMsgSuccess('Het ingeplande bericht is centraal aangepast en opgeslagen.')
+      window.setTimeout(() => setMsgSuccess(''), 4_000)
+    } catch (reason) {
+      setMsgSuccess(reason instanceof Error ? reason.message : 'Het ingeplande bericht kon niet worden opgeslagen.')
+    } finally {
+      setMsgSending(false)
+    }
+  }
+
+  async function handleScheduleBroadcast() {
+    if (!content || msgSending) return
+    const recipientProfileIds = [...new Set([...selectedBuddyIds, ...selectedPoerIds])]
+    if (!msgTitle.trim() || !msgBody.trim() || !msgScheduledDate || !msgScheduledTime) {
+      setMsgSuccess('Vul titel, berichtinhoud, dag en tijd volledig in.')
+      return
+    }
+    if (selectedClassCodes.length === 0 && recipientProfileIds.length === 0) {
+      setMsgSuccess('Kies eerst minimaal één klas, buddy of PO’er.')
+      return
+    }
+
+    const scheduledDate = new Date(`${msgScheduledDate}T${msgScheduledTime}:00`)
+    if (Number.isNaN(scheduledDate.getTime()) || scheduledDate.getTime() <= Date.now()) {
+      setMsgSuccess('Een ingepland bericht moet in de toekomst liggen.')
+      return
+    }
+
+    const roles: ImportRole[] = [
+      ...(selectedClassCodes.length ? ['student' as const] : []),
+      ...(selectedBuddyIds.length ? ['buddy' as const] : []),
+      ...(selectedPoerIds.length ? ['poer' as const] : []),
+    ]
+    const audienceClassCodes = [...new Set([
+      ...selectedClassCodes,
+      ...messageRecipients
+        .filter((recipient) => recipientProfileIds.includes(recipient.id) && recipient.classCode)
+        .map((recipient) => recipient.classCode as string),
+    ])]
+    const classCodes = audienceClassCodes.length === activeClassCodes.length ? 'all' as const : audienceClassCodes
+    const id = `od-${Date.now().toString(36)}`
+    const scheduledAt = scheduledDate.toISOString()
+    const nextMessage: MasterContent['messages'][number] = {
+      id,
+      scheduledAt,
+      expiresAt: null,
+      title: msgTitle.trim(),
+      body: msgBody.trim(),
+      classCodes,
+      roles,
+      recipientProfileIds,
+      channel: msgChannel,
+      linkUrl: null,
+      backfillOnClassChange: true,
+      priority: 'normal',
+      active: true,
+    }
+    const updatedContent: MasterContent = { ...content, messages: [...content.messages, nextMessage] }
+
+    setMsgSending(true)
+    setMsgSuccess('')
+    try {
+      await updateMasterContent(updatedContent, contentVersion)
+      setMessages((current) => [...current, {
+        id: `master:${id}`,
+        title: nextMessage.title,
+        body: nextMessage.body,
+        scheduledAt,
+        targets: [
+          ...(selectedClassCodes.length === activeClassCodes.length ? ['Alle klassen'] : selectedClassCodes),
+          ...(selectedBuddyIds.length ? ['Buddy’s'] : []),
+          ...(selectedPoerIds.length ? ['PO’ers'] : []),
+        ],
+        channel: msgChannel,
+        actionTarget: 'notifications',
+        status: 'scheduled',
+        source: 'master',
+      }])
+      onContentUpdated()
+      clearMessageComposer()
+      setMsgSuccess(`Melding ingepland voor ${scheduledDate.toLocaleString('nl-NL', { dateStyle: 'medium', timeStyle: 'short' })}.`)
+      window.setTimeout(() => setMsgSuccess(''), 4_000)
+    } catch (reason) {
+      setMsgSuccess(reason instanceof Error ? reason.message : 'De melding kon niet worden ingepland.')
+    } finally {
+      setMsgSending(false)
+    }
+  }
+
+  function handleSubmitMessage() {
+    if (editingScheduledMessageId) return void handleSaveScheduledMessage()
+    if (msgDeliveryTiming === 'scheduled') return void handleScheduleBroadcast()
+    return void handleSendBroadcast()
   }
 
 function resolveLocationDetails(locationInput: string, existingLocations: Array<any>) {
@@ -613,15 +862,35 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
     })
   }, [people, personSearch, roleFilter, classFilter])
 
-  const sortedMessages = useMemo(() => {
-    return [...messages].sort((a, b) => {
-      const timeA = new Date(a.scheduledAt).getTime()
-      const timeB = new Date(b.scheduledAt).getTime()
-      return msgSortOrder === 'newest' ? timeB - timeA : timeA - timeB
+  function filterMessages(items: AnnouncementMessage[], filters: MessageHistoryFilters) {
+    return items.filter((message) => {
+      const matchesDay = !filters.day || localDatePart(message.scheduledAt) === filters.day
+      const matchesTime = !filters.time || localTimePart(message.scheduledAt) === filters.time
+      const matchesTarget = !filters.target || message.targets.includes(filters.target)
+      const matchesChannel = filters.channel === 'all' || message.channel === filters.channel
+      return matchesDay && matchesTime && matchesTarget && matchesChannel
     })
-  }, [messages, msgSortOrder])
-  const scheduledMessages = sortedMessages.filter((message) => message.status === 'scheduled')
-  const sentMessages = sortedMessages.filter((message) => message.status === 'sent')
+  }
+
+  const scheduledSourceMessages = useMemo(() => messages
+    .filter((message) => message.status === 'scheduled')
+    .sort((a, b) => new Date(a.scheduledAt).getTime() - new Date(b.scheduledAt).getTime() || a.channel.localeCompare(b.channel)), [messages])
+  const sentSourceMessages = useMemo(() => messages
+    .filter((message) => message.status === 'sent')
+    .sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime()), [messages])
+  const scheduledMessages = useMemo(() => filterMessages(scheduledSourceMessages, scheduledFilters), [scheduledSourceMessages, scheduledFilters])
+  const sentMessages = useMemo(() => filterMessages(sentSourceMessages, sentFilters), [sentSourceMessages, sentFilters])
+
+  function messageFilterOptions(items: AnnouncementMessage[]) {
+    return {
+      days: [...new Set(items.map((message) => localDatePart(message.scheduledAt)).filter(Boolean))].sort(),
+      times: [...new Set(items.map((message) => localTimePart(message.scheduledAt)).filter(Boolean))].sort(),
+      targets: [...new Set(items.flatMap((message) => message.targets))].sort((a, b) => a.localeCompare(b, 'nl')),
+    }
+  }
+
+  const scheduledFilterOptions = useMemo(() => messageFilterOptions(scheduledSourceMessages), [scheduledSourceMessages])
+  const sentFilterOptions = useMemo(() => messageFilterOptions(sentSourceMessages), [sentSourceMessages])
 
   function toggleSelection(value: string, setter: Dispatch<SetStateAction<string[]>>) {
     setter((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value])
@@ -923,8 +1192,14 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
               {msgSuccess && <div className="notification-state notification-success">{msgSuccess}</div>}
 
               {/* Compose Message Form */}
-              <div className="compose-message-card">
-                <h3>Nieuwe Melding Versturen</h3>
+              <div className="compose-message-card" ref={composeMessageRef}>
+                <div className="compose-heading">
+                  <div>
+                    <h3>{editingScheduledMessageId ? 'Ingeplande melding aanpassen' : 'Nieuwe melding'}</h3>
+                    <small>{editingScheduledMessageId ? 'Pas de ingevulde velden aan en sla de wijzigingen centraal op.' : 'Verstuur direct of plan een moment in de toekomst.'}</small>
+                  </div>
+                  {editingScheduledMessageId && <button type="button" className="secondary-button compact-button" onClick={clearMessageComposer}><X aria-hidden="true" /> Annuleren</button>}
+                </div>
                 <div className="form-grid">
                   <label>
                     <span>Titel van het bericht</span>
@@ -945,6 +1220,29 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                       onChange={(e) => setMsgBody(e.target.value)}
                     />
                   </label>
+
+                  {!editingScheduledMessageId && (
+                    <label>
+                      <span>Verzendmoment</span>
+                      <select value={msgDeliveryTiming} onChange={(event) => setMsgDeliveryTiming(event.target.value as 'now' | 'scheduled')}>
+                        <option value="now">Direct verzenden</option>
+                        <option value="scheduled">Inplannen voor later</option>
+                      </select>
+                    </label>
+                  )}
+
+                  {(editingScheduledMessageId || msgDeliveryTiming === 'scheduled') && (
+                    <>
+                      <label>
+                        <span>Dag</span>
+                        <input type="date" min={localDatePart(new Date().toISOString())} value={msgScheduledDate} onChange={(event) => setMsgScheduledDate(event.target.value)} />
+                      </label>
+                      <label>
+                        <span>Tijd</span>
+                        <input type="time" value={msgScheduledTime} onChange={(event) => setMsgScheduledTime(event.target.value)} />
+                      </label>
+                    </>
+                  )}
 
                   <fieldset className="recipient-picker full-width">
                     <legend>Doelgroep klassen (studenten)</legend>
@@ -1005,9 +1303,9 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                 </div>
 
                 <div className="compose-actions">
-                  <button type="button" className="primary-button" onClick={() => { void handleSendBroadcast() }} disabled={msgSending}>
-                    <Send aria-hidden="true" />
-                    <span>{msgSending ? 'Versturen…' : 'Verstuur bericht'}</span>
+                  <button type="button" className="primary-button" onClick={handleSubmitMessage} disabled={msgSending}>
+                    {editingScheduledMessageId ? <Check aria-hidden="true" /> : msgDeliveryTiming === 'scheduled' ? <Calendar aria-hidden="true" /> : <Send aria-hidden="true" />}
+                    <span>{msgSending ? 'Opslaan…' : editingScheduledMessageId ? 'Wijzigingen opslaan' : msgDeliveryTiming === 'scheduled' ? 'Bericht inplannen' : 'Nu versturen'}</span>
                   </button>
                 </div>
               </div>
@@ -1015,36 +1313,45 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
               {/* Message History */}
               <div className="message-history">
                 <div className="history-header">
-                  <h3>Ingeplande berichten</h3>
-                  <div className="history-sort">
-                    <Filter aria-hidden="true" />
-                    <select value={msgSortOrder} onChange={(e) => setMsgSortOrder(e.target.value as any)}>
-                      <option value="newest">Nieuwste eerst</option>
-                      <option value="oldest">Oudste eerst</option>
-                    </select>
-                  </div>
+                  <div><h3>Ingeplande berichten</h3><small>Standaard op dag, tijd en kanaal · klik op een bericht om het aan te passen.</small></div>
+                </div>
+
+                <div className="message-filter-grid">
+                  <label><span>Dag</span><select value={scheduledFilters.day} onChange={(event) => setScheduledFilters((current) => ({ ...current, day: event.target.value }))}><option value="">Alle dagen</option>{scheduledFilterOptions.days.map((day) => <option key={day} value={day}>{new Date(`${day}T12:00:00`).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</option>)}</select></label>
+                  <label><span>Tijd</span><select value={scheduledFilters.time} onChange={(event) => setScheduledFilters((current) => ({ ...current, time: event.target.value }))}><option value="">Alle tijden</option>{scheduledFilterOptions.times.map((time) => <option key={time} value={time}>{time}</option>)}</select></label>
+                  <label><span>Naar</span><select value={scheduledFilters.target} onChange={(event) => setScheduledFilters((current) => ({ ...current, target: event.target.value }))}><option value="">Alle ontvangers</option>{scheduledFilterOptions.targets.map((target) => <option key={target} value={target}>{target}</option>)}</select></label>
+                  <label><span>Kanaal</span><select value={scheduledFilters.channel} onChange={(event) => setScheduledFilters((current) => ({ ...current, channel: event.target.value as MessageHistoryFilters['channel'] }))}><option value="all">Alle kanalen</option><option value="both">In-app + push</option><option value="in-app">Alleen in-app</option><option value="push">Alleen push</option></select></label>
+                  <button type="button" className="filter-reset-button" onClick={() => setScheduledFilters({ ...EMPTY_MESSAGE_FILTERS })}><Filter aria-hidden="true" /> Wis filters</button>
                 </div>
 
                 <div className="message-list">
                   {scheduledMessages.length === 0 && <p className="notification-state">Geen ingeplande berichten.</p>}
                   {scheduledMessages.map((msg) => (
-                    <div key={msg.id} className="message-history-card">
+                    <button type="button" key={msg.id} className="message-history-card editable-message-card" onClick={() => startEditingScheduledMessage(msg)}>
                       <div className="msg-header">
                         <strong>{msg.title}</strong>
-                        <span className="msg-time">{new Date(msg.scheduledAt).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span className="msg-time">{new Date(msg.scheduledAt).toLocaleString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       <p>{msg.body}</p>
                       <div className="msg-badges">
                         <span className="badge">Naar: {msg.targets.join(', ')}</span>
-                        <span className="badge">Kanaal: {msg.channel}</span>
+                        <span className="badge">Kanaal: {deliveryChannelLabel(msg.channel)}</span>
+                        <span className="badge edit-badge"><Edit3 aria-hidden="true" /> Aanpassen</span>
                       </div>
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>
 
               <div className="message-history">
-                <div className="history-header"><h3>Verzonden berichten</h3></div>
+                <div className="history-header"><div><h3>Verzonden berichten</h3><small>Nieuwste berichten staan bovenaan.</small></div></div>
+                <div className="message-filter-grid">
+                  <label><span>Dag</span><select value={sentFilters.day} onChange={(event) => setSentFilters((current) => ({ ...current, day: event.target.value }))}><option value="">Alle dagen</option>{sentFilterOptions.days.map((day) => <option key={day} value={day}>{new Date(`${day}T12:00:00`).toLocaleDateString('nl-NL', { weekday: 'short', day: 'numeric', month: 'short' })}</option>)}</select></label>
+                  <label><span>Tijd</span><select value={sentFilters.time} onChange={(event) => setSentFilters((current) => ({ ...current, time: event.target.value }))}><option value="">Alle tijden</option>{sentFilterOptions.times.map((time) => <option key={time} value={time}>{time}</option>)}</select></label>
+                  <label><span>Naar</span><select value={sentFilters.target} onChange={(event) => setSentFilters((current) => ({ ...current, target: event.target.value }))}><option value="">Alle ontvangers</option>{sentFilterOptions.targets.map((target) => <option key={target} value={target}>{target}</option>)}</select></label>
+                  <label><span>Kanaal</span><select value={sentFilters.channel} onChange={(event) => setSentFilters((current) => ({ ...current, channel: event.target.value as MessageHistoryFilters['channel'] }))}><option value="all">Alle kanalen</option><option value="both">In-app + push</option><option value="in-app">Alleen in-app</option><option value="push">Alleen push</option></select></label>
+                  <button type="button" className="filter-reset-button" onClick={() => setSentFilters({ ...EMPTY_MESSAGE_FILTERS })}><Filter aria-hidden="true" /> Wis filters</button>
+                </div>
                 <div className="message-list">
                   {sentMessages.length === 0 && <p className="notification-state">Nog geen berichten verzonden.</p>}
                   {sentMessages.map((msg) => (
@@ -1056,7 +1363,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                       <p>{msg.body}</p>
                       <div className="msg-badges">
                         <span className="badge">Naar: {msg.targets.join(', ')}</span>
-                        <span className="badge">Kanaal: {msg.channel}</span>
+                        <span className="badge">Kanaal: {deliveryChannelLabel(msg.channel)}</span>
                       </div>
                     </div>
                   ))}

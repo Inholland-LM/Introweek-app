@@ -29,6 +29,7 @@ export type MasterContent = {
     body: string
     classCodes: string[] | 'all'
     roles: ImportRole[]
+    recipientProfileIds?: string[]
     channel: 'in-app' | 'push' | 'both'
     linkUrl: string | null
     backfillOnClassChange?: boolean
