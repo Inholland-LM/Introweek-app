@@ -3046,8 +3046,60 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 }
 
 .dashboard-table .student-number-column {
-  width: 7.5rem;
-  min-width: 7.5rem;
+  width: 5.4rem;
+  min-width: 5.4rem;
+  white-space: nowrap;
+}
+
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+.people-dashboard-table {
+  min-width: 0;
+  table-layout: fixed;
+  font-size: 0.8rem;
+}
+
+.people-dashboard-table th,
+.people-dashboard-table td {
+  padding: 10px 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.people-dashboard-table th:nth-child(1) { width: 10%; }
+.people-dashboard-table th:nth-child(2) { width: 4.8rem; }
+.people-dashboard-table th:nth-child(3) { width: 12%; }
+.people-dashboard-table th:nth-child(4) { width: 5.4rem; }
+.people-dashboard-table th:nth-child(5) { width: 24%; }
+.people-dashboard-table th:nth-child(6) { width: 13%; }
+.people-dashboard-table th:nth-child(7) { width: 5.2rem; }
+.people-dashboard-table th:nth-child(8) { width: 6.4rem; }
+.people-dashboard-table th:nth-child(9) { width: 4.8rem; }
+
+.people-dashboard-table .name-prefix-column {
+  width: 4.8rem;
+  max-width: 4.8rem;
+  white-space: nowrap;
+}
+
+.people-dashboard-table .role-badge {
+  max-width: 100%;
+  padding-inline: 7px;
+  white-space: normal;
+  line-height: 1.15;
+}
+
+.people-dashboard-table td:nth-child(5) {
   white-space: nowrap;
 }
 
@@ -3095,7 +3147,7 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 }
 
 .programme-dashboard-table {
-  min-width: 850px;
+  min-width: 0;
   table-layout: fixed;
 }
 
@@ -3105,7 +3157,7 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .programme-dashboard-table th:nth-child(4) { width: 15%; }
 .programme-dashboard-table th:nth-child(5) { width: 12%; }
 .programme-dashboard-table th:nth-child(6) { width: 9%; }
-.programme-dashboard-table th:nth-child(7) { width: 17%; }
+.programme-dashboard-table th:nth-child(7) { width: 10%; }
 
 .programme-dashboard-table th,
 .programme-dashboard-table td {
@@ -3150,6 +3202,29 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .programme-title-cell span {
   color: #64748b;
   font-size: 0.78rem;
+}
+
+.new-programme-location {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid rgba(227, 0, 79, 0.22);
+  border-radius: 16px;
+  background: rgba(227, 0, 79, 0.035);
+}
+
+.new-programme-location legend {
+  padding: 0 6px;
+  color: #e3004f;
+  font-size: 0.82rem;
+  font-weight: 900;
+}
+
+.new-programme-location .full-width {
+  grid-column: 1 / -1;
 }
 
 .table-row-actions {
@@ -3448,8 +3523,8 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 /* Desktop Laptop Media Query (min-width: 900px) */
 @media (min-width: 900px) {
   .dashboard-grid {
-    grid-template-columns: 220px 1fr;
-    gap: 20px;
+    grid-template-columns: 176px minmax(0, 1fr);
+    gap: 16px;
   }
 
   .dashboard-sidebar {
@@ -3774,8 +3849,8 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 }
 
 .app-shell.widescreen-dashboard .organizer-dashboard .dashboard-grid {
-  grid-template-columns: 240px 1fr !important;
-  gap: 24px !important;
+  grid-template-columns: 176px minmax(0, 1fr) !important;
+  gap: 16px !important;
 }
 
 .app-shell.widescreen-dashboard .organizer-dashboard .dashboard-sidebar {
@@ -3790,8 +3865,13 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   width: 100% !important;
   justify-content: flex-start !important;
   border-radius: 14px !important;
-  padding: 12px 16px !important;
-  font-size: 0.9rem !important;
+  padding: 10px 12px !important;
+  font-size: 0.82rem !important;
+}
+
+.app-shell.widescreen-dashboard .organizer-dashboard .dashboard-panel {
+  min-width: 0;
+  padding: 20px;
 }
 
 .app-shell.widescreen-dashboard .organizer-dashboard .panel-header {
