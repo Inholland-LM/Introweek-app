@@ -233,6 +233,12 @@ export function OrganizerDashboard({
   const [editTitle, setEditTitle] = useState('')
   const [editDescription, setEditDescription] = useState('')
   const [editLocation, setEditLocation] = useState('')
+  const [addingProgrammeLocation, setAddingProgrammeLocation] = useState(false)
+  const [newLocationName, setNewLocationName] = useState('')
+  const [newLocationAddress, setNewLocationAddress] = useState('')
+  const [newLocationPostalCode, setNewLocationPostalCode] = useState('')
+  const [newLocationCity, setNewLocationCity] = useState('Amsterdam')
+  const [newLocationRouteUrl, setNewLocationRouteUrl] = useState('')
   const [programmeSearch, setProgrammeSearch] = useState('')
   const [programmeDayFilter, setProgrammeDayFilter] = useState('all')
   const [scheduleSaving, setScheduleSaving] = useState(false)
@@ -832,72 +838,23 @@ export function OrganizerDashboard({
     return void handleSendBroadcast()
   }
 
-function resolveLocationDetails(locationInput: string, existingLocations: Array<any>) {
-  if (!locationInput) return null
-
-  const matched = existingLocations.find(
-    (loc) => loc && (loc.name.toLowerCase() === locationInput.toLowerCase() || loc.id === locationInput)
-  )
-  if (matched) return matched
-
-  const presets: Record<string, { name: string; address: string; routeUrl?: string; lat: number; lng: number }> = {
-    'sluisbuurt campus': { name: 'Hogeschool Inholland Amsterdam', address: 'Pina Bauschplein 4, 1095 PN Amsterdam', routeUrl: 'https://www.google.com/maps/search/?api=1&query=Hogeschool+Inholland+Amsterdam+Pina+Bauschplein+4', lat: 52.3702, lng: 4.9530 },
-    'sluisbuurt': { name: 'Hogeschool Inholland Amsterdam', address: 'Pina Bauschplein 4, 1095 PN Amsterdam', routeUrl: 'https://www.google.com/maps/search/?api=1&query=Hogeschool+Inholland+Amsterdam+Pina+Bauschplein+4', lat: 52.3702, lng: 4.9530 },
-    'inholland amsterdam': { name: 'Hogeschool Inholland Amsterdam', address: 'Pina Bauschplein 4, 1095 PN Amsterdam', routeUrl: 'https://www.google.com/maps/search/?api=1&query=Hogeschool+Inholland+Amsterdam+Pina+Bauschplein+4', lat: 52.3702, lng: 4.9530 },
-    'inholland': { name: 'Hogeschool Inholland Amsterdam', address: 'Pina Bauschplein 4, 1095 PN Amsterdam', routeUrl: 'https://www.google.com/maps/search/?api=1&query=Hogeschool+Inholland+Amsterdam+Pina+Bauschplein+4', lat: 52.3702, lng: 4.9530 },
-    'hogeschool inholland': { name: 'Hogeschool Inholland Amsterdam', address: 'Pina Bauschplein 4, 1095 PN Amsterdam', routeUrl: 'https://www.google.com/maps/search/?api=1&query=Hogeschool+Inholland+Amsterdam+Pina+Bauschplein+4', lat: 52.3702, lng: 4.9530 },
-    'westergasfabriek': { name: 'Westergasfabriek', address: 'Gosschalklaan 3, 1014 DC Amsterdam', lat: 52.3861, lng: 4.8701 },
-    'westergas': { name: 'Westergasfabriek', address: 'Gosschalklaan 3, 1014 DC Amsterdam', lat: 52.3861, lng: 4.8701 },
-    'westergas fabriek': { name: 'Westergasfabriek', address: 'Gosschalklaan 3, 1014 DC Amsterdam', lat: 52.3861, lng: 4.8701 },
-    'de duif': { name: 'De Duif', address: 'Prinsengracht 756, Amsterdam', routeUrl: 'https://maps.app.goo.gl/TzDtQjuwy45XLf9S7', lat: 52.3621, lng: 4.8974 },
-    'sportcentrum de pijp': { name: 'Sportcentrum De Pijp', address: 'Lizzy Ansinghstraat 88, Amsterdam', routeUrl: 'https://maps.app.goo.gl/X5UauhuGxNfmSAwq6', lat: 52.3524, lng: 4.8942 },
-    'ndsm-werf': { name: 'NDSM-werf', address: 'NDSM-Plein 1, Amsterdam', routeUrl: 'https://maps.app.goo.gl/NWYgPZzJN3uzpzHV6', lat: 52.4005, lng: 4.8925 },
-    'ndsm': { name: 'NDSM-werf', address: 'NDSM-Plein 1, Amsterdam', routeUrl: 'https://maps.app.goo.gl/NWYgPZzJN3uzpzHV6', lat: 52.4005, lng: 4.8925 },
-    'baggerbeest': { name: 'Baggerbeest', address: 'Eef Kamerbeekstraat 1006, Amsterdam', lat: 52.3708, lng: 4.9602 },
-    'museumplein': { name: 'Museumplein', address: 'Museumplein, Amsterdam', lat: 52.3580, lng: 4.8810 },
-    'vondelpark': { name: 'Vondelpark', address: 'Vondelpark, Amsterdam', lat: 52.3580, lng: 4.8686 },
-    'rembrandtplein': { name: 'Rembrandtplein', address: 'Rembrandtplein, Amsterdam', lat: 52.3660, lng: 4.8967 },
-    'leidseplein': { name: 'Leidseplein', address: 'Leidseplein, Amsterdam', lat: 52.3640, lng: 4.8827 },
-    'oosterpark': { name: 'Oosterpark', address: 'Oosterpark, Amsterdam', lat: 52.3600, lng: 4.9200 },
-    'artis': { name: 'Artis Zoo', address: 'Plantage Kerklaan 38-40, Amsterdam', lat: 52.3660, lng: 4.9165 },
-    'tolhuistuin': { name: 'Tolhuistuin', address: 'IJpromenade 2, Amsterdam', lat: 52.3836, lng: 4.9009 },
-    'brakke grond': { name: 'Brakke Grond', address: 'Nes 45, Amsterdam', lat: 52.3705, lng: 4.8938 },
-    'melkweg': { name: 'Melkweg', address: 'Lijnbaansgracht 234A, Amsterdam', lat: 52.3648, lng: 4.8817 },
-    'paradiso': { name: 'Paradiso', address: 'Weteringschans 6-8, Amsterdam', lat: 52.3622, lng: 4.8837 },
+  function findLocationByReference(reference: string | null | undefined) {
+    if (!reference) return null
+    return (content?.locations ?? []).find((location) => (
+      location.id === reference || location.name.toLocaleLowerCase('nl-NL') === reference.toLocaleLowerCase('nl-NL')
+    )) ?? null
   }
 
-  const key = locationInput.toLowerCase().trim()
-  const matchedKey = Object.keys(presets).find((p) => key === p || key.includes(p) || p.includes(key))
-
-  if (matchedKey) {
-    const preset = presets[matchedKey]
-    const newLocId = `loc-auto-${Date.now()}`
-    return {
-      id: newLocId,
-      name: preset.name,
-      address: preset.address,
-      postalCode: '1095 MJ',
-      city: 'Amsterdam',
-      routeUrl: preset.routeUrl ?? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(preset.name + ' Amsterdam')}`,
-      latitude: preset.lat,
-      longitude: preset.lng,
-      active: true,
-    }
+  function programmeLocationLabel(reference: string | null | undefined) {
+    return findLocationByReference(reference)?.name ?? reference ?? 'Niet ingesteld'
   }
 
-  const newLocId = `loc-auto-${Date.now()}`
-  return {
-    id: newLocId,
-    name: locationInput,
-    address: `${locationInput}, Amsterdam`,
-    postalCode: '1000 AA',
-    city: 'Amsterdam',
-    routeUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Hogeschool Inholland Amsterdam ' + locationInput)}`,
-    latitude: 52.3702,
-    longitude: 4.9530,
-    active: true,
-  }
-}
+  const selectableLocations = useMemo(() => (
+    (content?.locations ?? [])
+      .filter((location) => location.active !== false)
+      .slice()
+      .sort((left, right) => left.name.localeCompare(right.name, 'nl-NL'))
+  ), [content?.locations])
 
   function openEditProgrammeModal(item: MasterContent['programmes'][number]) {
     setEditingProgrammeId(item.id)
@@ -906,7 +863,13 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
     setEditEndTime(item.endTime ?? '')
     setEditTitle(item.title)
     setEditDescription(item.description ?? '')
-    setEditLocation(item.locationId ?? '')
+    setEditLocation(findLocationByReference(item.locationId)?.id ?? item.locationId ?? '')
+    setAddingProgrammeLocation(false)
+    setNewLocationName('')
+    setNewLocationAddress('')
+    setNewLocationPostalCode('')
+    setNewLocationCity('Amsterdam')
+    setNewLocationRouteUrl('')
     setScheduleError('')
   }
 
@@ -918,15 +881,37 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
 
     const baseContent = content ?? createInitialMasterContent()
     const currentLocations = [...(baseContent.locations ?? [])]
-    const resolvedLoc = resolveLocationDetails(editLocation, currentLocations)
-
     let updatedLocations = currentLocations
-    let targetLocId = editLocation
+    let targetLocId: string | null = editLocation || null
 
-    if (resolvedLoc) {
-      targetLocId = resolvedLoc.name
-      if (!currentLocations.some((l) => l.name.toLowerCase() === resolvedLoc.name.toLowerCase())) {
-        updatedLocations = [...currentLocations, resolvedLoc]
+    if (addingProgrammeLocation) {
+      const locationName = newLocationName.trim()
+      const locationAddress = newLocationAddress.trim()
+      if (!locationName || !locationAddress) {
+        setScheduleError('Vul voor de nieuwe locatie minimaal een naam en adres in.')
+        setScheduleSaving(false)
+        return
+      }
+
+      const duplicate = currentLocations.find((location) => location.name.trim().toLocaleLowerCase('nl-NL') === locationName.toLocaleLowerCase('nl-NL'))
+      if (duplicate) {
+        targetLocId = duplicate.id
+      } else {
+        const city = newLocationCity.trim() || 'Amsterdam'
+        const newLocationId = `loc-${Date.now().toString(36)}`
+        const routeUrl = newLocationRouteUrl.trim() || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${locationName}, ${locationAddress}, ${city}`)}`
+        updatedLocations = [...currentLocations, {
+          id: newLocationId,
+          name: locationName,
+          address: locationAddress,
+          postalCode: newLocationPostalCode.trim(),
+          city,
+          routeUrl,
+          latitude: null,
+          longitude: null,
+          active: true,
+        }]
+        targetLocId = newLocationId
       }
     }
 
@@ -1012,7 +997,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
       .filter((item) => !query || [
         item.title,
         item.category,
-        item.locationId ?? '',
+        programmeLocationLabel(item.locationId),
         item.description ?? '',
         programmeAudienceLabel(item.classCodes),
       ].join(' ').toLowerCase().includes(query))
@@ -1021,7 +1006,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
         || left.startTime.localeCompare(right.startTime)
         || left.order - right.order
       ))
-  }, [programmeDayFilter, programmeSearch, programmesList])
+  }, [content?.locations, programmeDayFilter, programmeSearch, programmesList])
 
   const filteredPeople = useMemo(() => {
     const collator = new Intl.Collator('nl-NL', { sensitivity: 'base', numeric: true })
@@ -1153,7 +1138,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
           </button>
           <button type="button" className={`subtle-tab-btn ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')} title="Technisch beheerderspaneel">
             <Settings aria-hidden="true" />
-            <span>Technisch &amp; DNS</span>
+            <span>Technisch</span>
           </button>
         </nav>
 
@@ -1214,7 +1199,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
 
               {/* Responsive Table */}
               <div className="table-responsive-wrapper">
-                <table className="dashboard-table">
+                <table className="dashboard-table people-dashboard-table">
                   <thead>
                     <tr>
                       <th aria-sort={peopleSort.key === 'firstName' ? (peopleSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
@@ -1223,7 +1208,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                           {renderPeopleSortIcon('firstName')}
                         </button>
                       </th>
-                      <th>Tussenvoegsel</th>
+                      <th className="name-prefix-column"><span className="visually-hidden">Tussenvoegsel</span></th>
                       <th aria-sort={peopleSort.key === 'lastName' ? (peopleSort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}>
                         <button type="button" className="table-sort-button" onClick={() => togglePeopleSort('lastName')}>
                           Achternaam
@@ -1267,7 +1252,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                     {filteredPeople.map((person) => (
                       <tr key={person.profileId}>
                         <td><strong>{person.firstName || '—'}</strong></td>
-                        <td>{person.namePrefix || '—'}</td>
+                        <td className="name-prefix-column" title={person.namePrefix || undefined}>{person.namePrefix || '—'}</td>
                         <td><strong>{person.lastName || '—'}</strong></td>
                         <td className="student-number-column">{person.studentNumber || '—'}</td>
                         <td>{person.email}</td>
@@ -1382,7 +1367,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                         <td>
                           <span className="programme-location-cell">
                             <MapPin aria-hidden="true" />
-                            <span>{item.locationId || 'Niet ingesteld'}</span>
+                            <span>{programmeLocationLabel(item.locationId)}</span>
                           </span>
                         </td>
                         <td>{programmeAudienceLabel(item.classCodes)}</td>
@@ -1399,9 +1384,9 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                               onClick={() => openEditProgrammeModal(item)}
                               disabled={scheduleSaving}
                               title="Programmaonderdeel bewerken"
+                              aria-label={`${item.title} bewerken`}
                             >
                               <Edit3 aria-hidden="true" />
-                              <span>Bewerken</span>
                             </button>
                             <button
                               type="button"
@@ -2029,8 +2014,48 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
               </label>
               <label className="full-width">
                 <span>Locatie</span>
-                <input type="text" placeholder="bijv. Inholland Amsterdam - Aula" value={editLocation} onChange={(e) => setEditLocation(e.target.value)} />
+                <select
+                  value={addingProgrammeLocation ? '__new__' : editLocation}
+                  onChange={(event) => {
+                    const value = event.target.value
+                    setAddingProgrammeLocation(value === '__new__')
+                    if (value !== '__new__') setEditLocation(value)
+                  }}
+                >
+                  <option value="">Geen locatie</option>
+                  {selectableLocations.map((location) => (
+                    <option key={location.id} value={location.id}>
+                      {location.name}{location.address ? ` — ${location.address}` : ''}
+                    </option>
+                  ))}
+                  <option value="__new__">＋ Nieuwe locatie toevoegen</option>
+                </select>
               </label>
+              {addingProgrammeLocation && (
+                <fieldset className="new-programme-location full-width">
+                  <legend>Nieuwe locatie toevoegen</legend>
+                  <label>
+                    <span>Naam</span>
+                    <input type="text" placeholder="bijv. De Duif" value={newLocationName} onChange={(event) => setNewLocationName(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>Adres</span>
+                    <input type="text" placeholder="Straat en huisnummer" value={newLocationAddress} onChange={(event) => setNewLocationAddress(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>Postcode</span>
+                    <input type="text" placeholder="1234 AB" value={newLocationPostalCode} onChange={(event) => setNewLocationPostalCode(event.target.value)} />
+                  </label>
+                  <label>
+                    <span>Plaats</span>
+                    <input type="text" value={newLocationCity} onChange={(event) => setNewLocationCity(event.target.value)} />
+                  </label>
+                  <label className="full-width">
+                    <span>Google Maps-link (optioneel)</span>
+                    <input type="url" placeholder="Wordt automatisch gemaakt als je dit leeg laat" value={newLocationRouteUrl} onChange={(event) => setNewLocationRouteUrl(event.target.value)} />
+                  </label>
+                </fieldset>
+              )}
             </div>
             <div className="modal-footer" style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '16px' }}>
               <button type="button" className="secondary-button" onClick={() => setEditingProgrammeId(null)}>
