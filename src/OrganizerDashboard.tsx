@@ -177,13 +177,12 @@ export function OrganizerDashboard({
   const [recipientsLoading, setRecipientsLoading] = useState(false)
   const [recipientsError, setRecipientsError] = useState('')
   const [msgChannel, setMsgChannel] = useState<OrganizerDeliveryChannel>('both')
-  const [msgDeliveryTiming, setMsgDeliveryTiming] = useState<'now' | 'scheduled'>('now')
   const [editingScheduledMessageId, setEditingScheduledMessageId] = useState<string | null>(null)
   const [msgScheduledDate, setMsgScheduledDate] = useState(() => currentLocalMessageMoment().date)
   const [msgScheduledTime, setMsgScheduledTime] = useState(() => currentLocalMessageMoment().time)
-  const effectiveMessageDeliveryTiming = !editingScheduledMessageId && compareMessageMoment(msgScheduledDate, msgScheduledTime) === 'future'
+  const effectiveMessageDeliveryTiming = compareMessageMoment(msgScheduledDate, msgScheduledTime) === 'future'
     ? 'scheduled'
-    : msgDeliveryTiming
+    : 'now'
   const [scheduledFilters, setScheduledFilters] = useState<MessageHistoryFilters>(EMPTY_MESSAGE_FILTERS)
   const [sentFilters, setSentFilters] = useState<MessageHistoryFilters>(EMPTY_MESSAGE_FILTERS)
   const [msgSuccess, setMsgSuccess] = useState('')
@@ -534,7 +533,6 @@ export function OrganizerDashboard({
     setMsgBody('')
     setMsgScheduledDate(currentMoment.date)
     setMsgScheduledTime(currentMoment.time)
-    setMsgDeliveryTiming('now')
     setSelectedClassCodes([])
     setSelectedBuddyIds([])
     setSelectedPoerIds([])
@@ -545,36 +543,14 @@ export function OrganizerDashboard({
     const currentMoment = currentLocalMessageMoment()
     setMsgScheduledDate(currentMoment.date)
     setMsgScheduledTime(currentMoment.time)
-    setMsgDeliveryTiming('now')
-  }
-
-  function handleMessageDeliveryTimingChange(value: 'now' | 'scheduled') {
-    if (value === 'now') {
-      setMessageMomentToNow()
-      return
-    }
-    setMsgDeliveryTiming('scheduled')
-    if (!msgScheduledDate || !msgScheduledTime) {
-      const currentMoment = currentLocalMessageMoment()
-      setMsgScheduledDate(currentMoment.date)
-      setMsgScheduledTime(currentMoment.time)
-    }
   }
 
   function handleMessageDateChange(value: string) {
     setMsgScheduledDate(value)
-    if (editingScheduledMessageId) return
-    const relation = compareMessageMoment(value, msgScheduledTime)
-    if (relation === 'future') setMsgDeliveryTiming('scheduled')
-    if (relation === 'now') setMsgDeliveryTiming('now')
   }
 
   function handleMessageTimeChange(value: string) {
     setMsgScheduledTime(value)
-    if (editingScheduledMessageId) return
-    const relation = compareMessageMoment(msgScheduledDate, value)
-    if (relation === 'future') setMsgDeliveryTiming('scheduled')
-    if (relation === 'now') setMsgDeliveryTiming('now')
   }
 
   function startEditingScheduledMessage(message: AnnouncementMessage) {
@@ -593,7 +569,6 @@ export function OrganizerDashboard({
     setMsgBody(source.body)
     setMsgScheduledDate(localDatePart(source.scheduledAt))
     setMsgScheduledTime(localTimePart(source.scheduledAt))
-    setMsgDeliveryTiming('scheduled')
     setSelectedClassCodes(source.roles.includes('student') ? classCodes : [])
     setSelectedBuddyIds(source.roles.includes('buddy')
       ? buddyRecipients.filter((recipient) => explicitRecipientIds.length > 0
@@ -772,10 +747,6 @@ export function OrganizerDashboard({
     const moment = compareMessageMoment(msgScheduledDate, msgScheduledTime)
     if (moment === 'invalid') {
       setMsgSuccess('Vul dag en tijd volledig in.')
-      return
-    }
-    if (moment === 'past') {
-      setMsgSuccess('Kies de huidige minuut of een tijdstip in de toekomst.')
       return
     }
     if (effectiveMessageDeliveryTiming === 'scheduled') return void handleScheduleBroadcast()
@@ -1285,24 +1256,14 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                     />
                   </label>
 
-                  {!editingScheduledMessageId && (
-                    <label>
-                      <span>Verzendmoment</span>
-                      <select value={effectiveMessageDeliveryTiming} onChange={(event) => handleMessageDeliveryTimingChange(event.target.value as 'now' | 'scheduled')}>
-                        <option value="now">Direct verzenden</option>
-                        <option value="scheduled">Inplannen voor later</option>
-                      </select>
-                    </label>
-                  )}
-
                   <label>
                     <span>Dag</span>
-                    <input type="date" min={localDatePart(new Date().toISOString())} value={msgScheduledDate} onChange={(event) => handleMessageDateChange(event.target.value)} />
+                    <input type="date" min={currentLocalMessageMoment().date} value={msgScheduledDate} onChange={(event) => handleMessageDateChange(event.target.value)} />
                   </label>
                   <label>
                     <span>Tijd</span>
                     <input type="time" value={msgScheduledTime} onChange={(event) => handleMessageTimeChange(event.target.value)} />
-                    {!editingScheduledMessageId && <small>Direct verzenden vult automatisch de huidige dag en tijd in. Kies een later moment om het bericht in te plannen.</small>}
+                    {!editingScheduledMessageId && <small>De huidige dag en tijd zijn standaard ingevuld. Kies een later moment om het bericht in te plannen.</small>}
                   </label>
 
                   <fieldset className="recipient-picker full-width">
