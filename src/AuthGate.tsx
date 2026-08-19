@@ -14,6 +14,7 @@ type ProfileRecord = {
   name_prefix: string | null
   last_name: string
   profile_type: AppProfile['profileType']
+  active: boolean
 }
 
 type MembershipRecord = {
@@ -78,6 +79,7 @@ export function AuthGate({ children }: AuthGateProps) {
   const [loading, setLoading] = useState(authEnabled)
   const [profileChecked, setProfileChecked] = useState(false)
   const profileRequestRef = useRef(0)
+  const inactiveSignOutRef = useRef(false)
   const [email, setEmail] = useState(pendingLogin?.email ?? '')
   const [code, setCode] = useState('')
   const [step, setStep] = useState<'email' | 'code'>(pendingLogin ? 'code' : 'email')
@@ -137,11 +139,13 @@ export function AuthGate({ children }: AuthGateProps) {
       if (!active) return
       if (nextSession) forgetPendingLogin()
       if (event === 'SIGNED_OUT') {
+        const signedOutBecauseInactive = inactiveSignOutRef.current
+        inactiveSignOutRef.current = false
         forgetPendingLogin()
         setEmail('')
         setCode('')
         setStep('email')
-        setError('')
+        setError(signedOutBecauseInactive ? 'Dit profiel is inactief. Neem contact op met de organisatie.' : '')
         setNotice('')
         setRequestedAt(0)
         setResendCooldown(0)
@@ -165,7 +169,7 @@ export function AuthGate({ children }: AuthGateProps) {
 
     const { data, error: profileError } = await supabase
       .from('profiles')
-      .select('id, first_name, name_prefix, last_name, profile_type')
+      .select('id, first_name, name_prefix, last_name, profile_type, active')
       .eq('auth_user_id', session.user.id)
       .maybeSingle()
     if (requestId !== profileRequestRef.current) return
@@ -174,6 +178,14 @@ export function AuthGate({ children }: AuthGateProps) {
     if (profileError || !record) {
       setProfile(null)
       setProfileChecked(true)
+      return
+    }
+
+    if (!record.active) {
+      inactiveSignOutRef.current = true
+      setProfile(null)
+      setProfileChecked(true)
+      await supabase.auth.signOut({ scope: 'local' })
       return
     }
 

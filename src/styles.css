@@ -3014,6 +3014,43 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   letter-spacing: 0.08em;
 }
 
+.table-sort-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+}
+
+.table-sort-button:hover,
+.table-sort-button:focus-visible {
+  color: #e3004f;
+}
+
+.table-sort-button:focus-visible {
+  outline: 2px solid rgba(227, 0, 79, 0.35);
+  outline-offset: 4px;
+  border-radius: 3px;
+}
+
+.table-sort-button svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+}
+
+.dashboard-table .student-number-column {
+  width: 7.5rem;
+  min-width: 7.5rem;
+  white-space: nowrap;
+}
+
 .dashboard-table td {
   padding: 14px 16px;
   border-bottom: 1px solid #f1f5f9;
@@ -3052,7 +3089,7 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 }
 
 .status-dot-inactive {
-  color: #94a3b8;
+  color: #dc2626;
   font-weight: 800;
   font-size: 0.78rem;
 }
@@ -3127,6 +3164,13 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   padding: 6px 12px;
   font-size: 0.78rem;
   border-radius: 10px;
+}
+
+.table-row-actions .secondary-button.icon-only-btn {
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  justify-content: center;
 }
 
 .table-row-actions svg,
