@@ -9,9 +9,10 @@ export type ClassContact = {
 
 const contactsCache = new Map<string, ClassContact[]>()
 
-export async function fetchClassContacts(profileId: string) {
-  const cached = contactsCache.get(profileId)
-  if (cached) return cached
+export async function fetchClassContacts(profileId: string, classCode: string, forceRefresh = false) {
+  const cacheKey = `${profileId}:${classCode}`
+  const cached = contactsCache.get(cacheKey)
+  if (cached && !forceRefresh) return cached
   if (!supabase) return []
 
   const { data, error } = await supabase.rpc('get_my_class_contacts')
@@ -23,6 +24,6 @@ export async function fetchClassContacts(profileId: string) {
   }
 
   const contacts = (Array.isArray(data) ? data : []) as ClassContact[]
-  contactsCache.set(profileId, contacts)
+  contactsCache.set(cacheKey, contacts)
   return contacts
 }
