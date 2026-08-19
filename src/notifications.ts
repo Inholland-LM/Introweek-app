@@ -12,6 +12,9 @@ export type AppNotification = {
   readAt: string | null
   deliveryChannel?: 'in-app' | 'push' | 'both'
   actionTarget?: 'route' | 'programme' | 'notifications'
+  sourceClassCode?: string | null
+  sourceAudienceLabel?: string | null
+  accentColor?: string | null
 }
 
 type NotificationRecord = {
@@ -23,6 +26,8 @@ type NotificationRecord = {
   read_at: string | null
   delivery_channel?: AppNotification['deliveryChannel']
   action_target?: AppNotification['actionTarget']
+  source_class_code?: string | null
+  source_audience_label?: string | null
 }
 
 const MAX_NOTIFICATIONS = 20
@@ -67,6 +72,9 @@ function mapNotification(record: NotificationRecord): AppNotification {
     readAt: record.read_at,
     deliveryChannel: record.delivery_channel,
     actionTarget: record.action_target,
+    sourceClassCode: record.source_class_code,
+    sourceAudienceLabel: record.source_audience_label,
+    accentColor: classAccent(record.source_class_code),
   }
 }
 
@@ -105,12 +113,23 @@ function saveScheduledReadIds(profileKey: string, ids: Set<string>) {
   window.localStorage.setItem(`${SCHEDULED_READ_STORAGE_PREFIX}${profileKey}`, JSON.stringify([...ids]))
 }
 
-function mapScheduledNotifications(classCode: string, profileKey: string, profileRole: ImportRole, masterMessages?: MasterContent['messages']): AppNotification[] {
+const CLASS_ACCENTS: Record<string, string> = {
+  LM1A: '#d7263d', LM1B: '#f28c28', LM1C: '#e0b400', LM1D: '#2e9d58',
+  LM1E: '#159a9c', LM1F: '#2f6fd0', LM1G: '#6554c0', LM1H: '#a446b8',
+}
+
+function classAccent(classCode?: string | null, classes?: MasterContent['classes']) {
+  if (!classCode) return null
+  return classes?.find((item) => item.classCode === classCode)?.accentColor ?? CLASS_ACCENTS[classCode] ?? '#e3004f'
+}
+
+function mapScheduledNotifications(classCode: string, profileKey: string, profileRole: ImportRole, masterMessages?: MasterContent['messages'], masterClasses?: MasterContent['classes']): AppNotification[] {
   const readIds = getScheduledReadIds(profileKey)
   const messages = masterMessages?.length
     ? masterMessages.filter((message) => message.active
-      && message.channel === 'in-app'
+      && (message.channel === 'in-app' || message.channel === 'both')
       && new Date(message.scheduledAt).getTime() <= Date.now()
+      && (!message.expiresAt || new Date(message.expiresAt).getTime() > Date.now())
       && (message.classCodes === 'all' || message.classCodes.includes(classCode))
       && message.roles.includes(profileRole))
     : getDueScheduledMessages(classCode)
@@ -121,13 +140,16 @@ function mapScheduledNotifications(classCode: string, profileKey: string, profil
     body: message.body,
     createdAt: message.scheduledAt,
     readAt: readIds.has(message.id) ? message.scheduledAt : null,
+    sourceClassCode: message.classCodes === 'all' ? null : classCode,
+    sourceAudienceLabel: message.classCodes === 'all' ? 'Ontvangen als deelnemer' : `Ontvangen als lid van ${classCode}`,
+    accentColor: message.classCodes === 'all' ? null : classAccent(classCode, masterClasses),
   }))
 }
 
-export function useNotifications(profileId: string | null, classCode: string, profileRole: ImportRole, masterMessages?: MasterContent['messages']) {
+export function useNotifications(profileId: string | null, classCode: string, profileRole: ImportRole, masterMessages?: MasterContent['messages'], masterClasses?: MasterContent['classes']) {
   const profileKey = profileId ?? `demo:${classCode}`
   const [notifications, setNotifications] = useState<AppNotification[]>(
-    liveNotificationsEnabled ? [] : [...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages), ...demoNotifications],
+    liveNotificationsEnabled ? [] : [...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages, masterClasses), ...demoNotifications],
   )
   const [loading, setLoading] = useState(liveNotificationsEnabled)
   const [error, setError] = useState('')
@@ -136,7 +158,7 @@ export function useNotifications(profileId: string | null, classCode: string, pr
 
   const refresh = useCallback(async (force = false) => {
     if (!liveNotificationsEnabled || !supabase || !profileId) {
-      setNotifications([...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages), ...demoNotifications])
+      setNotifications([...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages, masterClasses), ...demoNotifications])
       setLoading(false)
       return
     }
@@ -148,7 +170,7 @@ export function useNotifications(profileId: string | null, classCode: string, pr
       setLoading(true)
       const { data, error: fetchError } = await supabase
         .from('notifications')
-        .select('id, kind, title, body, created_at, read_at, delivery_channel, action_target')
+        .select('id, kind, title, body, created_at, read_at, delivery_channel, action_target, source_class_code, source_audience_label')
         .order('created_at', { ascending: false })
         .limit(MAX_NOTIFICATIONS)
 
@@ -157,7 +179,7 @@ export function useNotifications(profileId: string | null, classCode: string, pr
       } else {
         const personalNotifications = ((data ?? []) as NotificationRecord[]).map(mapNotification)
         setNotifications([
-          ...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages),
+          ...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages, masterClasses),
           ...personalNotifications,
         ].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()))
         setError('')
@@ -169,7 +191,7 @@ export function useNotifications(profileId: string | null, classCode: string, pr
     requestInFlight.current = request
     await request
     requestInFlight.current = null
-  }, [classCode, masterMessages, profileId, profileKey, profileRole])
+  }, [classCode, masterClasses, masterMessages, profileId, profileKey, profileRole])
 
   useEffect(() => {
     void refresh(true)
@@ -178,7 +200,7 @@ export function useNotifications(profileId: string | null, classCode: string, pr
   useEffect(() => {
     const mergeReleasedMessages = () => {
       setNotifications((current) => [
-        ...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages),
+        ...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages, masterClasses),
         ...current.filter((notification) => notification.kind !== 'scheduled'),
       ].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()))
     }
@@ -186,7 +208,7 @@ export function useNotifications(profileId: string | null, classCode: string, pr
     mergeReleasedMessages()
     const timer = window.setInterval(mergeReleasedMessages, 60_000)
     return () => window.clearInterval(timer)
-  }, [classCode, masterMessages, profileKey, profileRole])
+  }, [classCode, masterClasses, masterMessages, profileKey, profileRole])
 
   useEffect(() => {
     if (!liveNotificationsEnabled || !supabase || !profileId) return

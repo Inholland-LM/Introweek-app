@@ -18,10 +18,23 @@ export type ImportIssue = {
 }
 
 export type MasterContent = {
-  classes: Array<{ classCode: string; country: string; flag: string; povUrl: string | null; classAppUrl: string | null; active: boolean }>
+  classes: Array<{ classCode: string; country: string; flag: string; povUrl: string | null; classAppUrl: string | null; active: boolean; accentColor?: string | null }>
   locations: Array<{ id: string; name: string; address: string; postalCode: string; city: string; routeUrl: string | null; latitude: number | null; longitude: number | null; active: boolean }>
   programmes: Array<{ id: string; date: string; startTime: string; endTime: string | null; title: string; category: string; locationId: string | null; classCodes: string[] | 'all'; description: string | null; order: number; active: boolean }>
-  messages: Array<{ id: string; scheduledAt: string; title: string; body: string; classCodes: string[] | 'all'; roles: ImportRole[]; channel: 'in-app' | 'push'; linkUrl: string | null; active: boolean }>
+  messages: Array<{
+    id: string
+    scheduledAt: string
+    expiresAt?: string | null
+    title: string
+    body: string
+    classCodes: string[] | 'all'
+    roles: ImportRole[]
+    channel: 'in-app' | 'push' | 'both'
+    linkUrl: string | null
+    backfillOnClassChange?: boolean
+    priority?: 'normal' | 'important'
+    active: boolean
+  }>
   povAssignments: Array<{ id: string; title: string; description: string; classCodes: string[] | 'all'; deadlineAt: string; maxUploads: number; active: boolean }>
   practical: Array<{ id: string; category: string; title: string; body: string; order: number; active: boolean }>
   discounts: Array<{ id: string; name: string; description: string; address: string | null; routeUrl: string | null; terms: string | null; validFrom: string; validUntil: string; active: boolean }>
@@ -96,18 +109,23 @@ function splitList(value: string) {
   return value.split(',').map((item) => item.trim()).filter(Boolean)
 }
 
-function readSheet(XLSX: typeof import('@e965/xlsx'), workbook: ReturnType<typeof XLSX.read>, name: string, headers: string[], issues: ImportIssue[]) {
+function readSheet(XLSX: typeof import('@e965/xlsx'), workbook: ReturnType<typeof XLSX.read>, name: string, headers: string[], issues: ImportIssue[], optionalHeaders: string[] = []) {
   const worksheet = workbook.Sheets[name]
   if (!worksheet) {
     issues.push({ sheet: name, row: 1, message: `tabblad “${name}” ontbreekt` })
     return [] as string[][]
   }
   const rows = XLSX.utils.sheet_to_json<Array<string | number>>(worksheet, { header: 1, defval: '', raw: false })
-  const actual = headers.map((_, index) => normalize(String(rows[0]?.[index] ?? '')).toLowerCase())
+  const allHeaders = [...headers, ...optionalHeaders]
+  const actual = allHeaders.map((_, index) => normalize(String(rows[0]?.[index] ?? '')).toLowerCase())
   headers.forEach((header, index) => {
     if (actual[index] !== header) issues.push({ sheet: name, row: 1, message: `kolom ${index + 1} moet “${header}” heten` })
   })
-  return rows.slice(1).map((row) => headers.map((_, index) => normalize(String(row[index] ?? '')))).filter((row) => row.some(Boolean))
+  optionalHeaders.forEach((header, optionalIndex) => {
+    const index = headers.length + optionalIndex
+    if (actual[index] && actual[index] !== header) issues.push({ sheet: name, row: 1, message: `optionele kolom ${index + 1} moet “${header}” heten` })
+  })
+  return rows.slice(1).map((row) => allHeaders.map((_, index) => normalize(String(row[index] ?? '')))).filter((row) => row.some(Boolean))
 }
 
 function registerId(sheet: string, row: number, id: string, seen: Set<string>, issues: ImportIssue[]) {
@@ -117,12 +135,13 @@ function registerId(sheet: string, row: number, id: string, seen: Set<string>, i
 }
 
 function parseMasterContent(XLSX: typeof import('@e965/xlsx'), workbook: ReturnType<typeof XLSX.read>, issues: ImportIssue[]): MasterContent {
-  const classRows = readSheet(XLSX, workbook, 'Klassen', ['klascode', 'land', 'vlag', 'pov_url', 'klassenapp_url', 'actief'], issues)
+  const classRows = readSheet(XLSX, workbook, 'Klassen', ['klascode', 'land', 'vlag', 'pov_url', 'klassenapp_url', 'actief'], issues, ['accentkleur'])
   const classes = classRows.map((row, index) => {
     const active = parseYesNo(row[5])
     if (!row[0] || !row[1]) issues.push({ sheet: 'Klassen', row: index + 2, message: 'klascode en land zijn verplicht' })
     if (active === null) issues.push({ sheet: 'Klassen', row: index + 2, message: 'actief moet ja of nee zijn' })
-    return { classCode: row[0].toUpperCase(), country: row[1], flag: row[2], povUrl: row[3] || null, classAppUrl: row[4] || null, active: active ?? false }
+    if (row[6] && !/^#[0-9a-f]{6}$/i.test(row[6])) issues.push({ sheet: 'Klassen', row: index + 2, message: 'accentkleur moet een hexkleur zijn, bijvoorbeeld #E3004F' })
+    return { classCode: row[0].toUpperCase(), country: row[1], flag: row[2], povUrl: row[3] || null, classAppUrl: row[4] || null, active: active ?? false, accentColor: row[6] || null }
   })
   const validClasses = new Set(classes.map((item) => item.classCode))
 
@@ -156,20 +175,37 @@ function parseMasterContent(XLSX: typeof import('@e965/xlsx'), workbook: ReturnT
   })
 
   const messageIds = new Set<string>()
-  const messageRows = readSheet(XLSX, workbook, 'Berichten', ['bericht_id', 'datum', 'tijd', 'titel', 'berichttekst', 'klassen', 'rollen', 'kanaal', 'link_url', 'actief'], issues)
+  const messageRows = readSheet(
+    XLSX,
+    workbook,
+    'Berichten',
+    ['bericht_id', 'datum', 'tijd', 'titel', 'berichttekst', 'klassen', 'rollen', 'kanaal', 'link_url', 'actief'],
+    issues,
+    ['geldig_tot_datum', 'geldig_tot_tijd', 'inhalen_bij_klaswissel', 'prioriteit'],
+  )
   const messages = messageRows.map((row, index) => {
     registerId('Berichten', index + 2, row[0], messageIds, issues)
     const date = parseDate(row[1]); const time = parseTime(row[2]); const active = parseYesNo(row[9])
     const codes = row[5].toUpperCase() === 'ALLE' ? 'all' as const : splitList(row[5].toUpperCase())
     const roles = splitList(row[6].toLowerCase()).map((role) => sourceRoles.get(role) ?? role as ImportRole)
-    const channel = row[7].toLowerCase() as 'in-app' | 'push'
+    const channel = row[7].toLowerCase() as 'in-app' | 'push' | 'both'
+    const expiresDate = row[10] ? parseDate(row[10]) : null
+    const expiresTime = row[11] ? parseTime(row[11]) : null
+    const backfill = row[12] ? parseYesNo(row[12]) : false
+    const priority = (row[13] || 'normaal').toLowerCase()
     if (!date || !time) issues.push({ sheet: 'Berichten', row: index + 2, message: 'datum of tijd heeft geen geldig formaat' })
     if (!row[3] || !row[4]) issues.push({ sheet: 'Berichten', row: index + 2, message: 'titel en berichttekst zijn verplicht' })
     if (codes !== 'all' && (!codes.length || codes.some((code) => !validClasses.has(code)))) issues.push({ sheet: 'Berichten', row: index + 2, message: 'één of meer klassen bestaan niet' })
     if (!roles.length || roles.some((role) => !['student', 'buddy', 'poer', 'interested_teacher', 'organizer'].includes(role))) issues.push({ sheet: 'Berichten', row: index + 2, message: 'rollen zijn ongeldig' })
-    if (!['in-app', 'push'].includes(channel)) issues.push({ sheet: 'Berichten', row: index + 2, message: 'kanaal moet in-app of push zijn' })
+    if (!['in-app', 'push', 'both'].includes(channel)) issues.push({ sheet: 'Berichten', row: index + 2, message: 'kanaal moet in-app, push of both zijn' })
+    if ((row[10] && !expiresDate) || (row[11] && !expiresTime) || Boolean(row[10]) !== Boolean(row[11])) issues.push({ sheet: 'Berichten', row: index + 2, message: 'geldig_tot_datum en geldig_tot_tijd moeten samen een geldige datum en tijd bevatten' })
+    if (row[12] && backfill === null) issues.push({ sheet: 'Berichten', row: index + 2, message: 'inhalen_bij_klaswissel moet ja of nee zijn' })
+    if (!['normaal', 'belangrijk'].includes(priority)) issues.push({ sheet: 'Berichten', row: index + 2, message: 'prioriteit moet normaal of belangrijk zijn' })
     if (active === null) issues.push({ sheet: 'Berichten', row: index + 2, message: 'actief moet ja of nee zijn' })
-    return { id: row[0], scheduledAt: date && time ? `${date}T${time}:00+02:00` : '', title: row[3], body: row[4], classCodes: codes, roles, channel, linkUrl: row[8] || null, active: active ?? false }
+    const scheduledAt = date && time ? `${date}T${time}:00+02:00` : ''
+    const expiresAt = expiresDate && expiresTime ? `${expiresDate}T${expiresTime}:00+02:00` : null
+    if (scheduledAt && expiresAt && new Date(expiresAt).getTime() <= new Date(scheduledAt).getTime()) issues.push({ sheet: 'Berichten', row: index + 2, message: 'geldig_tot moet na het verzendmoment liggen' })
+    return { id: row[0], scheduledAt, expiresAt, title: row[3], body: row[4], classCodes: codes, roles, channel, linkUrl: row[8] || null, backfillOnClassChange: backfill ?? false, priority: priority === 'belangrijk' ? 'important' as const : 'normal' as const, active: active ?? false }
   })
 
   const povIds = new Set<string>()

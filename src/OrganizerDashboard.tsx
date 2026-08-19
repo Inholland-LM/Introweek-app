@@ -34,6 +34,7 @@ import { createPovPhotoUrl, deletePovSubmission, fetchPovSubmissions, reviewPovS
 import { createInitialMasterContent, updateMasterContent } from './content'
 import {
   fetchOrganizerRecipients,
+  fetchOrganizerMessageHistory,
   sendOrganizerNotification,
   type OrganizerDeliveryChannel,
   type OrganizerRecipient,
@@ -67,29 +68,6 @@ type AnnouncementMessage = {
   actionTarget: 'route' | 'programme' | 'notifications'
   status: 'sent' | 'scheduled'
 }
-
-const mockInitialMessages: AnnouncementMessage[] = [
-  {
-    id: 'msg-1',
-    title: '🌧️ Locatiewijziging ivm regen',
-    body: 'Het verzamelen om 14:00 is verplaatst naar de aula van Inholland Amsterdam.',
-    scheduledAt: '2026-08-25T13:45:00+02:00',
-    targets: ['Alle klassen'],
-    channel: 'both',
-    actionTarget: 'programme',
-    status: 'sent',
-  },
-  {
-    id: 'msg-2',
-    title: '🎁 Goodiebags ophalen',
-    body: 'Vergeet je polsbandje niet te tonen bij de stand van het festivalterrein.',
-    scheduledAt: '2026-08-25T16:00:00+02:00',
-    targets: ['LM1A'],
-    channel: 'in-app',
-    actionTarget: 'notifications',
-    status: 'sent',
-  },
-]
 
 export function OrganizerDashboard({
   profile,
@@ -142,7 +120,7 @@ export function OrganizerDashboard({
   const [evaluatedAssignmentIds, setEvaluatedAssignmentIds] = useState<Record<string, { points: number; winningSubmissionId: string }>>({})
 
   // Messages State
-  const [messages, setMessages] = useState<AnnouncementMessage[]>(mockInitialMessages)
+  const [messages, setMessages] = useState<AnnouncementMessage[]>([])
   const [msgTitle, setMsgTitle] = useState('')
   const [msgBody, setMsgBody] = useState('')
   const [selectedClassCodes, setSelectedClassCodes] = useState<string[]>([])
@@ -195,8 +173,8 @@ export function OrganizerDashboard({
     let active = true
     setRecipientsLoading(true)
     setRecipientsError('')
-    fetchOrganizerRecipients()
-      .then((recipients) => {
+    Promise.all([fetchOrganizerRecipients(), fetchOrganizerMessageHistory()])
+      .then(([recipients, history]) => {
         if (!active) return
         setMessageRecipients(recipients.length ? recipients : people
           .filter((person) => person.role === 'buddy' || person.role === 'poer')
@@ -207,13 +185,25 @@ export function OrganizerDashboard({
             role: person.role as 'buddy' | 'poer',
             classCode: person.classCode,
           })))
+        const planned = (content?.messages ?? []).filter((message) => message.active).map((message): AnnouncementMessage => ({
+          id: `master:${message.id}`,
+          title: message.title,
+          body: message.body,
+          scheduledAt: message.scheduledAt,
+          targets: message.classCodes === 'all' ? ['Alle klassen'] : message.classCodes,
+          channel: message.channel,
+          actionTarget: 'notifications',
+          status: new Date(message.scheduledAt).getTime() > Date.now() ? 'scheduled' : 'sent',
+        }))
+        const sent = history.map((message): AnnouncementMessage => ({ ...message, actionTarget: 'notifications' }))
+        setMessages([...planned, ...sent].filter((message, index, all) => all.findIndex((candidate) => candidate.id === message.id) === index))
       })
       .catch((reason) => {
         if (active) setRecipientsError(reason instanceof Error ? reason.message : 'Ontvangers konden niet worden opgehaald.')
       })
       .finally(() => { if (active) setRecipientsLoading(false) })
     return () => { active = false }
-  }, [activeTab])
+  }, [activeTab, content?.messages])
 
   useEffect(() => {
     if (activeTab === 'pov') {
@@ -454,7 +444,7 @@ export function OrganizerDashboard({
         ...messageRecipients.filter((recipient) => recipientProfileIds.includes(recipient.id)).map((recipient) => recipient.displayName),
       ]
     const newMsg: AnnouncementMessage = {
-      id: `msg-${Date.now()}`,
+      id: result.messageId || `msg-${Date.now()}`,
         title: msgTitle.trim(),
         body: msgBody.trim(),
       scheduledAt: new Date().toISOString(),
@@ -616,7 +606,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
 
   const filteredPeople = useMemo(() => {
     return people.filter((p) => {
-      const matchQuery = `${p.firstName} ${p.lastName} ${p.email} ${p.classCode}`.toLowerCase().includes(personSearch.toLowerCase())
+      const matchQuery = `${p.firstName} ${p.lastName} ${p.studentNumber ?? ''} ${p.email} ${p.classCode}`.toLowerCase().includes(personSearch.toLowerCase())
       const matchRole = roleFilter === 'all' || p.role === roleFilter
       const matchClass = classFilter === 'all' || p.classCode === classFilter
       return matchQuery && matchRole && matchClass
@@ -630,6 +620,8 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
       return msgSortOrder === 'newest' ? timeB - timeA : timeA - timeB
     })
   }, [messages, msgSortOrder])
+  const scheduledMessages = sortedMessages.filter((message) => message.status === 'scheduled')
+  const sentMessages = sortedMessages.filter((message) => message.status === 'sent')
 
   function toggleSelection(value: string, setter: Dispatch<SetStateAction<string[]>>) {
     setter((current) => current.includes(value) ? current.filter((item) => item !== value) : [...current, value])
@@ -727,7 +719,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                   <Search aria-hidden="true" />
                   <input
                     type="text"
-                    placeholder="Zoek op naam, e-mail of klas..."
+                    placeholder="Zoek op naam, studentnummer, e-mail of klas..."
                     value={personSearch}
                     onChange={(e) => setPersonSearch(e.target.value)}
                   />
@@ -756,6 +748,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                   <thead>
                     <tr>
                       <th>Naam</th>
+                      <th>Studentnummer</th>
                       <th>E-mailadres</th>
                       <th>Rol</th>
                       <th>Klas</th>
@@ -767,11 +760,9 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                     {filteredPeople.map((person) => (
                       <tr key={person.profileId}>
                         <td>
-                          <div className="person-name-cell">
-                            <strong>{[person.firstName, person.namePrefix, person.lastName].filter(Boolean).join(' ')}</strong>
-                            {person.studentNumber && <span className="student-number-pill">#{person.studentNumber}</span>}
-                          </div>
+                          <div className="person-name-cell"><strong>{[person.firstName, person.namePrefix, person.lastName].filter(Boolean).join(' ')}</strong></div>
                         </td>
+                        <td>{person.studentNumber || '—'}</td>
                         <td>{person.email}</td>
                         <td>
                           <span className={`role-badge role-${person.role}`}>
@@ -807,7 +798,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                       </tr>
                     ))}
                     {!peopleLoading && filteredPeople.length === 0 && (
-                      <tr><td colSpan={6}>Geen personen gevonden.</td></tr>
+                      <tr><td colSpan={7}>Geen personen gevonden.</td></tr>
                     )}
                   </tbody>
                 </table>
@@ -1024,7 +1015,7 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
               {/* Message History */}
               <div className="message-history">
                 <div className="history-header">
-                  <h3>Verzonden Berichten</h3>
+                  <h3>Ingeplande berichten</h3>
                   <div className="history-sort">
                     <Filter aria-hidden="true" />
                     <select value={msgSortOrder} onChange={(e) => setMsgSortOrder(e.target.value as any)}>
@@ -1035,11 +1026,32 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
                 </div>
 
                 <div className="message-list">
-                  {sortedMessages.map((msg) => (
+                  {scheduledMessages.length === 0 && <p className="notification-state">Geen ingeplande berichten.</p>}
+                  {scheduledMessages.map((msg) => (
                     <div key={msg.id} className="message-history-card">
                       <div className="msg-header">
                         <strong>{msg.title}</strong>
                         <span className="msg-time">{new Date(msg.scheduledAt).toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <p>{msg.body}</p>
+                      <div className="msg-badges">
+                        <span className="badge">Naar: {msg.targets.join(', ')}</span>
+                        <span className="badge">Kanaal: {msg.channel}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="message-history">
+                <div className="history-header"><h3>Verzonden berichten</h3></div>
+                <div className="message-list">
+                  {sentMessages.length === 0 && <p className="notification-state">Nog geen berichten verzonden.</p>}
+                  {sentMessages.map((msg) => (
+                    <div key={msg.id} className="message-history-card">
+                      <div className="msg-header">
+                        <strong>{msg.title}</strong>
+                        <span className="msg-time">{new Date(msg.scheduledAt).toLocaleString('nl-NL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       <p>{msg.body}</p>
                       <div className="msg-badges">

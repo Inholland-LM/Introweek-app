@@ -10,6 +10,17 @@ export type OrganizerRecipient = {
 
 export type OrganizerDeliveryChannel = 'in-app' | 'push' | 'both'
 
+export type OrganizerMessageHistoryItem = {
+  id: string
+  title: string
+  body: string
+  scheduledAt: string
+  targets: string[]
+  channel: OrganizerDeliveryChannel
+  status: 'sent' | 'scheduled'
+  recipientCount: number
+}
+
 export async function fetchOrganizerRecipients(): Promise<OrganizerRecipient[]> {
   if (!supabase || import.meta.env.VITE_AUTH_ENABLED !== 'true') return []
   const { data: { session } } = await supabase.auth.getSession()
@@ -43,5 +54,14 @@ export async function sendOrganizerNotification(input: {
     action_target: input.actionTarget,
   })
   if (error) throw error
-  return { recipientCount: Number(data?.recipientCount ?? 0) }
+  return { recipientCount: Number(data?.recipientCount ?? 0), messageId: String(data?.messageId ?? '') }
+}
+
+export async function fetchOrganizerMessageHistory(): Promise<OrganizerMessageHistoryItem[]> {
+  if (!supabase || import.meta.env.VITE_AUTH_ENABLED !== 'true') return []
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return []
+  const { data, error } = await supabase.rpc('get_organizer_message_history')
+  if (error) throw error
+  return (Array.isArray(data) ? data : []) as OrganizerMessageHistoryItem[]
 }

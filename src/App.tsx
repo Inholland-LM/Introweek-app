@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type TouchEvent } from 'react'
+import { useEffect, useRef, useState, type CSSProperties, type TouchEvent } from 'react'
 import {
   Bell,
   BadgePercent,
@@ -1219,7 +1219,11 @@ function MoreView({
                 {notifications.length > 0 && (
                   <ul className="notification-list">
                     {notifications.map((notification) => (
-                      <li key={notification.id} className={notification.readAt ? '' : 'unread'}>
+                      <li
+                        key={notification.id}
+                        className={notification.readAt ? '' : 'unread'}
+                        style={{ '--audience-accent': notification.accentColor ?? '#e3004f' } as CSSProperties}
+                      >
                         <button
                           type="button"
                           className="notification-item"
@@ -1233,6 +1237,14 @@ function MoreView({
                               <Clock3 aria-hidden="true" />
                               <span>{formatNotificationTime(notification.createdAt)}</span>
                             </span>
+                            {notification.sourceAudienceLabel && (
+                              <span
+                                className="notification-audience-badge"
+                                style={{ '--audience-accent': notification.accentColor ?? '#e3004f' } as CSSProperties}
+                              >
+                                {notification.sourceAudienceLabel}
+                              </span>
+                            )}
                             {!notification.readAt && <span className="notification-unread-badge">Nieuw</span>}
                           </div>
                           <div className="notification-copy">
@@ -1469,7 +1481,7 @@ function App() {
   const { forecast: weatherForecast } = useAmsterdamWeather()
   const currentProgrammeDays = buildProgrammeDays(masterContent.content, profile.classCode)
   const currentRouteDays = buildRouteDays(masterContent.content, profile.classCode)
-  const notificationInbox = useNotifications(profile.id, profile.classCode, profile.profileType, masterContent.content?.messages)
+  const notificationInbox = useNotifications(profile.id, profile.classCode, profile.profileType, masterContent.content?.messages, masterContent.content?.classes)
   const ownStanding = standings.find((team) => team.classCode === profile.classCode)
   const [active, setActive] = useState<NavLabel>('Vandaag')
   const [moreSection, setMoreSection] = useState<MoreSectionId>('notifications')
