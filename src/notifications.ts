@@ -131,7 +131,10 @@ function mapScheduledNotifications(classCode: string, profileKey: string, profil
       && new Date(message.scheduledAt).getTime() <= Date.now()
       && (!message.expiresAt || new Date(message.expiresAt).getTime() > Date.now())
       && (message.classCodes === 'all' || message.classCodes.includes(classCode))
-      && message.roles.includes(profileRole))
+      && message.roles.includes(profileRole)
+      && (!message.recipientProfileIds?.length
+        || profileRole === 'student'
+        || message.recipientProfileIds.includes(profileKey)))
     : getDueScheduledMessages(classCode)
   return messages.map((message) => ({
     id: `scheduled:${message.id}`,
