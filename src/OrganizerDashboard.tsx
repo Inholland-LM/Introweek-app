@@ -30,7 +30,7 @@ import {
 import type { AppProfile } from './profile'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import type { ImportRole, MasterContent } from './import/parseWorkbook'
-import { createPovPhotoUrl, deletePovSubmission, fetchPovSubmissions, reviewPovSubmission, type PovSubmission } from './povUploads'
+import { approvePovSubmissionWithPoints, createPovPhotoUrl, deletePovSubmission, fetchPovSubmissions, reviewPovSubmission, type PovSubmission } from './povUploads'
 import { createInitialMasterContent, updateMasterContent } from './content'
 import {
   fetchOrganizerRecipients,
@@ -179,7 +179,6 @@ export function OrganizerDashboard({
   const [selectedPovUrl, setSelectedPovUrl] = useState('')
   const [pointsInput, setPointsInput] = useState('100')
   const [evaluatingPovId, setEvaluatingPovId] = useState<string | null>(null)
-  const [evaluatedAssignmentIds, setEvaluatedAssignmentIds] = useState<Record<string, { points: number; winningSubmissionId: string }>>({})
 
   // Messages State
   const [messages, setMessages] = useState<AnnouncementMessage[]>([])
@@ -320,6 +319,7 @@ export function OrganizerDashboard({
           uploadedAt: new Date().toISOString(),
           reviewStatus: 'pending',
           rejectionReason: null,
+          awardedPoints: 0,
         },
         {
           id: 'demo-pov-2',
@@ -333,6 +333,7 @@ export function OrganizerDashboard({
           uploadedAt: new Date().toISOString(),
           reviewStatus: 'pending',
           rejectionReason: null,
+          awardedPoints: 0,
         },
       ])
     } finally {
@@ -374,7 +375,7 @@ export function OrganizerDashboard({
     try {
       await reviewPovSubmission(povId, 'rejected', 'Afgekeurd door de organisatie.')
       setSubmissions((prev) => prev.map((submission) => submission.id === povId
-        ? { ...submission, reviewStatus: 'rejected', rejectionReason: 'Afgekeurd door de organisatie.' }
+        ? { ...submission, reviewStatus: 'rejected', rejectionReason: 'Afgekeurd door de organisatie.', awardedPoints: 0 }
         : submission))
       setSelectedPov(null)
     } catch {
@@ -396,7 +397,7 @@ export function OrganizerDashboard({
 
   async function openPovModal(submission: PovSubmission) {
     setSelectedPov(submission)
-    setPointsInput('100')
+    setPointsInput(submission.awardedPoints > 0 ? String(submission.awardedPoints) : '100')
     try {
       const url = await createPovPhotoUrl(submission.storagePath)
       setSelectedPovUrl(url)
@@ -407,20 +408,17 @@ export function OrganizerDashboard({
 
   async function awardPointsToPov() {
     if (!selectedPov) return
-    const points = Number(pointsInput) || 100
+    const points = Number(pointsInput)
+    if (!Number.isInteger(points) || points < 0 || points > 10000) {
+      window.alert('Vul een heel puntenaantal tussen 0 en 10.000 in.')
+      return
+    }
     setEvaluatingPovId(selectedPov.id)
 
     try {
-      await reviewPovSubmission(selectedPov.id, 'approved')
-      setEvaluatedAssignmentIds((prev) => ({
-        ...prev,
-        [`${selectedPov.classCode}-${selectedPov.assignmentId}`]: {
-          points,
-          winningSubmissionId: selectedPov.id,
-        },
-      }))
+      await approvePovSubmissionWithPoints(selectedPov.id, points)
       setSubmissions((prev) => prev.map((submission) => submission.id === selectedPov.id
-        ? { ...submission, reviewStatus: 'approved', rejectionReason: null }
+        ? { ...submission, reviewStatus: 'approved', rejectionReason: null, awardedPoints: points }
         : submission))
       setSelectedPov(null)
     } catch {
@@ -1337,27 +1335,19 @@ function resolveLocationDetails(locationInput: string, existingLocations: Array<
 
               <div className="pov-grid-dashboard">
                 {submissions.map((item) => {
-                  const evalKey = `${item.classCode}-${item.assignmentId}`
-                  const evaluation = evaluatedAssignmentIds[evalKey]
-                  const isWinner = evaluation?.winningSubmissionId === item.id
-                  const isEvaluated = Boolean(evaluation)
+                  const isEvaluated = item.reviewStatus === 'approved'
 
                   return (
                     <div
                       key={item.id}
-                      className={`pov-dashboard-card ${isWinner ? 'is-winner' : isEvaluated ? 'is-evaluated' : ''}`}
+                      className={`pov-dashboard-card ${isEvaluated ? 'is-winner' : ''}`}
                       onClick={() => void openPovModal(item)}
                     >
                       <div className="pov-card-img-holder">
                         <img src="https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=400&q=80" alt={item.assignmentTitle} loading="lazy" />
-                        {isWinner && (
+                        {isEvaluated && (
                           <div className="winner-badge">
-                            <span>BESTE FOTO (+{evaluation.points} PT)</span>
-                          </div>
-                        )}
-                        {isEvaluated && !isWinner && (
-                          <div className="evaluated-overlay">
-                            <span>Opdracht reeds beoordeeld</span>
+                            <span>GOEDGEKEURD (+{item.awardedPoints} PT)</span>
                           </div>
                         )}
                       </div>
