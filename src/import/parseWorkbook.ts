@@ -12,7 +12,7 @@ export type ImportPerson = {
 }
 
 export type ImportIssue = {
-  sheet?: string
+  sheet: string
   row: number
   message: string
 }
@@ -240,9 +240,36 @@ function parseMasterContent(XLSX: typeof import('@e965/xlsx'), workbook: ReturnT
     ? ['item_id', 'categorie', 'titel', 'tekst', 'volgorde', 'actief']
     : ['korting_id', 'naam', 'omschrijving', 'adres', 'route_url', 'voorwaarden', 'geldig_vanaf', 'geldig_tot', 'actief'], issues)
   const practicalIds = new Set<string>()
-  const practical = parseSimple('Praktisch').map((row, index) => { const active = parseYesNo(row[5]); const order = Number(row[4]); registerId('Praktisch', index + 2, row[0], practicalIds, issues); if (!row[1] || !row[2] || !row[3] || !Number.isFinite(order) || active === null) issues.push({ sheet: 'Praktisch', row: index + 2, message: 'verplichte waarde ontbreekt of is ongeldig' }); return { id: row[0], category: row[1], title: row[2], body: row[3], order: Number.isFinite(order) ? order : 0, active: active ?? false } })
+  const practical = parseSimple('Praktisch').map((row, index) => {
+    const active = parseYesNo(row[5])
+    const order = Number(row[4])
+    const invalidFields = [
+      !row[1] && 'categorie',
+      !row[2] && 'titel',
+      !row[3] && 'tekst',
+      !Number.isFinite(order) && 'volgorde',
+      active === null && 'actief',
+    ].filter(Boolean)
+    registerId('Praktisch', index + 2, row[0], practicalIds, issues)
+    if (invalidFields.length) issues.push({ sheet: 'Praktisch', row: index + 2, message: `controleer: ${invalidFields.join(', ')}` })
+    return { id: row[0], category: row[1], title: row[2], body: row[3], order: Number.isFinite(order) ? order : 0, active: active ?? false }
+  })
   const discountIds = new Set<string>()
-  const discounts = parseSimple('Kortingen').map((row, index) => { const active = parseYesNo(row[8]); const validFrom = parseDate(row[6]); const validUntil = parseDate(row[7]); registerId('Kortingen', index + 2, row[0], discountIds, issues); if (!row[1] || !row[2] || !validFrom || !validUntil || active === null) issues.push({ sheet: 'Kortingen', row: index + 2, message: 'verplichte waarde ontbreekt of is ongeldig' }); return { id: row[0], name: row[1], description: row[2], address: row[3] || null, routeUrl: row[4] || null, terms: row[5] || null, validFrom: validFrom ?? '', validUntil: validUntil ?? '', active: active ?? false } })
+  const discounts = parseSimple('Kortingen').map((row, index) => {
+    const active = parseYesNo(row[8])
+    const validFrom = parseDate(row[6])
+    const validUntil = parseDate(row[7])
+    const invalidFields = [
+      !row[1] && 'naam',
+      !row[2] && 'omschrijving',
+      !validFrom && 'geldig_vanaf',
+      !validUntil && 'geldig_tot',
+      active === null && 'actief',
+    ].filter(Boolean)
+    registerId('Kortingen', index + 2, row[0], discountIds, issues)
+    if (invalidFields.length) issues.push({ sheet: 'Kortingen', row: index + 2, message: `controleer: ${invalidFields.join(', ')}` })
+    return { id: row[0], name: row[1], description: row[2], address: row[3] || null, routeUrl: row[4] || null, terms: row[5] || null, validFrom: validFrom ?? '', validUntil: validUntil ?? '', active: active ?? false }
+  })
   const settingsRows = readSheet(XLSX, workbook, 'Instellingen', ['instelling_id', 'waarde', 'toelichting'], issues)
   const settings = Object.fromEntries(settingsRows.filter((row) => row[0]).map((row) => [row[0], row[1]]))
 
@@ -316,7 +343,7 @@ export async function parseImportWorkbook(file: File): Promise<ImportPreview> {
     }
 
     if (rowIssues.length > 0) {
-      issues.push(...rowIssues.map((message) => ({ row: rowNumber, message })))
+      issues.push(...rowIssues.map((message) => ({ sheet: 'Personen', row: rowNumber, message })))
       continue
     }
 
@@ -332,8 +359,8 @@ export async function parseImportWorkbook(file: File): Promise<ImportPreview> {
     })
   }
 
-  if (sheetRows.length > 501) issues.push({ row: 502, message: 'meer dan 500 personen; splits of controleer het bestand' })
-  if (rows.length === 0 && issues.length === 0) issues.push({ row: 2, message: 'geen personen gevonden' })
+  if (sheetRows.length > 501) issues.push({ sheet: 'Personen', row: 502, message: 'meer dan 500 personen; splits of controleer het bestand' })
+  if (rows.length === 0 && issues.length === 0) issues.push({ sheet: 'Personen', row: 2, message: 'geen personen gevonden' })
 
   const content = parseMasterContent(XLSX, workbook, issues)
   return { fileName: file.name, rows, issues, content }
