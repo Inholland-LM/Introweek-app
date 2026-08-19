@@ -956,7 +956,7 @@ function ContactHelpPanel({ classAppUrl }: { classAppUrl: string | null }) {
     let active = true
     setLoading(true)
     setError('')
-    fetchClassContacts(profile.id)
+    fetchClassContacts(profile.id, profile.classCode)
       .then((nextContacts) => {
         if (active) setContacts(nextContacts)
       })
