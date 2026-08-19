@@ -1612,26 +1612,44 @@ function App() {
     <div className={`app-shell enter-x-shell${largeText ? ' large-text-mode' : ''}${isWidescreenActive ? ' widescreen-dashboard' : ''}`}>
       <div className="map-texture" aria-hidden="true" />
       {electricXVisible && (
-        <div key={electricXSequence} className="enter-electric-stage" aria-hidden="true">
-          <img
-            className="electric-image electric-image-left"
-            src={`${import.meta.env.BASE_URL}enter-the-x-electric.webp`}
-            alt=""
-            decoding="async"
-          />
-          <img
-            className="electric-image electric-image-right"
-            src={`${import.meta.env.BASE_URL}enter-the-x-electric.webp`}
-            alt=""
-            decoding="async"
-          />
-          <span className="electric-image-collision" />
-          <img
-            className="electric-image electric-image-complete"
-            src={`${import.meta.env.BASE_URL}enter-the-x-electric.webp`}
-            alt=""
-            decoding="async"
-          />
+        <div key={electricXSequence} className="enter-xxx-stage" aria-hidden="true">
+          <span className="enter-xxx-glow" />
+          <span className="enter-xxx-mark enter-xxx-mark-left">
+            <svg viewBox="0 0 100 120" focusable="false">
+              <defs>
+                <linearGradient id={`enter-x-left-${electricXSequence}`} x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#ffffff" />
+                  <stop offset="0.42" stopColor="#fff2fa" />
+                  <stop offset="1" stopColor="#ff62b1" />
+                </linearGradient>
+              </defs>
+              <path d="M3 0h28l19 34L69 0h28L65 60l32 60H69L50 86l-19 34H3l32-60L3 0Z" fill={`url(#enter-x-left-${electricXSequence})`} />
+            </svg>
+          </span>
+          <span className="enter-xxx-mark enter-xxx-mark-middle">
+            <svg viewBox="0 0 100 120" focusable="false">
+              <defs>
+                <linearGradient id={`enter-x-middle-${electricXSequence}`} x1="0" y1="0" x2="0.9" y2="1">
+                  <stop offset="0" stopColor="#ffffff" />
+                  <stop offset="0.22" stopColor="#e8fdff" />
+                  <stop offset="1" stopColor="#79e9ff" />
+                </linearGradient>
+              </defs>
+              <path d="M3 0h28l19 34L69 0h28L65 60l32 60H69L50 86l-19 34H3l32-60L3 0Z" fill={`url(#enter-x-middle-${electricXSequence})`} />
+            </svg>
+          </span>
+          <span className="enter-xxx-mark enter-xxx-mark-right">
+            <svg viewBox="0 0 100 120" focusable="false">
+              <defs>
+                <linearGradient id={`enter-x-right-${electricXSequence}`} x1="1" y1="0" x2="0" y2="1">
+                  <stop offset="0" stopColor="#ffffff" />
+                  <stop offset="0.42" stopColor="#fff2fa" />
+                  <stop offset="1" stopColor="#ff62b1" />
+                </linearGradient>
+              </defs>
+              <path d="M3 0h28l19 34L69 0h28L65 60l32 60H69L50 86l-19 34H3l32-60L3 0Z" fill={`url(#enter-x-right-${electricXSequence})`} />
+            </svg>
+          </span>
         </div>
       )}
       <header className="topbar">
