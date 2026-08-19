@@ -3241,15 +3241,30 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   border-radius: 10px;
 }
 
-.table-row-actions .secondary-button.icon-only-btn {
-  width: 34px;
-  height: 34px;
+.table-row-actions .table-action-button {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
   padding: 0;
+  box-sizing: border-box;
   justify-content: center;
+  border-width: 1.5px;
+  border-radius: 10px;
+  line-height: 1;
+  transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.table-row-actions svg,
-.danger-button svg {
+.table-row-actions .table-action-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.table-row-actions .table-action-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  transform: none;
+}
+
+.table-row-actions .table-action-button svg {
   width: 16px;
   height: 16px;
   flex: 0 0 auto;

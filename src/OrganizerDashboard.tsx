@@ -1271,7 +1271,7 @@ export function OrganizerDashboard({
                           <div className="table-row-actions">
                             <button
                               type="button"
-                              className="secondary-button icon-only-btn"
+                              className="secondary-button icon-only-btn table-action-button"
                               onClick={() => openEditPersonModal(person)}
                               title="Persoon bewerken"
                               aria-label={`Bewerk ${[person.firstName, person.namePrefix, person.lastName].filter(Boolean).join(' ')}`}
@@ -1281,7 +1281,7 @@ export function OrganizerDashboard({
                             {person.active && (
                               <button
                                 type="button"
-                                className="danger-button icon-only-btn"
+                                className="danger-button icon-only-btn table-action-button"
                                 onClick={() => void handleDeletePerson(person)}
                                 disabled={peopleSaving}
                                 title="Persoon inactief zetten"
@@ -1380,7 +1380,7 @@ export function OrganizerDashboard({
                           <div className="table-row-actions">
                             <button
                               type="button"
-                              className="secondary-button icon-only-btn"
+                              className="secondary-button icon-only-btn table-action-button"
                               onClick={() => openEditProgrammeModal(item)}
                               disabled={scheduleSaving}
                               title="Programmaonderdeel bewerken"
@@ -1390,7 +1390,7 @@ export function OrganizerDashboard({
                             </button>
                             <button
                               type="button"
-                              className="danger-button icon-only-btn"
+                              className="danger-button icon-only-btn table-action-button"
                               onClick={() => void handleDeleteProgrammeItem(item)}
                               disabled={scheduleSaving}
                               title="Programmaonderdeel verwijderen"
