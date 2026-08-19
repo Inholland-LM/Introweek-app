@@ -346,6 +346,16 @@ export function OrganizerDashboard({
     function handleKeyDown(event: KeyboardEvent) {
       if (!selectedPov) return
 
+      const target = event.target
+      const isEditingValue = target instanceof HTMLInputElement
+        || target instanceof HTMLTextAreaElement
+        || target instanceof HTMLSelectElement
+        || (target instanceof HTMLElement && target.isContentEditable)
+
+      // De sneltoetsen 1/2/3 mogen nooit een handmatig ingevoerd puntenaantal
+      // overschrijven. Enter blijft in het puntenveld wel beschikbaar om op te slaan.
+      if (isEditingValue && event.key !== 'Enter' && event.key !== 'Escape') return
+
       if (['1', '2', '3'].includes(event.key)) {
         const presetPoints: Record<string, string> = { '1': '50', '2': '100', '3': '150' }
         if (presetPoints[event.key]) setPointsInput(presetPoints[event.key])
