@@ -91,13 +91,25 @@ function parseYesNo(value: string) {
   return normalized === 'ja' ? true : normalized === 'nee' ? false : null
 }
 
+function normalizedCalendarDate(year: number, month: number, day: number) {
+  const candidate = new Date(Date.UTC(year, month - 1, day))
+  if (
+    candidate.getUTCFullYear() !== year
+    || candidate.getUTCMonth() !== month - 1
+    || candidate.getUTCDate() !== day
+  ) return null
+
+  return `${String(year).padStart(4, '0')}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+}
+
 function parseDate(value: string) {
   const normalized = value.trim()
-  const iso = normalized.match(/^(\d{4})-(\d{2})-(\d{2})/)
-  if (iso) return `${iso[1]}-${iso[2]}-${iso[3]}`
-  const nl = normalized.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/)
-  if (!nl) return null
-  return `${nl[3]}-${nl[2].padStart(2, '0')}-${nl[1].padStart(2, '0')}`
+  const yearFirst = normalized.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})(?=$|[T\s])/)
+  if (yearFirst) return normalizedCalendarDate(Number(yearFirst[1]), Number(yearFirst[2]), Number(yearFirst[3]))
+
+  const dayFirst = normalized.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})$/)
+  if (!dayFirst) return null
+  return normalizedCalendarDate(Number(dayFirst[3]), Number(dayFirst[2]), Number(dayFirst[1]))
 }
 
 function parseTime(value: string) {
