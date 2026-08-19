@@ -175,7 +175,7 @@ export function OrganizerDashboard({
   const [newLastName, setNewLastName] = useState('')
   const [newStudentNumber, setNewStudentNumber] = useState('')
   const [newEmail, setNewEmail] = useState('')
-  const [newRole, setNewRole] = useState<ImportRole>('interested_teacher')
+  const [newRole, setNewRole] = useState<ImportRole>('student')
   const [newClassCode, setNewClassCode] = useState('LM1A')
   const [showNewPersonModal, setShowNewPersonModal] = useState(false)
 
