@@ -358,7 +358,7 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
           ) : (
             <div className="import-issues">
               <h3><AlertTriangle aria-hidden="true" />Los dit eerst op</h3>
-              <ul>{preview.issues.slice(0, 12).map((issue, index) => <li key={`${issue.row}-${issue.message}-${index}`}><b>Rij {issue.row}</b><span>{issue.message}</span></li>)}</ul>
+              <ul>{preview.issues.slice(0, 12).map((issue, index) => <li key={`${issue.sheet}-${issue.row}-${issue.message}-${index}`}><b>Tabblad {issue.sheet} · rij {issue.row}</b><span>{issue.message}</span></li>)}</ul>
               {preview.issues.length > 12 && <p>En nog {preview.issues.length - 12} problemen.</p>}
             </div>
           )}
