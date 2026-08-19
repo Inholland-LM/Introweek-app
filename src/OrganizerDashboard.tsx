@@ -1245,7 +1245,7 @@ export function OrganizerDashboard({
                           {renderPeopleSortIcon('active')}
                         </button>
                       </th>
-                      <th style={{ textAlign: 'right' }}>Acties</th>
+                      <th className="table-actions-column" style={{ textAlign: 'right' }}>Acties</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1267,7 +1267,7 @@ export function OrganizerDashboard({
                             ● {person.active ? 'Actief' : 'Inactief'}
                           </span>
                         </td>
-                        <td style={{ textAlign: 'right' }}>
+                        <td className="table-actions-column" style={{ textAlign: 'right' }}>
                           <div className="table-row-actions">
                             <button
                               type="button"
@@ -1344,7 +1344,7 @@ export function OrganizerDashboard({
                       <th>Locatie</th>
                       <th>Voor wie</th>
                       <th>Status</th>
-                      <th style={{ textAlign: 'right' }}>Acties</th>
+                      <th className="table-actions-column" style={{ textAlign: 'right' }}>Acties</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1376,7 +1376,7 @@ export function OrganizerDashboard({
                             ● {item.active ? 'Actief' : 'Verborgen'}
                           </span>
                         </td>
-                        <td style={{ textAlign: 'right' }}>
+                        <td className="table-actions-column" style={{ textAlign: 'right' }}>
                           <div className="table-row-actions">
                             <button
                               type="button"

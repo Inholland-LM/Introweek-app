@@ -3084,7 +3084,7 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .people-dashboard-table th:nth-child(6) { width: 13%; }
 .people-dashboard-table th:nth-child(7) { width: 5.2rem; }
 .people-dashboard-table th:nth-child(8) { width: 6.4rem; }
-.people-dashboard-table th:nth-child(9) { width: 4.8rem; }
+.people-dashboard-table th:nth-child(9) { width: 5.75rem; }
 
 .people-dashboard-table .name-prefix-column {
   width: 4.8rem;
@@ -3157,7 +3157,7 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .programme-dashboard-table th:nth-child(4) { width: 15%; }
 .programme-dashboard-table th:nth-child(5) { width: 12%; }
 .programme-dashboard-table th:nth-child(6) { width: 9%; }
-.programme-dashboard-table th:nth-child(7) { width: 10%; }
+.programme-dashboard-table th:nth-child(7) { width: 5.75rem; }
 
 .programme-dashboard-table th,
 .programme-dashboard-table td {
@@ -3232,6 +3232,12 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   align-items: center;
   justify-content: flex-end;
   gap: 6px;
+  min-width: 78px;
+  white-space: nowrap;
+}
+
+.dashboard-table .table-actions-column {
+  overflow: visible;
   white-space: nowrap;
 }
 
