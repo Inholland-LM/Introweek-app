@@ -1816,6 +1816,13 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   margin: 0;
   padding: 0;
   list-style: none;
+  border-radius: 20px;
+  background: linear-gradient(
+    110deg,
+    color-mix(in srgb, var(--audience-accent, #e3004f) 11%, transparent),
+    transparent 62%
+  );
+  box-shadow: inset 4px 0 0 color-mix(in srgb, var(--audience-accent, #e3004f) 72%, transparent);
 }
 
 .notification-item {
@@ -1849,6 +1856,17 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+}
+
+.notification-audience-badge {
+  border-left: 4px solid var(--audience-accent, #e3004f);
+  background: color-mix(in srgb, var(--audience-accent, #e3004f) 12%, white);
+  border-radius: 999px;
+  color: #172033;
+  font-size: .72rem;
+  font-weight: 800;
+  line-height: 1.2;
+  padding: .32rem .55rem;
 }
 
 .notification-time-badge {
