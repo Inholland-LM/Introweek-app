@@ -2,6 +2,20 @@ import { useEffect, useState } from 'react'
 import { supabase } from './lib/supabase'
 
 export type CompetitionRoundCode = 'hag' | 'sx' | 'city_game' | 'pov_final'
+export type CompetitionRoundScore = {
+  class_code: string
+  round_code: CompetitionRoundCode
+  points: number
+  confirmed: boolean
+  published: boolean
+  revision: number
+}
+export type CompetitionRoundScoreInput = {
+  classCode: string
+  points: number
+  confirmed: boolean
+  revision: number
+}
 export type FinaleState = {
   phase: 'preparation' | 'ready' | 'revealing' | 'final'
   revealOrder: string[]
@@ -53,10 +67,10 @@ export async function fetchRoundScores() {
   if (!supabase) return []
   const { data, error } = await supabase.rpc('list_competition_round_scores')
   if (error) throw error
-  return (data ?? []) as Array<{ class_code: string; round_code: CompetitionRoundCode; points: number; published: boolean }>
+  return (data ?? []) as CompetitionRoundScore[]
 }
 
-export async function saveRoundScores(roundCode: CompetitionRoundCode, scores: Array<{ classCode: string; points: number }>, publish = false) {
+export async function saveRoundScores(roundCode: CompetitionRoundCode, scores: CompetitionRoundScoreInput[], publish = false) {
   if (!supabase) throw new Error('De beveiligde scoreverbinding is niet beschikbaar.')
   const { data, error } = await supabase.rpc('save_competition_round_scores', { requested_round_code: roundCode, requested_scores: scores, requested_publish: publish })
   if (error) throw error
@@ -70,9 +84,12 @@ export async function lockFinaleOrder(order: string[]) {
   await broadcastFinaleChange({ locked: true })
 }
 
-export async function revealNextFinalist(classCode: string) {
+export async function revealNextFinalist(classCode: string, confirmed: boolean) {
   if (!supabase) throw new Error('De beveiligde finale-verbinding is niet beschikbaar.')
-  const { data, error } = await supabase.rpc('reveal_next_competition_finalist', { requested_class_code: classCode })
+  const { data, error } = await supabase.rpc('reveal_next_competition_finalist', {
+    requested_class_code: classCode,
+    requested_confirmation: confirmed,
+  })
   if (error) throw error
   await broadcastFinaleChange(data)
 }

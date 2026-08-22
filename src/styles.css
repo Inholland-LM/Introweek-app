@@ -4755,12 +4755,34 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .competition-round-tabs button.active { border-color: var(--gold); color: #fff; background: var(--gold); }
 .competition-score-editor, .finale-control { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
 .competition-score-editor h3, .finale-control h3 { display: flex; align-items: center; gap: 8px; margin: 0; color: #111827; }
-.competition-score-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
-.competition-score-grid label { display: grid; grid-template-columns: minmax(0, 1fr) 84px 20px; align-items: center; gap: 8px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 12px; }
-.competition-score-grid label > span { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; font-size: .8rem; }
-.competition-score-grid label small { width: 100%; color: #64748b; }
-.competition-score-grid input { width: 100%; min-height: 42px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 9px; font: inherit; font-weight: 850; }
-.competition-score-grid svg { width: 18px; color: #16a34a; }
+.competition-editor-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.competition-editor-heading p { margin: 5px 0 0; color: #64748b; font-size: .8rem; }
+.competition-editor-heading > strong { flex: 0 0 auto; padding: 7px 10px; border-radius: 999px; color: #155e75; background: #cffafe; font-size: .74rem; }
+.competition-score-grid { display: grid; gap: 10px; }
+.competition-score-row { display: grid; grid-template-columns: minmax(150px, 1fr) 110px minmax(200px, 1.35fr); align-items: center; gap: 12px; padding: 12px; border: 1px solid #e2e8f0; border-radius: 13px; background: #fff; }
+.competition-score-row.is-confirmed { border-color: #86efac; background: #f0fdf4; }
+.competition-score-row.is-published { border-color: #a5b4fc; background: #eef2ff; }
+.competition-class-name { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
+.competition-class-name small { width: 100%; color: #64748b; }
+.competition-points-field { display: grid; gap: 4px; color: #64748b; font-size: .68rem; font-weight: 800; }
+.competition-points-field input { width: 100%; min-height: 42px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 9px; color: #111827; background: #fff; font: inherit; font-size: 1rem; font-weight: 900; }
+.competition-points-field input:disabled { color: #334155; background: #e2e8f0; opacity: 1; }
+.competition-confirm-field { position: relative; display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 8px 10px; border-radius: 10px; color: #475569; background: #f8fafc; font-size: .75rem; font-weight: 850; cursor: pointer; }
+.competition-confirm-field input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.competition-confirm-field svg { flex: 0 0 auto; width: 19px; color: #64748b; }
+.is-confirmed .competition-confirm-field { color: #166534; background: #dcfce7; }
+.is-confirmed .competition-confirm-field svg { color: #16a34a; }
+.competition-confirm-field:has(input:disabled) { cursor: default; }
+.competition-confirm-progress { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 4px; }
+.competition-confirm-progress > div { display: grid; gap: 3px; color: #334155; font-size: .78rem; }
+.competition-confirm-progress span { color: #64748b; font-size: .72rem; }
+.competition-publish-review { display: grid; gap: 12px; padding: 16px; border: 1px solid #facc15; border-radius: 14px; background: #fffbeb; }
+.competition-publish-review h4 { margin: 0; color: #713f12; }
+.competition-publish-review ul { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 6px; margin: 0; padding: 0; list-style: none; }
+.competition-publish-review li { display: flex; justify-content: space-between; gap: 8px; padding: 7px 9px; border-radius: 8px; color: #475569; background: #fff; font-size: .72rem; }
+.competition-publish-review > label { display: flex; align-items: center; gap: 8px; color: #713f12; font-size: .8rem; font-weight: 850; }
+.competition-publish-review > label input { width: 18px; height: 18px; }
+.competition-publish-review > button { justify-self: start; }
 .finale-control > p { margin: 0; color: #64748b; line-height: 1.5; }
 .finale-control ol { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
 .finale-control li { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 11px; background: #f8fafc; }
@@ -4771,6 +4793,16 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .finale-next-card > span { color: #f7c94b; font-size: .75rem; font-weight: 900; text-transform: uppercase; }
 .finale-next-card > strong { font-size: 1.45rem; }
 .finale-next-card > p { margin: 0; color: #e2e8f0; font-size: .75rem; }
+.finale-score-check { display: grid; gap: 8px; width: min(100%, 440px); padding: 14px; border: 1px solid rgba(255,255,255,.24); border-radius: 12px; background: rgba(255,255,255,.1); }
+.finale-score-check > b { color: #f7c94b; font-size: 1.45rem; }
+.finale-score-check label { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: .78rem; font-weight: 800; }
+.finale-score-check input { width: 19px; height: 19px; }
+
+@media (max-width: 720px) {
+  .competition-editor-heading, .competition-confirm-progress { align-items: stretch; flex-direction: column; }
+  .competition-score-row { grid-template-columns: minmax(0, 1fr) 95px; }
+  .competition-confirm-field { grid-column: 1 / -1; }
+}
 
 .finale-reveal-overlay { position: fixed; z-index: 5000; inset: 0; display: grid; place-items: center; padding: 20px; color: #fff; background: radial-gradient(circle at 50% 25%, rgba(227,0,79,.55), rgba(3,12,37,.97) 60%); }
 .finale-reveal-card { display: grid; justify-items: center; width: min(100%, 480px); gap: 8px; padding: 30px 24px; border: 1px solid rgba(255,255,255,.22); border-radius: 28px; text-align: center; background: rgba(8,22,55,.92); box-shadow: 0 30px 100px rgba(0,0,0,.55); animation: finale-card-in .55s cubic-bezier(.2,.8,.2,1); }
