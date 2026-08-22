@@ -124,7 +124,7 @@ function buildSheets(snapshot: ExportSnapshot): SheetDefinition[] {
     },
     {
       name: 'POV-opdrachten',
-      headers: ['opdracht_id', 'naam', 'omschrijving', 'datum', 'deadline_tijd', 'klassen', 'max_fotos_per_persoon', 'actief'],
+      headers: ['opdracht_id', 'naam', 'omschrijving', 'datum', 'deadline_tijd', 'klassen', 'max_fotos_per_klas', 'actief'],
       rows: [...content.povAssignments]
         .sort((left, right) => left.deadlineAt.localeCompare(right.deadlineAt))
         .map((item) => {

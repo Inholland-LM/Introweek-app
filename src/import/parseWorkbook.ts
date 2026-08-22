@@ -224,7 +224,11 @@ function parseMasterContent(XLSX: typeof import('@e965/xlsx'), workbook: ReturnT
   })
 
   const povIds = new Set<string>()
-  const povRows = readSheet(XLSX, workbook, 'POV-opdrachten', ['opdracht_id', 'naam', 'omschrijving', 'datum', 'deadline_tijd', 'klassen', 'max_fotos_per_persoon', 'actief'], issues)
+  const povSheet = workbook.Sheets['POV-opdrachten']
+  const povHeaderRows = povSheet ? XLSX.utils.sheet_to_json<Array<string | number>>(povSheet, { header: 1, defval: '', raw: false }) : []
+  const suppliedPovLimitHeader = normalize(String(povHeaderRows[0]?.[6] ?? '')).toLowerCase()
+  const povLimitHeader = suppliedPovLimitHeader === 'max_fotos_per_persoon' ? 'max_fotos_per_persoon' : 'max_fotos_per_klas'
+  const povRows = readSheet(XLSX, workbook, 'POV-opdrachten', ['opdracht_id', 'naam', 'omschrijving', 'datum', 'deadline_tijd', 'klassen', povLimitHeader, 'actief'], issues)
   const povAssignments = povRows.map((row, index) => {
     registerId('POV-opdrachten', index + 2, row[0], povIds, issues)
     const date = parseDate(row[3])
@@ -235,7 +239,7 @@ function parseMasterContent(XLSX: typeof import('@e965/xlsx'), workbook: ReturnT
     if (!row[1] || !row[2]) issues.push({ sheet: 'POV-opdrachten', row: index + 2, message: 'naam en omschrijving zijn verplicht' })
     if (!date || !time) issues.push({ sheet: 'POV-opdrachten', row: index + 2, message: 'datum of deadline_tijd heeft geen geldig formaat' })
     if (codes !== 'all' && (!codes.length || codes.some((code) => !validClasses.has(code)))) issues.push({ sheet: 'POV-opdrachten', row: index + 2, message: 'één of meer klassen bestaan niet' })
-    if (!Number.isInteger(maxUploads) || maxUploads < 1 || maxUploads > 10) issues.push({ sheet: 'POV-opdrachten', row: index + 2, message: 'max_fotos_per_persoon moet een geheel getal van 1 t/m 10 zijn' })
+    if (!Number.isInteger(maxUploads) || maxUploads < 1 || maxUploads > 10) issues.push({ sheet: 'POV-opdrachten', row: index + 2, message: 'max_fotos_per_klas moet een geheel getal van 1 t/m 10 zijn' })
     if (active === null) issues.push({ sheet: 'POV-opdrachten', row: index + 2, message: 'actief moet ja of nee zijn' })
     return {
       id: row[0],

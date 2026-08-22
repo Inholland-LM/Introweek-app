@@ -19,7 +19,7 @@ De optionele kolom `ontvanger_profiel_ids` in `Berichten` bewaart gerichte beric
 - `Berichten`: geplande berichten per klas, rol en kanaal.
 - `Praktisch`: praktische informatie in Meer.
 - `Kortingen`: deelnemende locaties, voorwaarden en geldigheid.
-- `POV-opdrachten`: foto-opdrachten, doelgroepklassen, deadline en maximaal aantal inzendingen per persoon.
+- `POV-opdrachten`: foto-opdrachten, doelgroepklassen, deadline en maximaal aantal actieve inzendingen per klas.
 - `Instellingen`: naam, editie, evenementdatums en overige algemene waarden.
 - `Keuzelijsten`: invoerwaarden voor Excel-validatie; niet hernoemen.
 
@@ -46,7 +46,7 @@ Gebruik in `Instellingen` de sleutels `toon_praktisch`, `toon_kortingen` en `too
 
 ## POV-foto's
 
-Foto's worden niet in het Excelbestand opgeslagen. Het tabblad `POV-opdrachten` bepaalt welke opdracht voor welke klas openstaat. De app maakt op het toestel een hoogwaardige JPEG met een langste zijde van maximaal 2560 pixels en een bestandsgrootte van maximaal circa 2 MB. Die versie is geschikt als bron voor de aftermovie en wordt opgeslagen in de private Storage-bucket `pov-inzendingen`, met opdracht, klas, deelnemer en tijdstip als beveiligde metadata.
+Foto's worden niet in het Excelbestand opgeslagen. Het tabblad `POV-opdrachten` bepaalt welke opdracht voor welke klas openstaat en hoeveel actieve inzendingen iedere klas maximaal mag hebben. Afgekeurde inzendingen tellen niet mee; definitief verwijderde inzendingen verdwijnen volledig. De app maakt op het toestel een hoogwaardige JPEG met een langste zijde van maximaal 2560 pixels en een bestandsgrootte van maximaal circa 2 MB. Die versie is geschikt als bron voor de aftermovie en wordt opgeslagen in de private Storage-bucket `pov-inzendingen`, met opdracht, klas, deelnemer, tijdstip en de vastgelegde toestemmingsbevestiging als beveiligde metadata.
 
 Alleen de organisatie kan inzendingen en bestanden bekijken. De organisatie laadt eerst uitsluitend metadata; een afbeelding krijgt pas bij `Bekijk foto` een vijf minuten geldige URL. Studenten en buddy's kunnen uitsluitend uploaden en krijgen geen klasgalerij. Dit beperkt privacyrisico's en Supabase-egress.
 

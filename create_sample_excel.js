@@ -48,7 +48,7 @@ const berichtenData = [
 
 // Sheet 6: POV-opdrachten
 const povData = [
-  ['opdracht_id', 'naam', 'omschrijving', 'datum', 'deadline_tijd', 'klassen', 'max_fotos_per_persoon', 'actief'],
+  ['opdracht_id', 'naam', 'omschrijving', 'datum', 'deadline_tijd', 'klassen', 'max_fotos_per_klas', 'actief'],
   ['pov-1', 'Klasfoto op het NDSM-terrein', 'Maak de meest creatieve groepsfoto met je hele klas op de NDSM-werf!', '2026-08-25', '17:00', 'ALLE', '5', 'ja'],
 ]
 
