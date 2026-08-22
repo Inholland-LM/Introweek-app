@@ -1005,6 +1005,10 @@ export function OrganizerDashboard({
     })
   }, [people, personSearch, roleFilter, classFilter, peopleSort])
 
+  const hasPeopleSelection = Boolean(personSearch.trim() || roleFilter !== 'all' || classFilter !== 'all')
+  const selectedActivePeople = filteredPeople.filter((person) => person.active).length
+  const selectedInactivePeople = filteredPeople.length - selectedActivePeople
+
   function togglePeopleSort(key: PeopleSortKey) {
     setPeopleSort((current) => ({
       key,
@@ -1176,6 +1180,20 @@ export function OrganizerDashboard({
                     ))}
                   </select>
                 </div>
+              </div>
+
+              <div className="people-record-summary" role="status" aria-live="polite">
+                {peopleLoading ? (
+                  <span>Tellingen laden…</span>
+                ) : (
+                  <>
+                    <span className="people-record-primary">
+                      <strong>{filteredPeople.length}</strong> {filteredPeople.length === 1 ? 'persoon' : 'personen'} {hasPeopleSelection ? 'in deze selectie' : 'in totaal'}
+                    </span>
+                    {hasPeopleSelection && <span>van <strong>{people.length}</strong> totaal</span>}
+                    <span className="people-record-breakdown">{selectedActivePeople} actief · {selectedInactivePeople} inactief</span>
+                  </>
+                )}
               </div>
 
               {/* Responsive Table */}

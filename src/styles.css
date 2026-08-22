@@ -3030,6 +3030,46 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   box-shadow: 0 0 0 3.5px rgba(227, 0, 79, 0.12);
 }
 
+.people-record-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px 12px;
+  min-height: 36px;
+  padding: 8px 12px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  background: #f8fafc;
+  color: #64748b;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.people-record-summary strong {
+  color: #111827;
+  font-size: 0.92rem;
+}
+
+.people-record-primary {
+  color: #334155;
+}
+
+.people-record-breakdown {
+  margin-left: auto;
+  color: #475569;
+}
+
+@media (max-width: 640px) {
+  .people-record-summary {
+    align-items: flex-start;
+  }
+
+  .people-record-breakdown {
+    width: 100%;
+    margin-left: 0;
+  }
+}
+
 .table-responsive-wrapper {
   width: 100%;
   overflow-x: auto;
