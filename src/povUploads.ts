@@ -136,6 +136,8 @@ export async function uploadPovPhoto(assignmentId: string, file: File, caption: 
 export async function fetchPovAssignmentUsage(assignmentId: string, fallbackMaximum: number): Promise<PovAssignmentUsage> {
   const safeMaximum = Math.max(1, fallbackMaximum)
   if (!supabase) return { used: 0, maximum: safeMaximum, remaining: safeMaximum, deadlineAt: null }
+  const { data: authData } = await supabase.auth.getSession()
+  if (!authData.session) return { used: 0, maximum: safeMaximum, remaining: safeMaximum, deadlineAt: null }
   const { data, error } = await supabase.rpc('get_my_pov_assignment_usage', {
     requested_assignment_id: assignmentId,
   })
