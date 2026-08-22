@@ -22,6 +22,8 @@ export type ImportChange = {
   classCode: string | null
   fields: string[]
   previousValues?: ImportPreviousValues | null
+  conflictReason?: 'email_in_use' | 'role_mismatch' | null
+  conflictingIdentifier?: string | null
 }
 
 export type ImportComparison = {
