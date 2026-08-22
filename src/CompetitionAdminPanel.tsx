@@ -1,81 +1,233 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, CheckCircle2, RefreshCw, Sparkles, Trophy } from 'lucide-react'
+import { ArrowDown, ArrowUp, CheckCircle2, Circle, LockKeyhole, RefreshCw, Sparkles, Trophy } from 'lucide-react'
 import type { MasterContent } from './import/parseWorkbook'
 import { useCompetitionStandings } from './competitionScores'
-import { fetchFinaleState, fetchRoundScores, lockFinaleOrder, revealNextFinalist, saveRoundScores, type CompetitionRoundCode, type FinaleState } from './competitionFinale'
+import {
+  fetchFinaleState,
+  fetchRoundScores,
+  lockFinaleOrder,
+  revealNextFinalist,
+  saveRoundScores,
+  type CompetitionRoundCode,
+  type CompetitionRoundScoreInput,
+  type FinaleState,
+} from './competitionFinale'
 
-const roundLabels: Record<CompetitionRoundCode, string> = { hag: 'HAG', sx: 'SX', city_game: 'City Game · CX, FRH & ENTR', pov_final: 'POV-finale' }
+const roundLabels: Record<CompetitionRoundCode, string> = {
+  hag: 'HAG',
+  sx: 'Sports Experiences',
+  city_game: 'City Game',
+  pov_final: 'POV-finale',
+}
+
+const roundHelp: Record<CompetitionRoundCode, string> = {
+  hag: 'Voer voor iedere klas één HAG-score in.',
+  sx: 'Voer voor iedere klas één totaalscore voor Sports Experiences in.',
+  city_game: 'Voer per klas één gezamenlijke totaalscore voor CX, FRH en ENTR in.',
+  pov_final: 'Voer de geheime POV-eindscore per klas in en bevestig iedere regel vóór BLEND.',
+}
+
+function errorMessage(reason: unknown, fallback: string) {
+  if (reason instanceof Error) return reason.message
+  if (reason && typeof reason === 'object' && 'message' in reason && typeof reason.message === 'string') return reason.message
+  return fallback
+}
 
 export function CompetitionAdminPanel({ classes }: { classes: MasterContent['classes'] }) {
   const activeClasses = useMemo(() => classes.filter((item) => item.active), [classes])
   const standings = useCompetitionStandings(classes)
   const [round, setRound] = useState<CompetitionRoundCode>('hag')
   const [scores, setScores] = useState<Record<string, string>>({})
+  const [confirmed, setConfirmed] = useState<Record<string, boolean>>({})
   const [published, setPublished] = useState<Record<string, boolean>>({})
+  const [revisions, setRevisions] = useState<Record<string, number>>({})
   const [finale, setFinale] = useState<FinaleState | null>(null)
   const [order, setOrder] = useState<string[]>([])
+  const [publishChecked, setPublishChecked] = useState(false)
+  const [revealChecked, setRevealChecked] = useState(false)
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
   async function load() {
     const [rows, nextFinale] = await Promise.all([fetchRoundScores(), fetchFinaleState()])
     const nextScores: Record<string, string> = {}
+    const nextConfirmed: Record<string, boolean> = {}
     const nextPublished: Record<string, boolean> = {}
-    rows.forEach((item) => { nextScores[`${item.round_code}:${item.class_code}`] = String(item.points); nextPublished[`${item.round_code}:${item.class_code}`] = item.published })
-    setScores(nextScores); setPublished(nextPublished); setFinale(nextFinale)
+    const nextRevisions: Record<string, number> = {}
+    rows.forEach((item) => {
+      const key = `${item.round_code}:${item.class_code}`
+      nextScores[key] = String(item.points)
+      nextConfirmed[key] = item.confirmed
+      nextPublished[key] = item.published
+      nextRevisions[key] = item.revision
+    })
+    setScores(nextScores)
+    setConfirmed(nextConfirmed)
+    setPublished(nextPublished)
+    setRevisions(nextRevisions)
+    setFinale(nextFinale)
+    setPublishChecked(false)
+    setRevealChecked(false)
     if (nextFinale.revealOrder.length) setOrder(nextFinale.revealOrder)
     else setOrder([...standings].sort((a, b) => a.points - b.points || b.classCode.localeCompare(a.classCode, 'nl')).map((item) => item.classCode))
   }
 
-  useEffect(() => { void load().catch(() => setMessage('Het scorebeheer kon niet worden geladen. Voer eerst migratie 022 uit.')) }, [])
-  useEffect(() => { if (!finale?.revealOrder.length) setOrder([...standings].sort((a, b) => a.points - b.points || b.classCode.localeCompare(a.classCode, 'nl')).map((item) => item.classCode)) }, [standings, finale?.revealOrder.length])
+  useEffect(() => {
+    void load().catch((reason) => setMessage(errorMessage(reason, 'Het scorebeheer kon niet worden geladen. Voer eerst migratie 025 uit.')))
+  }, [])
+  useEffect(() => {
+    if (!finale?.revealOrder.length) {
+      setOrder([...standings].sort((a, b) => a.points - b.points || b.classCode.localeCompare(a.classCode, 'nl')).map((item) => item.classCode))
+    }
+  }, [standings, finale?.revealOrder.length])
+  useEffect(() => { setPublishChecked(false) }, [round])
+  useEffect(() => { setRevealChecked(false) }, [finale?.nextIndex])
 
-  const roundScores = activeClasses.map((item) => ({ classCode: item.classCode, points: Number(scores[`${round}:${item.classCode}`]) }))
-  const valid = roundScores.length > 0 && roundScores.every((item) => Number.isInteger(item.points) && item.points >= 0 && item.points <= 10000)
+  const enteredScores: CompetitionRoundScoreInput[] = activeClasses.flatMap((item) => {
+    const key = `${round}:${item.classCode}`
+    if ((scores[key] ?? '').trim() === '') return []
+    return [{
+      classCode: item.classCode,
+      points: Number(scores[key]),
+      confirmed: Boolean(confirmed[key]),
+      revision: revisions[key] ?? 0,
+    }]
+  })
+  const hasInvalidScore = enteredScores.some((item) => !Number.isInteger(item.points) || item.points < 0 || item.points > 10000)
+  const allEntered = enteredScores.length === activeClasses.length && !hasInvalidScore
+  const confirmedClasses = activeClasses.filter((item) => confirmed[`${round}:${item.classCode}`])
+  const missingClasses = activeClasses.filter((item) => !confirmed[`${round}:${item.classCode}`])
+  const allConfirmed = allEntered && confirmedClasses.length === activeClasses.length
+  const allPublished = activeClasses.length > 0 && activeClasses.every((item) => published[`${round}:${item.classCode}`])
 
-  async function save(publish: boolean) {
-    if (!valid || busy) return
-    if (publish && !window.confirm(`Alle ${roundLabels[round]}-scores nu publiceren?`)) return
-    setBusy(true); setMessage('')
-    try { await saveRoundScores(round, roundScores, publish); setMessage(publish ? 'Scores gepubliceerd.' : 'Conceptscores opgeslagen.'); await load() }
-    catch (reason) { setMessage(reason instanceof Error ? reason.message : 'Opslaan is mislukt.') }
-    finally { setBusy(false) }
+  async function save(publishNow: boolean) {
+    if (!enteredScores.length || hasInvalidScore || busy) return false
+    if (publishNow && (!allConfirmed || !publishChecked)) return false
+    if (publishNow && !window.confirm(`Alle ${activeClasses.length} bevestigde ${roundLabels[round]}-scores nu in één keer publiceren?`)) return false
+    setBusy(true)
+    setMessage('')
+    try {
+      await saveRoundScores(round, enteredScores, publishNow)
+      setMessage(publishNow ? `Alle ${roundLabels[round]}-scores zijn gepubliceerd.` : 'Concept en bevestigingen zijn opgeslagen.')
+      await load()
+      return true
+    } catch (reason) {
+      setMessage(errorMessage(reason, 'Opslaan is mislukt.'))
+      return false
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  function setScore(key: string, value: string) {
+    if (confirmed[key] || published[key]) return
+    setScores((current) => ({ ...current, [key]: value }))
+    setPublishChecked(false)
+  }
+
+  function setConfirmation(key: string, value: boolean) {
+    if (published[key]) return
+    setConfirmed((current) => ({ ...current, [key]: value }))
+    setPublishChecked(false)
   }
 
   function move(index: number, delta: number) {
     const target = index + delta
     if (target < 0 || target >= order.length || finale?.phase !== 'preparation') return
-    setOrder((current) => { const next = [...current]; [next[index], next[target]] = [next[target], next[index]]; return next })
+    setOrder((current) => {
+      const next = [...current]
+      ;[next[index], next[target]] = [next[target], next[index]]
+      return next
+    })
   }
 
   async function lock() {
-    if (busy || !window.confirm('Deze volgorde vastzetten voor de BLEND-finale? Controleer gelijke standen eerst handmatig.')) return
-    setBusy(true); setMessage('')
-    try { await lockFinaleOrder(order); setMessage('Onthullingsvolgorde staat vast.'); await load() }
-    catch (reason) { setMessage(reason instanceof Error ? reason.message : 'Vastzetten is mislukt.') }
-    finally { setBusy(false) }
+    if (busy || !allConfirmed || !window.confirm('Alle acht POV-scores opslaan en deze volgorde definitief vastzetten voor de BLEND-finale?')) return
+    setBusy(true)
+    setMessage('')
+    try {
+      await saveRoundScores('pov_final', enteredScores, false)
+      await lockFinaleOrder(order)
+      setMessage('De acht POV-scores zijn bevestigd en de onthullingsvolgorde staat vast.')
+      await load()
+    } catch (reason) {
+      setMessage(errorMessage(reason, 'Vastzetten is mislukt.'))
+    } finally {
+      setBusy(false)
+    }
   }
 
   async function reveal() {
     const classCode = finale?.revealOrder[finale.nextIndex]
-    if (!classCode || busy || !window.confirm(`Start de live onthulling voor ${classCode}?`)) return
-    setBusy(true); setMessage('')
-    try { await revealNextFinalist(classCode); setMessage(`${classCode} is live onthuld. De regie bepaalt wanneer het volgende land start.`); await load() }
-    catch (reason) { setMessage(reason instanceof Error ? reason.message : 'Onthullen is mislukt.') }
-    finally { setBusy(false) }
+    if (!classCode || busy || !revealChecked) return
+    if (!window.confirm(`De bevestigde POV-score voor ${classCode} nu live onthullen?`)) return
+    setBusy(true)
+    setMessage('')
+    try {
+      await revealNextFinalist(classCode, true)
+      setMessage(`${classCode} is live onthuld. De regie bepaalt wanneer het volgende land start.`)
+      await load()
+    } catch (reason) {
+      setMessage(errorMessage(reason, 'Onthullen is mislukt.'))
+    } finally {
+      setBusy(false)
+    }
   }
 
-  const nextClass = activeClasses.find((item) => item.classCode === finale?.revealOrder[finale.nextIndex])
+  const nextClassCode = finale?.revealOrder[finale.nextIndex]
+  const nextClass = activeClasses.find((item) => item.classCode === nextClassCode)
+  const nextScore = nextClassCode ? scores[`pov_final:${nextClassCode}`] : undefined
+
   return <section className="dashboard-panel competition-admin">
-    <div className="panel-header"><div><h2>Landenstrijd &amp; BLEND-regie</h2><p>Publiceer HAG, SX en City Game per klas. Bereid daarna de POV-finale van plek 8 naar 1 voor.</p></div><button type="button" className="secondary-button" onClick={() => void load()}><RefreshCw /> Vernieuwen</button></div>
+    <div className="panel-header">
+      <div><h2>Landenstrijd &amp; BLEND-regie</h2><p>Controleer iedere klas afzonderlijk. HAG, Sports Experiences en City Game worden pas gepubliceerd wanneer alle acht klassen bevestigd zijn.</p></div>
+      <button type="button" className="secondary-button" disabled={busy} onClick={() => void load()}><RefreshCw /> Vernieuwen</button>
+    </div>
     {message && <div className="notification-state">{message}</div>}
-    <div className="competition-round-tabs">{(Object.keys(roundLabels) as CompetitionRoundCode[]).map((code) => <button type="button" className={round === code ? 'active' : ''} onClick={() => setRound(code)} key={code}>{roundLabels[code]}</button>)}</div>
-    <div className="competition-score-editor"><h3>{roundLabels[round]}</h3><div className="competition-score-grid">
-      {activeClasses.map((item) => { const key = `${round}:${item.classCode}`; return <label key={item.classCode}><span>{item.flag} <b>{item.country}</b><small>{item.classCode}</small></span><input type="number" min="0" max="10000" value={scores[key] ?? ''} onChange={(event) => setScores((current) => ({ ...current, [key]: event.target.value }))}/>{published[key] && <CheckCircle2 aria-label="Gepubliceerd" />}</label> })}
-    </div><div className="header-button-group"><button type="button" className="secondary-button" disabled={!valid || busy} onClick={() => void save(false)}>Concept opslaan</button>{round !== 'pov_final' && <button type="button" className="primary-button" disabled={!valid || busy} onClick={() => void save(true)}>Scores publiceren</button>}</div></div>
-    {round === 'pov_final' && <div className="finale-control"><h3><Trophy /> Onthullingsvolgorde</h3><p>De voorgestelde volgorde is gebaseerd op de actuele stand na de City Game. Bij een gelijke stand bepaalt de organisatie de volgorde met de pijlen.</p>
-      <ol>{order.map((classCode, index) => { const item=activeClasses.find((entry)=>entry.classCode===classCode); return <li key={classCode}><b>{index + 1}e onthulling</b><span>{item?.flag} {item?.country} <small>{classCode}</small></span><span><button type="button" disabled={index===0 || finale?.phase!=='preparation'} onClick={()=>move(index,-1)} aria-label="Eerder"><ArrowUp /></button><button type="button" disabled={index===order.length-1 || finale?.phase!=='preparation'} onClick={()=>move(index,1)} aria-label="Later"><ArrowDown /></button></span></li>})}</ol>
-      {finale?.phase === 'preparation' ? <button className="primary-button" type="button" disabled={busy || order.length!==activeClasses.length} onClick={() => void lock()}><CheckCircle2 /> Volgorde definitief vastzetten</button> : finale?.phase === 'final' ? <div className="notification-state notification-success"><Trophy /> Finale afgerond: dit is de definitieve stand.</div> : <div className="finale-next-card"><span>Volgende onthulling</span><strong>{nextClass?.flag} {nextClass?.country}</strong><small>{nextClass?.classCode} · stap {(finale?.nextIndex ?? 0)+1} van {order.length}</small><button type="button" className="primary-button" disabled={busy} onClick={() => void reveal()}><Sparkles /> Start onthulling voor dit land</button><p>Na de animatie start het volgende land nooit automatisch.</p></div>}
+    <div className="competition-round-tabs">
+      {(Object.keys(roundLabels) as CompetitionRoundCode[]).map((code) => <button type="button" className={round === code ? 'active' : ''} onClick={() => setRound(code)} key={code}>{roundLabels[code]}</button>)}
+    </div>
+    <div className="competition-score-editor">
+      <div className="competition-editor-heading"><div><h3>{roundLabels[round]}</h3><p>{roundHelp[round]}</p></div><strong>{confirmedClasses.length} van {activeClasses.length} bevestigd</strong></div>
+      <div className="competition-score-grid">
+        {activeClasses.map((item) => {
+          const key = `${round}:${item.classCode}`
+          const scoreValid = Number.isInteger(Number(scores[key])) && Number(scores[key]) >= 0 && Number(scores[key]) <= 10000 && (scores[key] ?? '').trim() !== ''
+          const isConfirmed = Boolean(confirmed[key])
+          const isPublished = Boolean(published[key])
+          return <div className={`competition-score-row${isConfirmed ? ' is-confirmed' : ''}${isPublished ? ' is-published' : ''}`} key={item.classCode}>
+            <span className="competition-class-name">{item.flag} <b>{item.country}</b><small>{item.classCode}</small></span>
+            <label className="competition-points-field"><span>Punten</span><input aria-label={`Punten voor ${item.classCode}`} type="number" min="0" max="10000" disabled={isConfirmed || isPublished || busy} value={scores[key] ?? ''} onChange={(event) => setScore(key, event.target.value)} /></label>
+            <label className="competition-confirm-field">
+              <input type="checkbox" checked={isConfirmed} disabled={!scoreValid || isPublished || busy} onChange={(event) => setConfirmation(key, event.target.checked)} />
+              {isConfirmed ? <CheckCircle2 /> : <Circle />}
+              <span>{isPublished ? 'Gepubliceerd' : isConfirmed ? 'Klas en punten bevestigd' : 'Klas en punten controleren'}</span>
+            </label>
+          </div>
+        })}
+      </div>
+      <div className="competition-confirm-progress">
+        <div><strong>{confirmedClasses.length} van {activeClasses.length} klassen bevestigd</strong>{missingClasses.length > 0 && <span>Nog te controleren: {missingClasses.map((item) => item.classCode).join(', ')}</span>}</div>
+        <button type="button" className="secondary-button" disabled={!enteredScores.length || hasInvalidScore || busy || allPublished} onClick={() => void save(false)}>Concept en bevestigingen opslaan</button>
+      </div>
+      {round !== 'pov_final' && allConfirmed && !allPublished && <div className="competition-publish-review">
+        <h4>Laatste controle vóór publicatie</h4>
+        <ul>{activeClasses.map((item) => <li key={item.classCode}><span>{item.flag} {item.classCode}</span><strong>{scores[`${round}:${item.classCode}`]} punten</strong></li>)}</ul>
+        <label><input type="checkbox" checked={publishChecked} disabled={busy} onChange={(event) => setPublishChecked(event.target.checked)} /> Ik heb alle klassen en punten hierboven gecontroleerd.</label>
+        <button type="button" className="primary-button" disabled={!publishChecked || busy} onClick={() => void save(true)}><CheckCircle2 /> Alle {activeClasses.length} scores tegelijk publiceren</button>
+      </div>}
+      {round !== 'pov_final' && allPublished && <div className="notification-state notification-success"><LockKeyhole /> Deze ronde is voor alle klassen gepubliceerd en vergrendeld.</div>}
+    </div>
+    {round === 'pov_final' && <div className="finale-control">
+      <h3><Trophy /> Onthullingsvolgorde</h3>
+      <p>De voorgestelde volgorde is gebaseerd op de stand na de City Game: van de huidige laatste plaats naar de eerste. Bij een gelijke stand bepaalt de organisatie de volgorde met de pijlen.</p>
+      <ol>{order.map((classCode, index) => {
+        const item = activeClasses.find((entry) => entry.classCode === classCode)
+        return <li key={classCode}><b>{index + 1}e onthulling</b><span>{item?.flag} {item?.country} <small>{classCode}</small></span><span><button type="button" disabled={index === 0 || finale?.phase !== 'preparation'} onClick={() => move(index, -1)} aria-label="Eerder"><ArrowUp /></button><button type="button" disabled={index === order.length - 1 || finale?.phase !== 'preparation'} onClick={() => move(index, 1)} aria-label="Later"><ArrowDown /></button></span></li>
+      })}</ol>
+      {finale?.phase === 'preparation' ? <button className="primary-button" type="button" disabled={busy || order.length !== activeClasses.length || !allConfirmed} onClick={() => void lock()}><CheckCircle2 /> Acht scores en volgorde definitief vastzetten</button>
+        : finale?.phase === 'final' ? <div className="notification-state notification-success"><Trophy /> Finale afgerond: dit is de definitieve stand.</div>
+          : <div className="finale-next-card"><span>Volgende onthulling</span><strong>{nextClass?.flag} {nextClass?.country}</strong><small>{nextClass?.classCode} · stap {(finale?.nextIndex ?? 0) + 1} van {order.length}</small><div className="finale-score-check"><b>{nextScore} punten</b><label><input type="checkbox" checked={revealChecked} disabled={busy} onChange={(event) => setRevealChecked(event.target.checked)} /> Ik bevestig dat dit het juiste land en puntenaantal is.</label></div><button type="button" className="primary-button" disabled={busy || !revealChecked} onClick={() => void reveal()}><Sparkles /> Onthul score voor dit land</button><p>Na de animatie start het volgende land nooit automatisch.</p></div>}
     </div>}
   </section>
 }
