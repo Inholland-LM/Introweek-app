@@ -908,7 +908,7 @@ function CompetitionView({ onNavigate, referenceDate, standings }: CompetitionVi
           </div>
         </div>
         <div className="points-grid">
-          <button type="button" onClick={() => onNavigate('Meer', 'pov')}><Camera aria-hidden="true" /><div><strong>POV-foto’s</strong><span>Bekijk en plaats inzendingen</span></div><ChevronRight aria-hidden="true" /></button>
+          <button type="button" onClick={() => onNavigate('Meer', 'pov')}><Camera aria-hidden="true" /><div><strong>POV-foto’s</strong><span>Kies een opdracht en stuur een foto in</span></div><ChevronRight aria-hidden="true" /></button>
           <button type="button" onClick={() => onNavigate('Programma')}><Compass aria-hidden="true" /><div><strong>Experiences</strong><span>Bekijk waar en wanneer</span></div><ChevronRight aria-hidden="true" /></button>
           <button type="button" onClick={() => onNavigate('Kaart')}><Map aria-hidden="true" /><div><strong>City Game</strong><span>Open locaties en routes</span></div><ChevronRight aria-hidden="true" /></button>
         </div>
@@ -1094,7 +1094,7 @@ function MoreView({
   ]
   if (practicalVisible) sections.splice(1, 0, { id: 'practical', label: 'Praktisch', detail: 'Alles bij de hand', icon: CheckCircle2 })
   if (discountsVisible) sections.splice(practicalVisible ? 2 : 1, 0, { id: 'discounts', label: 'Kortingen', detail: 'Met je polsbandje', icon: BadgePercent })
-  if (povVisible) sections.splice((practicalVisible ? 1 : 0) + (discountsVisible ? 1 : 0) + 1, 0, { id: 'pov', label: 'POV-foto’s', detail: 'Verdien punten', icon: Camera })
+  if (povVisible) sections.splice((practicalVisible ? 1 : 0) + (discountsVisible ? 1 : 0) + 1, 0, { id: 'pov', label: 'POV-foto’s', detail: 'Stuur een foto in', icon: Camera })
   if (profile.profileType === 'organizer') {
     sections.push({ id: 'import', label: 'Organisatiedashboard', detail: 'Beheer & Excel-import', icon: ShieldCheck })
   }

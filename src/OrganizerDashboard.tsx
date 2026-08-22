@@ -198,8 +198,10 @@ export function OrganizerDashboard({
   // POV Submissions State
   const [submissions, setSubmissions] = useState<PovSubmission[]>([])
   const [loadingPov, setLoadingPov] = useState(false)
+  const [povError, setPovError] = useState('')
   const [selectedPov, setSelectedPov] = useState<PovSubmission | null>(null)
   const [selectedPovUrl, setSelectedPovUrl] = useState('')
+  const [selectedPovError, setSelectedPovError] = useState('')
 
   // Messages State
   const [messages, setMessages] = useState<AnnouncementMessage[]>([])
@@ -343,41 +345,13 @@ export function OrganizerDashboard({
 
   async function loadPovSubmissions() {
     setLoadingPov(true)
+    setPovError('')
     try {
       const data = await fetchPovSubmissions(0, 50)
       setSubmissions(data)
-    } catch {
-      // Fallback demo submissions if Supabase offline
-      setSubmissions([
-        {
-          id: 'demo-pov-1',
-          assignmentId: 'assign-1',
-          assignmentTitle: 'Klasfoto op het NDSM-terrein',
-          classCode: 'LM1A',
-          uploaderName: 'Sofia Jansen',
-          storagePath: 'demo/ndsm.jpg',
-          caption: 'Klasse LM1A klaar voor de strijd!',
-          byteSize: 240000,
-          uploadedAt: new Date().toISOString(),
-          reviewStatus: 'pending',
-          rejectionReason: null,
-          awardedPoints: 0,
-        },
-        {
-          id: 'demo-pov-2',
-          assignmentId: 'assign-1',
-          assignmentTitle: 'Klasfoto op het NDSM-terrein',
-          classCode: 'LM1A',
-          uploaderName: 'Daan de Vries',
-          storagePath: 'demo/ndsm-2.jpg',
-          caption: 'Tweede hoek van de klas',
-          byteSize: 210000,
-          uploadedAt: new Date().toISOString(),
-          reviewStatus: 'pending',
-          rejectionReason: null,
-          awardedPoints: 0,
-        },
-      ])
+    } catch (reason) {
+      setSubmissions([])
+      setPovError(reason instanceof Error ? reason.message : 'De POV-inzendingen konden niet worden geladen. Probeer het opnieuw.')
     } finally {
       setLoadingPov(false)
     }
@@ -443,11 +417,13 @@ export function OrganizerDashboard({
 
   async function openPovModal(submission: PovSubmission) {
     setSelectedPov(submission)
+    setSelectedPovUrl('')
+    setSelectedPovError('')
     try {
       const url = await createPovPhotoUrl(submission.storagePath)
       setSelectedPovUrl(url)
-    } catch {
-      setSelectedPovUrl('https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=800&q=80')
+    } catch (reason) {
+      setSelectedPovError(reason instanceof Error ? reason.message : 'De afgeschermde foto kon niet worden geladen.')
     }
   }
 
@@ -1430,6 +1406,7 @@ export function OrganizerDashboard({
               </div>
 
               {loadingPov && <div className="notification-state">Inzendingen ophalen...</div>}
+              {povError && <div className="notification-state notification-error" role="alert">{povError}</div>}
 
               <div className="pov-grid-dashboard">
                 {submissions.map((item) => {
@@ -1442,7 +1419,7 @@ export function OrganizerDashboard({
                       onClick={() => void openPovModal(item)}
                     >
                       <div className="pov-card-img-holder">
-                        <img src="https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=400&q=80" alt={item.assignmentTitle} loading="lazy" />
+                        <div className="pov-protected-preview"><Camera aria-hidden="true" /><span>Klik om de afgeschermde foto te laden</span></div>
                         {isEvaluated && (
                           <div className="winner-badge">
                             <span>EERDER BEOORDEELD</span>
@@ -1740,13 +1717,20 @@ export function OrganizerDashboard({
 
             <div className="pov-modal-body">
               <div className="pov-modal-photo">
-                <img src={selectedPovUrl || 'https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=800&q=80'} alt={selectedPov.assignmentTitle} />
+                {selectedPovUrl
+                  ? <img src={selectedPovUrl} alt={selectedPov.assignmentTitle} />
+                  : <div className="pov-photo-load-state"><AlertTriangle aria-hidden="true" /><span>{selectedPovError || 'Afgeschermde foto laden…'}</span></div>}
               </div>
               <div className="pov-modal-info">
                 <span className="class-badge-large">{selectedPov.classCode}</span>
                 <h2>{selectedPov.assignmentTitle}</h2>
                 <p className="uploader-info">Ingestuurd door <strong>{selectedPov.uploaderName}</strong></p>
                 {selectedPov.caption && <blockquote className="photo-caption">"{selectedPov.caption}"</blockquote>}
+                <p className={selectedPov.consentConfirmed ? 'pov-consent-audit is-confirmed' : 'pov-consent-audit is-legacy'}>
+                  {selectedPov.consentConfirmed
+                    ? `Toestemming bevestigd${selectedPov.consentConfirmedAt ? ` op ${new Intl.DateTimeFormat('nl-NL', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(selectedPov.consentConfirmedAt))}` : ''}.`
+                    : 'Toestemmingsbevestiging niet afzonderlijk geregistreerd (oudere inzending).'}
+                </p>
 
                 <div className="award-points-box"><strong>Jurybeoordeling</strong><p>Beoordeel deze foto buiten het klassement. Leg daarna in Landenstrijd één gezamenlijk POV-eindtotaal voor {selectedPov.classCode} vast.</p></div>
 

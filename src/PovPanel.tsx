@@ -36,7 +36,7 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
 
   if (!selectedAssignment) {
     return <div className="pov-category-list" aria-label="POV-categorieën">
-      <p className="pov-category-intro">Kies eerst een categorie. Daarna zie je de opdracht, de inzendingen van jouw klas en de uploadmogelijkheid.</p>
+      <p className="pov-category-intro">Kies eerst een categorie. Daarna zie je de opdracht en kun je een foto insturen voor jouw klas.</p>
       {assignments.map((assignment, index) => <button key={assignment.id} type="button" onClick={() => setAssignmentId(assignment.id)}>
         <span className="pov-category-number">{String(index + 1).padStart(2, '0')}</span>
         <span><strong>{assignment.title}</strong><small>Open categorie</small></span>
@@ -49,7 +49,7 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
     if (!selectedAssignment || !file || !consent) return
     setBusy(true); setError(''); setSuccess('')
     try {
-      const result = await uploadPovPhoto(selectedAssignment.id, file, caption)
+      const result = await uploadPovPhoto(selectedAssignment.id, file, caption, consent)
       setSuccess(`Foto ingestuurd voor “${selectedAssignment.title}” (${Math.max(1, Math.round(result.compressedBytes / 1024))} kB).`)
       setFile(null); setCaption(''); setConsent(false)
     } catch (reason) {
@@ -82,7 +82,7 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
         <input type="file" accept="image/*" onChange={(event) => setFile(event.target.files?.[0] ?? null)} />
       </label>
       <label className="pov-caption">Bijschrift (optioneel)<textarea maxLength={240} value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Wat zien we op deze foto?" /></label>
-      <label className="pov-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span>Ik heb toestemming van herkenbare personen op de foto.</span></label>
+      <label className="pov-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span>Ik bevestig dat ik toestemming heb van herkenbare personen op de foto. Deze bevestiging wordt bij de inzending vastgelegd.</span></label>
       <p className="pov-privacy-note">De app bewaart een hoogwaardige versie voor jury en aftermovie. Alleen de organisatie kan ingestuurde foto’s bekijken.</p>
       {error && <div className="notification-state notification-error" role="alert">{error}</div>}
       {success && <div className="pov-success" role="status"><CheckCircle2 aria-hidden="true" />{success}</div>}

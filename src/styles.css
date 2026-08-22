@@ -3345,6 +3345,27 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   object-fit: cover;
 }
 
+.pov-protected-preview,
+.pov-photo-load-state {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  width: 100%;
+  height: 100%;
+  min-height: 180px;
+  padding: 24px;
+  text-align: center;
+  color: #475569;
+  background: linear-gradient(135deg, #f8fafc, #e2e8f0);
+}
+
+.pov-protected-preview svg,
+.pov-photo-load-state svg {
+  width: 30px;
+  height: 30px;
+}
+
 .winner-badge {
   position: absolute;
   top: 8px;
@@ -3492,6 +3513,28 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
   max-height: 320px;
   object-fit: cover;
   border-radius: 16px;
+}
+
+.pov-photo-load-state {
+  border-radius: 16px;
+}
+
+.pov-consent-audit {
+  margin: 10px 0 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  font-size: 0.82rem;
+  font-weight: 750;
+}
+
+.pov-consent-audit.is-confirmed {
+  color: #166534;
+  background: #dcfce7;
+}
+
+.pov-consent-audit.is-legacy {
+  color: #92400e;
+  background: #fef3c7;
 }
 
 .award-points-box {

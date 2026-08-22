@@ -17,6 +17,9 @@ export type PovSubmission = {
   reviewStatus: 'pending' | 'approved' | 'rejected'
   rejectionReason: string | null
   awardedPoints: number
+  consentConfirmed: boolean
+  consentConfirmedAt: string | null
+  consentVersion: string | null
 }
 
 function mapPovSubmission(item: Record<string, unknown>): PovSubmission {
@@ -33,6 +36,9 @@ function mapPovSubmission(item: Record<string, unknown>): PovSubmission {
     reviewStatus: item.review_status === 'approved' || item.review_status === 'rejected' ? item.review_status : 'pending',
     rejectionReason: item.rejection_reason ? String(item.rejection_reason) : null,
     awardedPoints: Number(item.awarded_points ?? 0),
+    consentConfirmed: item.consent_confirmed === true,
+    consentConfirmedAt: item.consent_confirmed_at ? String(item.consent_confirmed_at) : null,
+    consentVersion: item.consent_version ? String(item.consent_version) : null,
   }
 }
 
@@ -81,8 +87,9 @@ export async function compressPovPhoto(file: File) {
   throw new Error('De foto blijft na verkleinen te groot. Kies een foto met een lagere resolutie.')
 }
 
-export async function uploadPovPhoto(assignmentId: string, file: File, caption: string) {
+export async function uploadPovPhoto(assignmentId: string, file: File, caption: string, consentConfirmed: boolean) {
   if (!supabase) throw new Error('De beveiligde uploadverbinding is niet beschikbaar.')
+  if (!consentConfirmed) throw new Error('Bevestig eerst de toestemming van herkenbare personen op de foto.')
   const compressed = await compressPovPhoto(file)
   const { data: reservation, error: reserveError } = await supabase.rpc('prepare_pov_upload', {
     requested_assignment_id: assignmentId,
@@ -108,6 +115,7 @@ export async function uploadPovPhoto(assignmentId: string, file: File, caption: 
     submitted_original_filename: file.name,
     submitted_byte_size: compressed.size,
     submitted_mime_type: 'image/jpeg',
+    submitted_consent_confirmed: consentConfirmed,
   })
   if (completeError) {
     await supabase.storage.from(bucketName).remove([parsed.path])
