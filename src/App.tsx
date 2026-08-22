@@ -702,10 +702,13 @@ function MapView({ routeDays }: { routeDays: RouteDay[] }) {
 }
 
 type CompetitionViewProps = {
-  onNavigate: (destination: NavLabel, moreSection?: MoreSectionId) => void
   referenceDate: Date
   standings: Standing[]
+  programmeDays: ProgrammeDay[]
+  povAssignments: MasterContent['povAssignments']
 }
+
+type OpportunityId = 'pov' | 'experiences' | 'city_game'
 
 function hideCountryRevealDetails(programmeDays: ProgrammeDay[]): ProgrammeDay[] {
   return programmeDays.map((day) => ({
@@ -723,10 +726,12 @@ function hideCountryRevealDetails(programmeDays: ProgrammeDay[]): ProgrammeDay[]
   }))
 }
 
-function CompetitionView({ onNavigate, referenceDate, standings }: CompetitionViewProps) {
+function CompetitionView({ referenceDate, standings, programmeDays, povAssignments }: CompetitionViewProps) {
   const profile = useAppProfile()
   const finale = useCompetitionFinale()
   const [selectedTeam, setSelectedTeam] = useState<Standing | null>(null)
+  const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityId | null>(null)
+  const opportunityCloseRef = useRef<HTMLButtonElement | null>(null)
   const leader = standings[0]
   const isOrganizer = profile.profileType === 'organizer'
   const ownTeam = standings.find((team) => team.classCode === profile.classCode) ?? standings[1]
@@ -739,6 +744,23 @@ function CompetitionView({ onNavigate, referenceDate, standings }: CompetitionVi
   const difference = leader.points - ownTeam.points
   const countriesRevealed = isOrganizer || referenceDate.getTime() >= COUNTRY_REVEAL_AT
   const standingsFrozen = !isOrganizer && referenceDate.getTime() >= STANDINGS_FREEZE_AT
+  const visiblePovAssignments = povAssignments.filter((assignment) => assignment.active && (
+    isOrganizer || assignment.classCodes === 'all' || assignment.classCodes.includes(profile.classCode)
+  ))
+  const experienceItems = programmeDays.flatMap((day) => day.items
+    .filter((item) => /amsterdams geluid|sports experiences/i.test(item.title))
+    .map((item) => ({ ...item, day: day.shortLabel, date: day.date })))
+  const cityGameItems = programmeDays.flatMap((day) => day.items
+    .filter((item) => item.category === 'City Game' || /cultural experiences|food.*retail.*hospitality|vr experience|\bentr\b/i.test(item.title))
+    .map((item) => ({ ...item, day: day.shortLabel, date: day.date })))
+
+  useEffect(() => {
+    if (!selectedOpportunity) return
+    const handleEscape = (event: KeyboardEvent) => { if (event.key === 'Escape') setSelectedOpportunity(null) }
+    window.addEventListener('keydown', handleEscape)
+    opportunityCloseRef.current?.focus()
+    return () => window.removeEventListener('keydown', handleEscape)
+  }, [selectedOpportunity])
 
   if (!countriesRevealed) {
     return <section className="competition-view country-reveal-teaser" aria-labelledby="competition-title">
@@ -908,11 +930,42 @@ function CompetitionView({ onNavigate, referenceDate, standings }: CompetitionVi
           </div>
         </div>
         <div className="points-grid">
-          <button type="button" onClick={() => onNavigate('Meer', 'pov')}><Camera aria-hidden="true" /><div><strong>POV-foto’s</strong><span>Kies een opdracht en stuur een foto in</span></div><ChevronRight aria-hidden="true" /></button>
-          <button type="button" onClick={() => onNavigate('Programma')}><Compass aria-hidden="true" /><div><strong>Experiences</strong><span>Bekijk waar en wanneer</span></div><ChevronRight aria-hidden="true" /></button>
-          <button type="button" onClick={() => onNavigate('Kaart')}><Map aria-hidden="true" /><div><strong>City Game</strong><span>Open locaties en routes</span></div><ChevronRight aria-hidden="true" /></button>
+          <button type="button" aria-haspopup="dialog" onClick={() => setSelectedOpportunity('pov')}><Camera aria-hidden="true" /><div><strong>POV-foto’s</strong><span>Deadline, inzenden en jurering</span></div><CircleHelp aria-hidden="true" /></button>
+          <button type="button" aria-haspopup="dialog" onClick={() => setSelectedOpportunity('experiences')}><Compass aria-hidden="true" /><div><strong>Experiences</strong><span>Programma en puntentoekenning</span></div><CircleHelp aria-hidden="true" /></button>
+          <button type="button" aria-haspopup="dialog" onClick={() => setSelectedOpportunity('city_game')}><Map aria-hidden="true" /><div><strong>City Game</strong><span>Onderdelen en totaalscore</span></div><CircleHelp aria-hidden="true" /></button>
         </div>
       </section>
+
+      {selectedOpportunity && <div className="modal-overlay opportunity-modal-overlay" role="presentation" onClick={() => setSelectedOpportunity(null)}>
+        <article className="modal-dialog-card opportunity-modal" role="dialog" aria-modal="true" aria-labelledby="opportunity-modal-title" onClick={(event) => event.stopPropagation()}>
+          <div className="modal-dialog-header">
+            <div className="opportunity-modal-title">
+              <span aria-hidden="true">{selectedOpportunity === 'pov' ? <Camera /> : selectedOpportunity === 'experiences' ? <Compass /> : <Map />}</span>
+              <div><small>Kans voor {isOrganizer ? 'de klassen' : profile.classCode}</small><h2 id="opportunity-modal-title">{selectedOpportunity === 'pov' ? 'POV-foto’s' : selectedOpportunity === 'experiences' ? 'Experiences' : 'City Game'}</h2></div>
+            </div>
+            <button ref={opportunityCloseRef} type="button" className="close-modal-icon-btn" onClick={() => setSelectedOpportunity(null)} aria-label="Uitleg sluiten"><X aria-hidden="true" /></button>
+          </div>
+          <div className="modal-dialog-body opportunity-modal-body">
+            {selectedOpportunity === 'pov' && <>
+              <div className="opportunity-intro"><strong>Leg de introweek vast en verdien POV-punten voor je klas.</strong><p>Open via <b>Meer → POV-foto’s</b> een categorie, kies een foto en stuur die vóór de bijbehorende deadline in.</p></div>
+              <section><h3>Actieve opdrachten en deadlines</h3>{visiblePovAssignments.length ? <ul className="opportunity-assignment-list">{visiblePovAssignments.map((assignment) => <li key={assignment.id}><div><strong>{assignment.title}</strong><p>{assignment.description}</p></div><small>Uiterlijk {new Intl.DateTimeFormat('nl-NL', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(assignment.deadlineAt))}<br />Maximaal {assignment.maxUploads} per klas</small></li>)}</ul> : <p>Er staat momenteel geen actieve POV-opdracht voor jouw klas open.</p>}</section>
+              <section><h3>Zo werkt de jurering</h3><ul className="opportunity-check-list"><li>De jury beoordeelt de inzendingen volgens het onderwerp van de categorie, zoals creatiefste, grappigste of origineelste foto.</li><li>Een individuele foto krijgt niet direct zichtbare punten. De jury bepaalt op basis van alle inzendingen één geheime POV-eindscore per klas.</li><li>De POV-eindscores worden tijdens BLEND per klas onthuld. De organisatie regisseert de volgorde van de toenmalige plek 8 naar plek 1.</li></ul></section>
+              <section><h3>Privacy en plekken</h3><ul className="opportunity-check-list"><li>Alleen de organisatie en jury kunnen de ingestuurde foto’s bekijken; studenten zien geen klassengalerij.</li><li>Bevestig vóór het insturen dat herkenbare personen toestemming hebben gegeven.</li><li>Bij iedere categorie zie je hoeveel plekken jouw klas al heeft gebruikt. Een afgekeurde of verwijderde foto maakt weer een plek vrij.</li><li>De app bewaart een hoogwaardige JPEG voor jury en aftermovie.</li></ul></section>
+            </>}
+            {selectedOpportunity === 'experiences' && <>
+              <div className="opportunity-intro"><strong>Werk tijdens HAG en Sports Experiences samen voor je klasscore.</strong><p>De precieze opdracht en beoordelingscriteria worden door de begeleiders op locatie uitgelegd.</p></div>
+              <section><h3>Jouw programma</h3>{experienceItems.length ? <ul className="opportunity-programme-list">{experienceItems.map((item) => <li key={`${item.day}-${item.time}-${item.title}`}><time>{item.day} · {item.time}</time><div><strong>{item.title}</strong><small>{item.location ?? 'Locatie wordt bekendgemaakt'}</small></div></li>)}</ul> : <p>Bekijk de actuele tijden bij Programma; er zijn nog geen klasspecifieke Experience-onderdelen gevonden.</p>}</section>
+              <section><h3>Puntentoekenning</h3><ul className="opportunity-check-list"><li>HAG en Sports Experiences zijn twee afzonderlijke scorerondes.</li><li>De organisatie voert na iedere ronde één totaalscore per klas in.</li><li>Pas wanneer alle acht klassen zijn gecontroleerd, worden de acht scores van die ronde tegelijk gepubliceerd.</li><li>Er zijn geen individuele deelnemersscores; samenwerking en de prestatie van de klas staan centraal.</li></ul></section>
+            </>}
+            {selectedOpportunity === 'city_game' && <>
+              <div className="opportunity-intro"><strong>CX, FRH en ENTR vormen samen één City Game.</strong><p>Doorloop met je klas de onderdelen volgens je eigen programma en volg op iedere locatie de aanwijzingen van de begeleiders.</p></div>
+              <section><h3>Jouw City Game-programma</h3>{cityGameItems.length ? <ul className="opportunity-programme-list">{cityGameItems.map((item) => <li key={`${item.day}-${item.time}-${item.title}`}><time>{item.day} · {item.time}</time><div><strong>{item.title}</strong><small>{item.location ?? 'Locatie wordt bekendgemaakt'}</small></div></li>)}</ul> : <p>Bekijk de actuele tijden bij Programma; er zijn nog geen klasspecifieke City Game-onderdelen gevonden.</p>}</section>
+              <section><h3>Één gezamenlijke totaalscore</h3><ul className="opportunity-check-list"><li>CX, FRH en ENTR krijgen geen afzonderlijke zichtbare deelscores.</li><li>Na afloop voert de organisatie één gezamenlijke City Game-totaalscore per klas in.</li><li>De score wordt pas gepubliceerd als alle acht klassen zijn gecontroleerd; alle City Game-scores verschijnen tegelijk.</li><li>Na de City Game wordt de tussenstand vastgezet voor de geheime POV-finale tijdens BLEND.</li></ul></section>
+            </>}
+          </div>
+          <div className="modal-dialog-footer"><button type="button" className="close-modal-text-btn" onClick={() => setSelectedOpportunity(null)}>Begrepen</button></div>
+        </article>
+      </div>}
 
       <p className="programme-note">Een nieuwe stand wordt later alleen opgehaald na een echte puntenwijziging. Er komt geen continue polling.</p>
     </section>
@@ -1965,11 +2018,12 @@ function App() {
 
         {active === 'Kaart' && <MapView routeDays={currentRouteDays} />}
 
-        {active === 'Strijd' && <CompetitionView referenceDate={effectiveTime} standings={standings} onNavigate={(destination, section) => {
-          if (section) setMoreSection(section)
-          setActive(destination)
-          if (section === 'notifications') void notificationInbox.refresh()
-        }} />}
+        {active === 'Strijd' && <CompetitionView
+          referenceDate={effectiveTime}
+          standings={standings}
+          programmeDays={currentProgrammeDays}
+          povAssignments={(masterContent.content ?? FALLBACK_MASTER_CONTENT).povAssignments}
+        />}
 
         {active === 'Meer' && (
           <MoreView
