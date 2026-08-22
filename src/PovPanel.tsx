@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react'
-import { ArrowLeft, Camera, CheckCircle2, ChevronRight, Image, LoaderCircle, Trash2, Upload, X } from 'lucide-react'
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowLeft, Camera, CheckCircle2, ChevronRight, Image, LoaderCircle, RefreshCw, Trash2, Upload, X } from 'lucide-react'
 import type { MasterContent } from './import/parseWorkbook'
 import type { AppProfile } from './profile'
-import { createPovPhotoUrl, deletePovSubmission, fetchPovSubmissions, uploadPovPhoto, type PovSubmission } from './povUploads'
+import { createPovPhotoUrl, deletePovSubmission, fetchPovAssignmentUsage, fetchPovSubmissions, uploadPovPhoto, type PovAssignmentUsage, type PovSubmission } from './povUploads'
 
 type Props = {
   profile: AppProfile
@@ -11,7 +11,11 @@ type Props = {
 }
 
 function friendlyUploadError(reason: unknown) {
-  const message = reason instanceof Error ? reason.message : ''
+  const message = reason instanceof Error
+    ? reason.message
+    : reason && typeof reason === 'object' && 'message' in reason && typeof reason.message === 'string'
+      ? reason.message
+      : ''
   if (message.includes('maximumaantal') || message.includes('deadline') || message.includes('actief')) return message
   return message || 'De foto kon niet worden ingestuurd. Probeer het nogmaals.'
 }
@@ -24,7 +28,36 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [usage, setUsage] = useState<PovAssignmentUsage | null>(null)
+  const [usageLoading, setUsageLoading] = useState(false)
+  const [usageError, setUsageError] = useState('')
   const selectedAssignment = assignments.find((item) => item.id === assignmentId)
+
+  async function refreshUsage() {
+    if (!selectedAssignment) return
+    setUsageLoading(true)
+    setUsageError('')
+    try {
+      setUsage(await fetchPovAssignmentUsage(selectedAssignment.id, selectedAssignment.maxUploads))
+    } catch {
+      setUsage(null)
+      setUsageError('De actuele bezetting kon niet worden geladen.')
+    } finally {
+      setUsageLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!selectedAssignment) {
+      setUsage(null)
+      setUsageError('')
+      return
+    }
+    void refreshUsage()
+    const refreshOnFocus = () => { void refreshUsage() }
+    window.addEventListener('focus', refreshOnFocus)
+    return () => window.removeEventListener('focus', refreshOnFocus)
+  }, [selectedAssignment?.id, selectedAssignment?.maxUploads])
 
   if (!assignments.length) {
     return fallbackUrl ? (
@@ -52,6 +85,7 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
       const result = await uploadPovPhoto(selectedAssignment.id, file, caption, consent)
       setSuccess(`Foto ingestuurd voor “${selectedAssignment.title}” (${Math.max(1, Math.round(result.compressedBytes / 1024))} kB).`)
       setFile(null); setCaption(''); setConsent(false)
+      await refreshUsage()
     } catch (reason) {
       setError(friendlyUploadError(reason))
     } finally {
@@ -69,8 +103,14 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
             <p>{selectedAssignment.description}</p>
             <div className="pov-counter-badge">
               <Camera aria-hidden="true" />
-              <span>Maximaal {selectedAssignment.maxUploads} foto’s per klas voor deze opdracht</span>
+              <span>{usageLoading
+                ? 'Beschikbare plekken laden…'
+                : usage
+                  ? <><strong>{usage.used} van {usage.maximum} plekken gebruikt</strong><small>{usage.remaining === 0 ? 'Geen plekken meer beschikbaar voor jouw klas' : `Nog ${usage.remaining} ${usage.remaining === 1 ? 'plek' : 'plekken'} beschikbaar voor jouw klas`}</small></>
+                  : `Maximaal ${selectedAssignment.maxUploads} foto’s per klas voor deze opdracht`}</span>
+              <button type="button" onClick={() => { void refreshUsage() }} disabled={usageLoading} aria-label="Beschikbare POV-plekken vernieuwen"><RefreshCw className={usageLoading ? 'spin' : ''} aria-hidden="true" /></button>
             </div>
+            {usageError && <small className="pov-usage-error">{usageError}</small>}
             <small>Insturen tot {new Intl.DateTimeFormat('nl-NL', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selectedAssignment.deadlineAt))}</small>
           </>
         )}
@@ -86,8 +126,8 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
       <p className="pov-privacy-note">De app bewaart een hoogwaardige versie voor jury en aftermovie. Alleen de organisatie kan ingestuurde foto’s bekijken.</p>
       {error && <div className="notification-state notification-error" role="alert">{error}</div>}
       {success && <div className="pov-success" role="status"><CheckCircle2 aria-hidden="true" />{success}</div>}
-      <button className="primary-button pov-submit" type="button" disabled={!file || !consent || busy} onClick={() => { void submit() }}>
-        {busy ? <LoaderCircle className="spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}<span>{busy ? 'Foto verwerken en insturen…' : 'Foto insturen'}</span>
+      <button className="primary-button pov-submit" type="button" disabled={!file || !consent || busy || usage?.remaining === 0} onClick={() => { void submit() }}>
+        {busy ? <LoaderCircle className="spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}<span>{busy ? 'Foto verwerken en insturen…' : usage?.remaining === 0 ? 'Geen plekken beschikbaar' : 'Foto insturen'}</span>
       </button>
 
     </div>

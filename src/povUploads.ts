@@ -22,6 +22,13 @@ export type PovSubmission = {
   consentVersion: string | null
 }
 
+export type PovAssignmentUsage = {
+  used: number
+  maximum: number
+  remaining: number
+  deadlineAt: string | null
+}
+
 function mapPovSubmission(item: Record<string, unknown>): PovSubmission {
   return {
     id: String(item.id),
@@ -124,6 +131,24 @@ export async function uploadPovPhoto(assignmentId: string, file: File, caption: 
   }
 
   return { id: parsed.id, compressedBytes: compressed.size }
+}
+
+export async function fetchPovAssignmentUsage(assignmentId: string, fallbackMaximum: number): Promise<PovAssignmentUsage> {
+  const safeMaximum = Math.max(1, fallbackMaximum)
+  if (!supabase) return { used: 0, maximum: safeMaximum, remaining: safeMaximum, deadlineAt: null }
+  const { data, error } = await supabase.rpc('get_my_pov_assignment_usage', {
+    requested_assignment_id: assignmentId,
+  })
+  if (error) throw error
+  const item = (data ?? {}) as Record<string, unknown>
+  const maximum = Math.max(1, Number(item.maximum ?? safeMaximum))
+  const used = Math.max(0, Math.min(maximum, Number(item.used ?? 0)))
+  return {
+    used,
+    maximum,
+    remaining: Math.max(0, Number(item.remaining ?? maximum - used)),
+    deadlineAt: item.deadlineAt ? String(item.deadlineAt) : null,
+  }
 }
 
 export async function fetchPovSubmissions(offset = 0, limit = 50) {
