@@ -46,7 +46,15 @@ Gebruik in `Instellingen` de sleutels `toon_praktisch`, `toon_kortingen` en `too
 
 ## POV-foto's
 
-Foto's worden niet in het Excelbestand opgeslagen. Het tabblad `POV-opdrachten` bepaalt welke opdracht voor welke klas openstaat. De app verkleint een gekozen foto op het toestel en slaat deze vervolgens op in de private Storage-bucket `pov-inzendingen`, met opdracht, klas, deelnemer en tijdstip als beveiligde metadata. De organisatie laadt alleen op verzoek de laatste vijftig inzendingen; de afbeeldingen zelf worden pas opgehaald wanneer op `Bekijk foto` wordt gedrukt. Dit beperkt privacyrisico's en Supabase-egress.
+Foto's worden niet in het Excelbestand opgeslagen. Het tabblad `POV-opdrachten` bepaalt welke opdracht voor welke klas openstaat. De app maakt op het toestel een hoogwaardige JPEG met een langste zijde van maximaal 2560 pixels en een bestandsgrootte van maximaal circa 2 MB. Die versie is geschikt als bron voor de aftermovie en wordt opgeslagen in de private Storage-bucket `pov-inzendingen`, met opdracht, klas, deelnemer en tijdstip als beveiligde metadata.
+
+Alleen de organisatie kan inzendingen en bestanden bekijken. De organisatie laadt eerst uitsluitend metadata; een afbeelding krijgt pas bij `Bekijk foto` een vijf minuten geldige URL. Studenten en buddy's kunnen uitsluitend uploaden en krijgen geen klasgalerij. Dit beperkt privacyrisico's en Supabase-egress.
+
+## Landenstrijd en BLEND-finale
+
+Het organisatiedashboard publiceert één klasscore voor HAG, SX en de gecombineerde City Game (CX, FRH en ENTR). Na de City Game wordt de POV-onthullingsvolgorde vastgezet op basis van de dan geldende stand. Bij gelijke scores bepaalt de organisatie handmatig de volgorde.
+
+De jury bepaalt buiten de individuele foto-inzendingen één POV-eindtotaal per klas. Deze conceptscores worden tijdens BLEND van de oorspronkelijke plek 8 naar plek 1 handmatig onthuld. Iedere onthulling moet apart door de organisatie worden gestart; het volgende land start nooit automatisch. Supabase bewaart de volgorde en voortgang centraal, terwijl realtime broadcasts alleen een compacte verversing naar geopende apps sturen.
 
 ## Privacy
 

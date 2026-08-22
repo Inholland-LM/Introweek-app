@@ -20,7 +20,9 @@ function parseHistory(value: unknown): TeamScoreHistory[] {
       id: String(item.id ?? ''),
       title: String(item.title ?? 'Punten toegekend'),
       points: Number(item.points ?? 0),
-      category: 'POV-foto',
+      category: ['POV-foto', 'Experience', 'City Game', 'Bonus', 'Vlaggenparade'].includes(String(item.category))
+        ? String(item.category) as TeamScoreHistory['category']
+        : 'Bonus',
       awardedAt: Number.isNaN(date.getTime())
         ? ''
         : new Intl.DateTimeFormat('nl-NL', { weekday: 'long', hour: '2-digit', minute: '2-digit' }).format(date),

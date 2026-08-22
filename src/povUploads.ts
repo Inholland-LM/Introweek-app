@@ -1,8 +1,8 @@
 import { supabase } from './lib/supabase'
 
 const bucketName = 'pov-inzendingen'
-const maximumPhotoDimension = 800
-const maximumUploadBytes = 100_000
+const maximumPhotoDimension = 2560
+const maximumUploadBytes = 2 * 1024 * 1024
 
 export type PovSubmission = {
   id: string
@@ -61,7 +61,7 @@ export async function compressPovPhoto(file: File) {
 
   const image = await loadImage(file)
   let scale = Math.min(1, maximumPhotoDimension / Math.max(image.naturalWidth, image.naturalHeight))
-  let quality = 0.82
+  let quality = 0.88
 
   for (let attempt = 0; attempt < 8; attempt += 1) {
     const canvas = document.createElement('canvas')
@@ -74,8 +74,8 @@ export async function compressPovPhoto(file: File) {
     context.drawImage(image, 0, 0, canvas.width, canvas.height)
     const blob = await canvasBlob(canvas, quality)
     if (blob.size <= maximumUploadBytes) return blob
-    quality = Math.max(0.48, quality - 0.06)
-    scale *= 0.92
+    quality = Math.max(0.68, quality - 0.04)
+    if (quality <= 0.72) scale *= 0.9
   }
 
   throw new Error('De foto blijft na verkleinen te groot. Kies een foto met een lagere resolutie.')
@@ -123,16 +123,6 @@ export async function fetchPovSubmissions(offset = 0, limit = 50) {
   const { data, error } = await supabase.rpc('list_pov_submissions_v2', {
     requested_limit: limit,
     requested_offset: offset,
-  })
-  if (error) throw error
-  return ((data ?? []) as Array<Record<string, unknown>>).map(mapPovSubmission)
-}
-
-export async function fetchClassPovSubmissions(assignmentId: string) {
-  if (!supabase) throw new Error('De beveiligde verbinding is niet beschikbaar.')
-  const { data, error } = await supabase.rpc('list_class_pov_submissions', {
-    requested_assignment_id: assignmentId,
-    requested_limit: 50,
   })
   if (error) throw error
   return ((data ?? []) as Array<Record<string, unknown>>).map(mapPovSubmission)

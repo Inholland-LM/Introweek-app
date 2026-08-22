@@ -27,6 +27,7 @@ import {
   Sparkles,
   Smartphone,
   Trash2,
+  Trophy,
   Users,
   X,
 } from 'lucide-react'
@@ -34,7 +35,8 @@ import type { AppProfile } from './profile'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import { exportCurrentMasterWorkbook } from './import/exportWorkbook'
 import type { ImportRole, MasterContent } from './import/parseWorkbook'
-import { approvePovSubmissionWithPoints, createPovPhotoUrl, deletePovSubmission, fetchPovSubmissions, reviewPovSubmission, type PovSubmission } from './povUploads'
+import { createPovPhotoUrl, deletePovSubmission, fetchPovSubmissions, reviewPovSubmission, type PovSubmission } from './povUploads'
+import { CompetitionAdminPanel } from './CompetitionAdminPanel'
 import { createInitialMasterContent, updateMasterContent } from './content'
 import {
   fetchOrganizerRecipients,
@@ -61,7 +63,7 @@ type Props = {
   onToggleWidescreen?: () => void
 }
 
-type TabId = 'people' | 'schedule' | 'pov' | 'messages' | 'settings'
+type TabId = 'people' | 'schedule' | 'competition' | 'pov' | 'messages' | 'settings'
 
 type AnnouncementMessage = {
   id: string
@@ -198,8 +200,6 @@ export function OrganizerDashboard({
   const [loadingPov, setLoadingPov] = useState(false)
   const [selectedPov, setSelectedPov] = useState<PovSubmission | null>(null)
   const [selectedPovUrl, setSelectedPovUrl] = useState('')
-  const [pointsInput, setPointsInput] = useState('100')
-  const [evaluatingPovId, setEvaluatingPovId] = useState<string | null>(null)
 
   // Messages State
   const [messages, setMessages] = useState<AnnouncementMessage[]>([])
@@ -396,21 +396,15 @@ export function OrganizerDashboard({
 
       // De sneltoetsen 1/2/3 mogen nooit een handmatig ingevoerd puntenaantal
       // overschrijven. Enter blijft in het puntenveld wel beschikbaar om op te slaan.
-      if (isEditingValue && event.key !== 'Enter' && event.key !== 'Escape') return
-
-      if (['1', '2', '3'].includes(event.key)) {
-        const presetPoints: Record<string, string> = { '1': '50', '2': '100', '3': '150' }
-        if (presetPoints[event.key]) setPointsInput(presetPoints[event.key])
-      } else if (event.key === 'Enter') {
-        void awardPointsToPov()
-      } else if (event.key === 'Escape') {
+      if (isEditingValue && event.key !== 'Escape') return
+      if (event.key === 'Escape') {
         setSelectedPov(null)
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [selectedPov, pointsInput])
+  }, [selectedPov])
 
   useEffect(() => {
     if (!selectedPov) return
@@ -449,34 +443,11 @@ export function OrganizerDashboard({
 
   async function openPovModal(submission: PovSubmission) {
     setSelectedPov(submission)
-    setPointsInput(submission.awardedPoints > 0 ? String(submission.awardedPoints) : '100')
     try {
       const url = await createPovPhotoUrl(submission.storagePath)
       setSelectedPovUrl(url)
     } catch {
       setSelectedPovUrl('https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=800&q=80')
-    }
-  }
-
-  async function awardPointsToPov() {
-    if (!selectedPov) return
-    const points = Number(pointsInput)
-    if (!Number.isInteger(points) || points < 0 || points > 10000) {
-      window.alert('Vul een heel puntenaantal tussen 0 en 10.000 in.')
-      return
-    }
-    setEvaluatingPovId(selectedPov.id)
-
-    try {
-      await approvePovSubmissionWithPoints(selectedPov.id, points)
-      setSubmissions((prev) => prev.map((submission) => submission.id === selectedPov.id
-        ? { ...submission, reviewStatus: 'approved', rejectionReason: null, awardedPoints: points }
-        : submission))
-      setSelectedPov(null)
-    } catch {
-      window.alert('De beoordeling kon niet worden opgeslagen. Probeer het opnieuw.')
-    } finally {
-      setEvaluatingPovId(null)
     }
   }
 
@@ -1153,6 +1124,10 @@ export function OrganizerDashboard({
             <Calendar aria-hidden="true" />
             <span>Programma</span>
           </button>
+          <button type="button" className={activeTab === 'competition' ? 'active' : ''} onClick={() => setActiveTab('competition')}>
+            <Trophy aria-hidden="true" />
+            <span>Landenstrijd</span>
+          </button>
           <button type="button" className={activeTab === 'pov' ? 'active' : ''} onClick={() => setActiveTab('pov')}>
             <Camera aria-hidden="true" />
             <span>POV-foto's</span>
@@ -1169,6 +1144,7 @@ export function OrganizerDashboard({
 
         {/* Content Area */}
         <main className="dashboard-main">
+          {activeTab === 'competition' && <CompetitionAdminPanel classes={(content ?? createInitialMasterContent()).classes} />}
           {/* TAB 1: PERSONEN & ROLLEN */}
           {activeTab === 'people' && (
             <section className="dashboard-panel">
@@ -1445,8 +1421,8 @@ export function OrganizerDashboard({
             <section className="dashboard-panel">
               <div className="panel-header">
                 <div>
-                  <h2>POV-foto Beoordeling &amp; Punten</h2>
-                  <p>Klik op een foto om de inzending te bekijken en flexibel punten toe te kennen.</p>
+                  <h2>POV-foto’s voor jury &amp; aftermovie</h2>
+                  <p>Alleen de organisatie kan de hoogwaardige inzendingen bekijken. POV-eindtotalen worden per klas via Landenstrijd voorbereid.</p>
                 </div>
                 <button type="button" className="secondary-button" onClick={() => void loadPovSubmissions()}>
                   <RefreshCw aria-hidden="true" /> Vernieuwen
@@ -1469,7 +1445,7 @@ export function OrganizerDashboard({
                         <img src="https://images.unsplash.com/photo-1523580494863-6f3031224c94?auto=format&fit=crop&w=400&q=80" alt={item.assignmentTitle} loading="lazy" />
                         {isEvaluated && (
                           <div className="winner-badge">
-                            <span>GOEDGEKEURD (+{item.awardedPoints} PT)</span>
+                            <span>EERDER BEOORDEELD</span>
                           </div>
                         )}
                       </div>
@@ -1772,36 +1748,7 @@ export function OrganizerDashboard({
                 <p className="uploader-info">Ingestuurd door <strong>{selectedPov.uploaderName}</strong></p>
                 {selectedPov.caption && <blockquote className="photo-caption">"{selectedPov.caption}"</blockquote>}
 
-                <div className="award-points-box">
-                  <label htmlFor="points-input">
-                    <span>Aantal punten toekennen:</span>
-                  </label>
-                  <div className="points-input-row">
-                    <input
-                      id="points-input"
-                      type="number"
-                      value={pointsInput}
-                      onChange={(e) => setPointsInput(e.target.value)}
-                    />
-                    <span className="unit">punten</span>
-                  </div>
-
-                  <div className="quick-points-buttons">
-                    <button type="button" onClick={() => setPointsInput('50')}>50</button>
-                    <button type="button" onClick={() => setPointsInput('100')}>100</button>
-                    <button type="button" onClick={() => setPointsInput('150')}>150</button>
-                  </div>
-
-                  <button
-                    type="button"
-                    className="primary-button full-width"
-                    disabled={evaluatingPovId === selectedPov.id}
-                    onClick={() => void awardPointsToPov()}
-                  >
-                    <CheckCircle2 aria-hidden="true" />
-                    <span>Bevestig en ken punten toe (Enter)</span>
-                  </button>
-                </div>
+                <div className="award-points-box"><strong>Jurybeoordeling</strong><p>Beoordeel deze foto buiten het klassement. Leg daarna in Landenstrijd één gezamenlijk POV-eindtotaal voor {selectedPov.classCode} vast.</p></div>
 
                 <div className="moderation-actions-box">
                   <span className="moderation-label">Of foto modereren of afkeuren:</span>
@@ -2122,7 +2069,7 @@ export function OrganizerDashboard({
                 <div className="shortcut-key-group">
                   <kbd>Enter</kbd>
                 </div>
-                <span className="shortcut-desc">Bevestig en ken punten toe op foto</span>
+                <span className="shortcut-desc">Niet gebruikt bij foto’s; POV-punten worden per klas voorbereid</span>
               </div>
               <div className="shortcut-row">
                 <div className="shortcut-key-group">

@@ -4704,3 +4704,42 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .content-mutation-review li > strong { min-width: 0; overflow: hidden; color: #111827; font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
 .content-mutation-review li > small { color: var(--muted); font-size: 0.67rem; }
 .comparison-deactivation-note { margin: 10px 0 0; padding: 10px 12px; border-left: 3px solid var(--gold); border-radius: 8px; color: #5b2436; background: rgba(227, 0, 79, 0.06); font-size: 0.72rem; line-height: 1.45; }
+
+/* Landenstrijdbeheer en de handmatig geregisseerde BLEND-onthulling. */
+.competition-admin { display: grid; gap: 18px; }
+.competition-round-tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+.competition-round-tabs button { padding: 9px 13px; border: 1px solid var(--line); border-radius: 999px; color: #475569; background: #fff; font-weight: 800; }
+.competition-round-tabs button.active { border-color: var(--gold); color: #fff; background: var(--gold); }
+.competition-score-editor, .finale-control { display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 18px; background: #fff; }
+.competition-score-editor h3, .finale-control h3 { display: flex; align-items: center; gap: 8px; margin: 0; color: #111827; }
+.competition-score-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+.competition-score-grid label { display: grid; grid-template-columns: minmax(0, 1fr) 84px 20px; align-items: center; gap: 8px; padding: 10px; border: 1px solid #e2e8f0; border-radius: 12px; }
+.competition-score-grid label > span { display: flex; flex-wrap: wrap; gap: 5px; min-width: 0; font-size: .8rem; }
+.competition-score-grid label small { width: 100%; color: #64748b; }
+.competition-score-grid input { width: 100%; min-height: 42px; padding: 6px 8px; border: 1px solid #cbd5e1; border-radius: 9px; font: inherit; font-weight: 850; }
+.competition-score-grid svg { width: 18px; color: #16a34a; }
+.finale-control > p { margin: 0; color: #64748b; line-height: 1.5; }
+.finale-control ol { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.finale-control li { display: grid; grid-template-columns: 110px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 9px 11px; border-radius: 11px; background: #f8fafc; }
+.finale-control li > b { color: var(--gold); font-size: .72rem; }
+.finale-control li button { width: 34px; height: 34px; padding: 7px; border: 0; border-radius: 8px; background: #e2e8f0; }
+.finale-control li button svg { width: 100%; height: 100%; }
+.finale-next-card { display: grid; justify-items: center; gap: 8px; padding: 22px; border-radius: 18px; color: #fff; text-align: center; background: linear-gradient(145deg, #101f46, #6d1743); }
+.finale-next-card > span { color: #f7c94b; font-size: .75rem; font-weight: 900; text-transform: uppercase; }
+.finale-next-card > strong { font-size: 1.45rem; }
+.finale-next-card > p { margin: 0; color: #e2e8f0; font-size: .75rem; }
+
+.finale-reveal-overlay { position: fixed; z-index: 5000; inset: 0; display: grid; place-items: center; padding: 20px; color: #fff; background: radial-gradient(circle at 50% 25%, rgba(227,0,79,.55), rgba(3,12,37,.97) 60%); }
+.finale-reveal-card { display: grid; justify-items: center; width: min(100%, 480px); gap: 8px; padding: 30px 24px; border: 1px solid rgba(255,255,255,.22); border-radius: 28px; text-align: center; background: rgba(8,22,55,.92); box-shadow: 0 30px 100px rgba(0,0,0,.55); animation: finale-card-in .55s cubic-bezier(.2,.8,.2,1); }
+.finale-reveal-card > p { margin: 0; color: #f7c94b; font-size: .76rem; font-weight: 950; letter-spacing: .16em; }
+.finale-reveal-flag { font-size: 4.5rem; filter: drop-shadow(0 10px 20px rgba(0,0,0,.35)); }
+.finale-reveal-card h2 { margin: 0; font-family: Georgia,serif; font-size: clamp(2rem,10vw,3.4rem); }
+.finale-reveal-card > strong { color: #cbd5e1; }
+.finale-reveal-card > small { margin-top: 10px; text-transform: uppercase; letter-spacing: .12em; }
+.finale-reveal-card output { min-width: 4ch; color: #fff; font-size: clamp(4.5rem,24vw,8rem); font-weight: 1000; line-height: .95; font-variant-numeric: tabular-nums; text-shadow: 0 0 35px rgba(247,201,75,.55); }
+.finale-reveal-card > b { color: #f7c94b; text-transform: uppercase; }
+.finale-reveal-total { margin: 8px 0; padding: 10px 16px; border-radius: 12px; background: rgba(255,255,255,.1); }
+.leaderboard li.just-revealed { outline: 3px solid #f7c94b; background: linear-gradient(90deg, rgba(247,201,75,.2), rgba(227,0,79,.1)); animation: just-revealed 1.2s ease-in-out 2; }
+@keyframes finale-card-in { from { opacity: 0; transform: scale(.82) translateY(28px); } }
+@keyframes just-revealed { 50% { transform: scale(1.018); box-shadow: 0 0 30px rgba(247,201,75,.45); } }
+@media (prefers-reduced-motion: reduce) { .finale-reveal-card, .leaderboard li.just-revealed { animation: none; } }
