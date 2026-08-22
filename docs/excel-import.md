@@ -4,16 +4,18 @@
 
 Een bevoegde organisator uploadt een nieuwe versie van het deelnemersbestand. De app vergelijkt die versie met de laatst geaccepteerde import, toont alle mutaties en verwerkt ze pas na expliciete bevestiging.
 
-## Vaste sleutels per rol
+## Vaste identiteit
 
 De beschikbare brongegevens zijn voldoende om personen betrouwbaar te herkennen:
 
-- voor studenten en buddy's is `studentnummer` de primaire externe sleutel;
-- hun e-mailadres is een aanvullende unieke controle en mag veranderen zonder dat een nieuw persoon ontstaat;
-- voor docenten en PO'ers is het blijvende, genormaliseerde e-mailadres de primaire externe sleutel;
+- voor iedere persoon is het genormaliseerde e-mailadres de primaire externe sleutel;
+- een gewijzigd studentnummer bij hetzelfde e-mailadres wordt als gewone veldwijziging getoond en pas na expliciete bevestiging verwerkt;
+- studentnummers blijven uniek: hetzelfde nummer mag niet aan twee verschillende e-mailadressen gekoppeld zijn;
 - een naam wordt uitsluitend als weergavenaam gebruikt en nooit als unieke sleutel.
 
 Bij de eerste import krijgt iedere persoon daarnaast een interne, onveranderlijke `persoon_id`. E-mailadressen worden voor vergelijking getrimd en naar kleine letters omgezet. Dubbele studentnummers, dubbele e-mailadressen of conflicterende rollen blokkeren de import en worden eerst aan de beheerder getoond.
+
+Personen en organisatie-inhoud die niet meer in Excel voorkomen krijgen per onderdeel drie keuzes: behouden, inactief zetten of uit de app verwijderen. Bij personen is verwijderen een veilige verwijdering uit de actuele app: inloggen en tonen in personenbeheer stopt, terwijl historie en auditkoppelingen bewaard blijven.
 
 Minimale kolommen:
 
