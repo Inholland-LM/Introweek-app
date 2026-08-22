@@ -63,7 +63,7 @@ const praktischData = [
 // Sheet 8: Kortingen
 const kortingenData = [
   ['korting_id', 'naam', 'omschrijving', 'adres', 'route_url', 'voorwaarden', 'geldig_vanaf', 'geldig_tot', 'actief'],
-  ['kort-1', '10% Korting bij Espressobar', 'Op vertoon van je Inholland polsbandje.', 'Sluisbuurt 5', '', 'Geldig tijdens de introweek', '2026-08-25', '2026-08-27', 'ja'],
+  ['kort-1', '10% Korting bij Espressobar', 'Op vertoon van je Inholland polsbandje.', 'Sluisbuurt 5', '', 'Geldig tijdens de introweek', '2026-08-27', '2026-08-27', 'ja'],
 ]
 
 // Sheet 9: Instellingen

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react'
 import { getDefaultIntroDayId, type ProgrammeDay, type RouteDay, type Standing, type TeamScoreHistory } from './data'
 import { useCompetitionStandings } from './competitionScores'
+import { useCompetitionFinale } from './competitionFinale'
 import { buildProgrammeDays, buildRouteDays, createInitialMasterContent, useMasterContent } from './content'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import { type AppNotification, useNotifications } from './notifications'
@@ -41,6 +42,18 @@ const STANDINGS_FREEZE_AT = new Date('2026-08-27T16:00:00+02:00').getTime()
 const INSTAGRAM_URL = 'https://www.instagram.com/introweeklm2026?igsh=MmdpcTl1b3FjOGRz&igsi=MmdpcTl1b3FjOGRz'
 const COUNTRY_REVEAL_PATTERN = /landenstrijd|vlaggenparade|landonthulling/i
 const FALLBACK_MASTER_CONTENT = createInitialMasterContent()
+
+function formatDiscountDate(date: string) {
+  const [year, month, day] = date.split('-').map(Number)
+  const parsedDate = new Date(year, month - 1, day)
+  if (!year || !month || !day || Number.isNaN(parsedDate.getTime())) return date
+  return new Intl.DateTimeFormat('nl-NL', { day: 'numeric', month: 'long', year: 'numeric' }).format(parsedDate)
+}
+
+function discountValidityLabel(validFrom: string, validUntil: string) {
+  if (validFrom === validUntil) return `Geldig op ${formatDiscountDate(validFrom)}`
+  return `Geldig ${formatDiscountDate(validFrom)} t/m ${formatDiscountDate(validUntil)}`
+}
 
 export type WeatherInfo = {
   temperature: number
@@ -712,6 +725,7 @@ function hideCountryRevealDetails(programmeDays: ProgrammeDay[]): ProgrammeDay[]
 
 function CompetitionView({ onNavigate, referenceDate, standings }: CompetitionViewProps) {
   const profile = useAppProfile()
+  const finale = useCompetitionFinale()
   const [selectedTeam, setSelectedTeam] = useState<Standing | null>(null)
   const leader = standings[0]
   const isOrganizer = profile.profileType === 'organizer'
@@ -776,7 +790,7 @@ function CompetitionView({ onNavigate, referenceDate, standings }: CompetitionVi
 
         <div className="hero-chaser-banner">
           {isOrganizer ? (
-            <span>Beoordeel foto's en ken punten toe via het <b>Organisatiedashboard</b>.</span>
+            <span>Beheer programmascores en de POV-finale via <b>Landenstrijd</b> in het organisatiedashboard.</span>
           ) : isPreStart ? (
             <span>🚀 De Landenstrijd gaat bijna van start! Scoor de eerste punten voor {profile.country}! 🔥</span>
           ) : isSoleLeader ? (
@@ -790,11 +804,11 @@ function CompetitionView({ onNavigate, referenceDate, standings }: CompetitionVi
       </article>
 
       <div className="score-meta">
-        <span><i className={standingsFrozen ? '' : 'status-pulse'} /> {standingsFrozen ? 'Stand bevroren om 16:00 uur' : 'Live klassement'}</span>
+        <span><i className={standingsFrozen && finale.phase !== 'revealing' ? '' : 'status-pulse'} /> {finale.phase === 'final' ? 'Definitieve uitslag' : finale.phase === 'revealing' ? 'POV-finale live' : standingsFrozen ? 'Tussenstand na de City Game' : 'Live klassement'}</span>
         <small>💡 Tik op een land voor de exacte puntenopbouw</small>
       </div>
 
-      {standingsFrozen && <div className="info-callout standings-freeze-notice"><strong>De eindstand blijft geheim</strong><p>De organisatie kan nog punten verwerken. De definitieve uitslag wordt tijdens de afsluiting bekendgemaakt.</p></div>}
+      {standingsFrozen && finale.phase !== 'final' && <div className="info-callout standings-freeze-notice"><strong>{finale.phase === 'revealing' ? 'De POV-finale is bezig' : 'De POV-eindpunten blijven geheim'}</strong><p>{finale.phase === 'revealing' ? 'De organisatie onthult ieder land afzonderlijk. Na elke score beweegt het land naar zijn nieuwe plek.' : 'De volgorde wordt na de City Game vastgezet. De organisatie start iedere onthulling tijdens BLEND handmatig.'}</p></div>}
 
       <ol className="leaderboard" aria-label="Klassement van de landenstrijd">
         {standings.map((team) => {
@@ -803,7 +817,7 @@ function CompetitionView({ onNavigate, referenceDate, standings }: CompetitionVi
           return (
             <li
               key={team.classCode}
-              className={`rank-${team.rank} ${isOwnTeam ? 'own-team' : ''} clickable-team-row`}
+              className={`rank-${team.rank} ${isOwnTeam ? 'own-team' : ''} ${finale.lastRevealedClassCode === team.classCode ? 'just-revealed' : ''} clickable-team-row`}
               onClick={() => setSelectedTeam(team)}
               title={`Klik om puntenopbouw van ${team.country} te bekijken`}
               role="button"
@@ -1298,7 +1312,7 @@ function MoreView({
                   <li key={item.id} className="discount-card">
                     <div className="discount-header">
                       <strong>{item.name}</strong>
-                      <span className="discount-validity">Geldig {item.validFrom} t/m {item.validUntil}</span>
+                      <span className="discount-validity">{discountValidityLabel(item.validFrom, item.validUntil)}</span>
                     </div>
                     <p className="discount-description">{item.description}</p>
                     {item.address && <small className="discount-address"><MapPin aria-hidden="true" />{item.address}</small>}
@@ -1485,6 +1499,9 @@ function App() {
   const currentRouteDays = buildRouteDays(masterContent.content, profile.classCode)
   const notificationInbox = useNotifications(profile.id, profile.classCode, profile.profileType, masterContent.content?.messages, masterContent.content?.classes)
   const standings = useCompetitionStandings(masterContent.content?.classes)
+  const finale = useCompetitionFinale()
+  const [visibleRevealSequence, setVisibleRevealSequence] = useState(0)
+  const [animatedRevealPoints, setAnimatedRevealPoints] = useState(0)
   const ownStanding = standings.find((team) => team.classCode === profile.classCode)
   const [active, setActive] = useState<NavLabel>('Vandaag')
   const [moreSection, setMoreSection] = useState<MoreSectionId>('notifications')
@@ -1510,6 +1527,21 @@ function App() {
   const visibleProgrammeDays = countriesRevealed ? currentProgrammeDays : hideCountryRevealDetails(currentProgrammeDays)
   const homeProgramme = getHomeProgramme(effectiveTime, visibleProgrammeDays)
   const isWidescreenActive = widescreenDashboard && active === 'Meer' && moreSection === 'import' && profile.profileType === 'organizer'
+
+  const revealedTeam = standings.find((team) => team.classCode === finale.lastRevealedClassCode)
+  useEffect(() => {
+    if (!finale.revealSequence || !finale.revealedAt || Date.now() - new Date(finale.revealedAt).getTime() > 30_000) return
+    setVisibleRevealSequence(finale.revealSequence)
+    setAnimatedRevealPoints(0)
+    const target = finale.lastRevealedPoints ?? 0
+    const started = performance.now()
+    const timer = window.setInterval(() => {
+      const progress = Math.min(1, (performance.now() - started) / 3600)
+      setAnimatedRevealPoints(Math.round(target * (1 - Math.pow(1 - progress, 3))))
+      if (progress >= 1) window.clearInterval(timer)
+    }, 40)
+    return () => window.clearInterval(timer)
+  }, [finale.revealSequence, finale.revealedAt, finale.lastRevealedPoints])
 
   useEffect(() => {
     const timer = window.setInterval(() => setCurrentTime(new Date()), 30_000)
@@ -1614,6 +1646,25 @@ function App() {
   return (
     <div className={`app-shell enter-x-shell${largeText ? ' large-text-mode' : ''}${isWidescreenActive ? ' widescreen-dashboard' : ''}`}>
       <div className="map-texture" aria-hidden="true" />
+      {visibleRevealSequence === finale.revealSequence && revealedTeam && (
+        <div className="finale-reveal-overlay" role="dialog" aria-modal="true" aria-labelledby="finale-reveal-title">
+          <div className="finale-reveal-card">
+            <p>POV-FINALE · BLEND</p>
+            <span className="finale-reveal-flag" aria-hidden="true">{revealedTeam.flag}</span>
+            <h2 id="finale-reveal-title">{revealedTeam.country}</h2>
+            <strong>{revealedTeam.classCode}</strong>
+            <small>De jury geeft</small>
+            <output aria-live="polite">{String(animatedRevealPoints).padStart(2, '0')}</output>
+            <b>POV-punten</b>
+            {animatedRevealPoints >= (finale.lastRevealedPoints ?? 0) && <div className="finale-reveal-total">
+              {(revealedTeam.points - (finale.lastRevealedPoints ?? 0))} + {finale.lastRevealedPoints} = <strong>{revealedTeam.points} punten</strong>
+            </div>}
+            <button type="button" className="primary-button" disabled={animatedRevealPoints < (finale.lastRevealedPoints ?? 0)} onClick={() => { setVisibleRevealSequence(0); setActive('Strijd') }}>
+              Bekijk de nieuwe stand <ChevronRight aria-hidden="true" />
+            </button>
+          </div>
+        </div>
+      )}
       {electricXVisible && (
         <div key={electricXSequence} className="enter-xxx-stage" aria-hidden="true">
           <span className="enter-xxx-glow" />

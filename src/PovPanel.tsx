@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { ArrowLeft, Camera, CheckCircle2, ChevronRight, Image, LoaderCircle, Trash2, Upload, X } from 'lucide-react'
 import type { MasterContent } from './import/parseWorkbook'
 import type { AppProfile } from './profile'
-import { createPovPhotoUrl, deletePovSubmission, fetchClassPovSubmissions, fetchPovSubmissions, uploadPovPhoto, type PovSubmission } from './povUploads'
+import { createPovPhotoUrl, deletePovSubmission, fetchPovSubmissions, uploadPovPhoto, type PovSubmission } from './povUploads'
 
 type Props = {
   profile: AppProfile
@@ -16,39 +16,6 @@ function friendlyUploadError(reason: unknown) {
   return message || 'De foto kon niet worden ingestuurd. Probeer het nogmaals.'
 }
 
-const reviewLabels: Record<PovSubmission['reviewStatus'], string> = {
-  pending: 'In afwachting',
-  approved: 'Goedgekeurd',
-  rejected: 'Afgekeurd',
-}
-
-function ClassPovCard({ item, onOpen }: { item: PovSubmission; onOpen: (item: PovSubmission, url: string) => void }) {
-  const [url, setUrl] = useState('')
-
-  useEffect(() => {
-    if (!item.storagePath) return
-    let active = true
-    createPovPhotoUrl(item.storagePath)
-      .then((signedUrl) => { if (active) setUrl(signedUrl) })
-      .catch(() => { if (active) setUrl('') })
-    return () => { active = false }
-  }, [item.storagePath])
-
-  return (
-    <article className={`class-submission-card status-${item.reviewStatus}`}>
-      <button type="button" className="class-submission-photo" disabled={!url} onClick={() => onOpen(item, url)}>
-        {url ? <img src={url} alt={item.caption || item.assignmentTitle} loading="lazy" /> : <Image aria-hidden="true" />}
-      </button>
-      <div className="class-submission-info">
-        <span className={`pov-review-status status-${item.reviewStatus}`}>{reviewLabels[item.reviewStatus]}{item.reviewStatus === 'approved' ? ` · +${item.awardedPoints} punten` : ''}</span>
-        <strong>{item.uploaderName}</strong>
-        {item.caption && <p>{item.caption}</p>}
-        {item.reviewStatus === 'rejected' && item.rejectionReason && <small>{item.rejectionReason}</small>}
-      </div>
-    </article>
-  )
-}
-
 function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
   const [assignmentId, setAssignmentId] = useState('')
   const [file, setFile] = useState<File | null>(null)
@@ -57,24 +24,7 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
-  const [submissions, setSubmissions] = useState<PovSubmission[]>([])
-  const [galleryLoading, setGalleryLoading] = useState(false)
-  const [photoUrl, setPhotoUrl] = useState('')
-  const [photoTitle, setPhotoTitle] = useState('')
   const selectedAssignment = assignments.find((item) => item.id === assignmentId)
-  const submittedCount = submissions.filter((item) => item.reviewStatus !== 'rejected').length
-  const remainingCount = Math.max(0, (selectedAssignment?.maxUploads ?? 0) - submittedCount)
-
-  useEffect(() => {
-    if (!selectedAssignment) return
-    let active = true
-    setGalleryLoading(true)
-    fetchClassPovSubmissions(selectedAssignment.id)
-      .then((items) => { if (active) setSubmissions(items) })
-      .catch((reason) => { if (active) setError(friendlyUploadError(reason)) })
-      .finally(() => { if (active) setGalleryLoading(false) })
-    return () => { active = false }
-  }, [selectedAssignment?.id])
 
   if (!assignments.length) {
     return fallbackUrl ? (
@@ -101,7 +51,6 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
     try {
       const result = await uploadPovPhoto(selectedAssignment.id, file, caption)
       setSuccess(`Foto ingestuurd voor “${selectedAssignment.title}” (${Math.max(1, Math.round(result.compressedBytes / 1024))} kB).`)
-      setSubmissions(await fetchClassPovSubmissions(selectedAssignment.id))
       setFile(null); setCaption(''); setConsent(false)
     } catch (reason) {
       setError(friendlyUploadError(reason))
@@ -120,7 +69,7 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
             <p>{selectedAssignment.description}</p>
             <div className="pov-counter-badge">
               <Camera aria-hidden="true" />
-              <span>{submittedCount} van max. {selectedAssignment.maxUploads} foto's ingestuurd door {profile.classCode}</span>
+              <span>Maximaal {selectedAssignment.maxUploads} foto’s per klas voor deze opdracht</span>
             </div>
             <small>Insturen tot {new Intl.DateTimeFormat('nl-NL', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(selectedAssignment.deadlineAt))}</small>
           </>
@@ -134,38 +83,13 @@ function ParticipantPovPanel({ profile, assignments, fallbackUrl }: Props) {
       </label>
       <label className="pov-caption">Bijschrift (optioneel)<textarea maxLength={240} value={caption} onChange={(event) => setCaption(event.target.value)} placeholder="Wat zien we op deze foto?" /></label>
       <label className="pov-consent"><input type="checkbox" checked={consent} onChange={(event) => setConsent(event.target.checked)} /><span>Ik heb toestemming van herkenbare personen op de foto.</span></label>
-      <p className="pov-privacy-note">De app verkleint de foto vóór verzending. De organisatie bekijkt iedere foto eerst; pas na goedkeuring kan jouw klas de foto openen.</p>
+      <p className="pov-privacy-note">De app bewaart een hoogwaardige versie voor jury en aftermovie. Alleen de organisatie kan ingestuurde foto’s bekijken.</p>
       {error && <div className="notification-state notification-error" role="alert">{error}</div>}
       {success && <div className="pov-success" role="status"><CheckCircle2 aria-hidden="true" />{success}</div>}
       <button className="primary-button pov-submit" type="button" disabled={!file || !consent || busy} onClick={() => { void submit() }}>
         {busy ? <LoaderCircle className="spin" aria-hidden="true" /> : <Camera aria-hidden="true" />}<span>{busy ? 'Foto verwerken en insturen…' : 'Foto insturen'}</span>
       </button>
 
-      {/* Klas Inzendingen & Status Overzicht */}
-      <div className="class-submissions-section">
-        <div className="class-submissions-heading">
-          <div><h3>Inzendingen van {profile.classCode}</h3><p>{remainingCount} {remainingCount === 1 ? 'plek' : 'plekken'} over</p></div>
-          <button type="button" onClick={() => {
-            if (!selectedAssignment) return
-            setGalleryLoading(true)
-            fetchClassPovSubmissions(selectedAssignment.id)
-              .then(setSubmissions)
-              .catch((reason) => setError(friendlyUploadError(reason)))
-              .finally(() => setGalleryLoading(false))
-          }} disabled={galleryLoading}>{galleryLoading ? 'Laden…' : 'Ververs'}</button>
-        </div>
-        {galleryLoading && !submissions.length ? <p className="panel-footnote">Klasgalerij laden…</p> : submissions.length === 0 ? (
-          <p className="panel-footnote">Er zijn nog geen foto's voor deze opdracht ingestuurd door {profile.classCode}.</p>
-        ) : (
-          <div className="class-submissions-grid">
-            {submissions.map((item) => <ClassPovCard key={item.id} item={item} onOpen={(submission, url) => {
-              setPhotoTitle(`${submission.assignmentTitle} · ${submission.uploaderName}`)
-              setPhotoUrl(url)
-            }} />)}
-          </div>
-        )}
-      </div>
-      {photoUrl && <div className="pov-photo-modal" role="dialog" aria-modal="true" aria-label={photoTitle}><button type="button" onClick={() => setPhotoUrl('')} aria-label="Foto sluiten"><X /></button><div className="pov-photo-zoom"><img src={photoUrl} alt={photoTitle} /></div><strong>{photoTitle}</strong></div>}
     </div>
   )
 }
