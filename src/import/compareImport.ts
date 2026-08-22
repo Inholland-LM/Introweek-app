@@ -4,6 +4,7 @@ import type { ImportPerson, MasterContent } from './parseWorkbook'
 export type ImportChangeStatus = 'new' | 'changed' | 'conflict' | 'deactivated'
 
 export type ImportPreviousValues = {
+  studentNumber: string | null
   firstName: string
   namePrefix: string | null
   lastName: string
@@ -22,7 +23,7 @@ export type ImportChange = {
   classCode: string | null
   fields: string[]
   previousValues?: ImportPreviousValues | null
-  conflictReason?: 'email_in_use' | 'role_mismatch' | null
+  conflictReason?: 'student_number_in_use' | 'role_mismatch' | null
   conflictingIdentifier?: string | null
 }
 
@@ -67,8 +68,8 @@ export type MasterComparison = {
   currentContent: MasterContent
 }
 
-export type PeopleMutationAction = 'apply' | 'keep' | 'skip' | 'deactivate'
-export type ContentMutationAction = 'apply' | 'keep' | 'skip' | 'remove'
+export type PeopleMutationAction = 'apply' | 'keep' | 'skip' | 'deactivate' | 'remove'
+export type ContentMutationAction = 'apply' | 'keep' | 'skip' | 'deactivate' | 'remove'
 
 export class ImportAuthenticationError extends Error {
   constructor() {
@@ -195,7 +196,7 @@ function previousPerson(change: ImportChange): ImportPerson | null {
   const previous = change.previousValues
   if (!previous) return null
   return {
-    studentNumber: previous.role === 'student' || previous.role === 'buddy' ? change.identifier : null,
+    studentNumber: previous.studentNumber,
     firstName: previous.firstName,
     namePrefix: previous.namePrefix,
     lastName: previous.lastName,
@@ -231,9 +232,10 @@ export function resolvePeopleMutations(
     .filter((_row, index) => !omittedRows.has(index))
 
   comparison.deactivations.forEach((change) => {
-    if (actions[peopleMutationKey(change)] !== 'keep') return
+    const action = actions[peopleMutationKey(change)]
+    if (action !== 'keep' && action !== 'remove') return
     const previous = previousPerson(change)
-    if (previous) resolved.push(previous)
+    if (previous) resolved.push(action === 'remove' ? { ...previous, active: false, removeFromApp: true } : previous)
   })
 
   return resolved
@@ -258,6 +260,10 @@ export function resolveContentMutations(
       if ((change.status === 'changed' || change.status === 'missing') && action === 'keep') {
         const previous = currentItems.get(change.id)
         if (previous) incomingItems.set(change.id, previous)
+      }
+      if (change.status === 'missing' && action === 'deactivate') {
+        const previous = currentItems.get(change.id)
+        if (previous) incomingItems.set(change.id, { ...previous, active: false } as typeof previous)
       }
     })
     Object.assign(result, { [section]: Array.from(incomingItems.values()) })

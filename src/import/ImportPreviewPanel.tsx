@@ -66,6 +66,7 @@ const changeStatusPriority: Record<ImportChangeStatus, number> = {
 }
 
 const fieldDefinitions = {
+  studentnummer: { key: 'studentNumber', label: 'Studentnummer' },
   voornaam: { key: 'firstName', label: 'Voornaam' },
   tussenvoegsel: { key: 'namePrefix', label: 'Tussenvoegsel' },
   achternaam: { key: 'lastName', label: 'Achternaam' },
@@ -96,7 +97,7 @@ function ChangeDetails({ change, incoming }: { change: ImportChange; incoming?: 
   if (change.status === 'deactivated') {
     return (
       <dl className="comparison-differences">
-        <div><dt>Status</dt><dd><span>Actief</span><ArrowRight aria-hidden="true" /><strong>Gedeactiveerd</strong></dd></div>
+        <div><dt>In Excel</dt><dd><span>Aanwezig in de app</span><ArrowRight aria-hidden="true" /><strong>Ontbreekt</strong></dd></div>
       </dl>
     )
   }
@@ -106,25 +107,22 @@ function ChangeDetails({ change, incoming }: { change: ImportChange; incoming?: 
   }
 
   if (change.status === 'conflict') {
-    if (change.conflictReason === 'email_in_use' && change.previousValues && incoming) {
-      const existingName = [change.previousValues.firstName, change.previousValues.namePrefix, change.previousValues.lastName].filter(Boolean).join(' ')
+    if (change.conflictReason === 'student_number_in_use' && change.previousValues && incoming) {
       return <div className="comparison-conflict-explanation">
-        <strong>Dit e-mailadres hoort al bij een ander bestaand profiel.</strong>
-        <p><b>In de app:</b> {existingName} · {roleLabels[change.previousValues.role]}{change.previousValues.classCode ? ` · ${change.previousValues.classCode}` : ''} · sleutel <code>{change.conflictingIdentifier ?? 'onbekend'}</code></p>
-        <p><b>In Excel:</b> {[incoming.firstName, incoming.namePrefix, incoming.lastName].filter(Boolean).join(' ')} · {roleLabels[incoming.role]}{incoming.classCode ? ` · ${incoming.classCode}` : ''} · sleutel <code>{incoming.studentNumber ?? incoming.email}</code></p>
-        <p>Wil je het bestaande profiel wijzigen? Gebruik dan in Excel de sleutel <code>{change.conflictingIdentifier}</code>. Is dit echt een nieuwe persoon, gebruik dan een ander, vrij e-mailadres.</p>
+        <strong>Dit studentnummer hoort al bij een ander e-mailadres.</strong>
+        <p>Studentnummer <code>{incoming.studentNumber}</code> staat in de app bij <code>{change.previousValues.email}</code>, maar in Excel bij <code>{incoming.email}</code>. Controleer welk nummer bij welke persoon hoort.</p>
       </div>
     }
     if (change.conflictReason === 'role_mismatch' && change.previousValues && incoming) {
       return <div className="comparison-conflict-explanation">
-        <strong>De vaste sleutel bestaat al met een andere rol.</strong>
-        <p>In de app is <code>{change.conflictingIdentifier ?? change.identifier}</code> gekoppeld aan {roleLabels[change.previousValues.role]}; in Excel staat {roleLabels[incoming.role]}. Herstel de rol of gebruik de juiste sleutel voor deze persoon.</p>
+        <strong>Dit e-mailadres bestaat al met een andere rol.</strong>
+        <p>In de app is <code>{incoming.email}</code> gekoppeld aan {roleLabels[change.previousValues.role]}; in Excel staat {roleLabels[incoming.role]}. Controleer of de rol in Excel klopt.</p>
       </div>
     }
   }
 
   if (!change.previousValues || !incoming) {
-    return change.fields.length > 0 ? <p>{change.status === 'conflict' ? 'De vaste identiteitssleutel botst met een bestaand profiel. Controleer studentnummer, e-mailadres en rol in Excel.' : `Gewijzigde velden: ${change.fields.join(', ')}`}</p> : null
+    return change.fields.length > 0 ? <p>{change.status === 'conflict' ? 'Het e-mailadres of studentnummer botst met een ander bestaand profiel. Controleer de gegevens in Excel.' : `Gewijzigde velden: ${change.fields.join(', ')}`}</p> : null
   }
 
   return (
@@ -154,7 +152,11 @@ function PeopleActionSelect({ change, value, onChange }: { change: ImportChange;
     ? [{ value: 'apply', label: 'Toevoegen aan de app' }, { value: 'skip', label: 'Niet importeren' }]
     : change.status === 'changed'
       ? [{ value: 'apply', label: 'Excel-wijziging doorvoeren' }, { value: 'keep', label: 'Huidige gegevens behouden' }]
-      : [{ value: 'keep', label: 'Actief behouden' }, { value: 'deactivate', label: 'Uit de app verwijderen' }]
+      : [
+        { value: 'keep', label: 'Behouden zoals in de app' },
+        { value: 'deactivate', label: 'Inactief zetten' },
+        { value: 'remove', label: 'Uit de app verwijderen' },
+      ]
   return (
     <label className="mutation-action">
       <span>Actie</span>
@@ -170,7 +172,13 @@ function ContentActionSelect({ change, value, onChange }: { change: ContentChang
     ? [{ value: 'apply', label: 'Toevoegen' }, { value: 'skip', label: 'Niet importeren' }]
     : change.status === 'changed'
       ? [{ value: 'apply', label: 'Excel-wijziging doorvoeren' }, { value: 'keep', label: 'Huidige versie behouden' }]
-      : [{ value: 'keep', label: 'Huidige versie behouden' }, { value: 'remove', label: 'Definitief uit de app verwijderen' }]
+      : change.section === 'settings'
+        ? [{ value: 'keep', label: 'Huidige versie behouden' }, { value: 'remove', label: 'Uit de app verwijderen' }]
+        : [
+          { value: 'keep', label: 'Behouden zoals in de app' },
+          { value: 'deactivate', label: 'Inactief zetten' },
+          { value: 'remove', label: 'Uit de app verwijderen' },
+        ]
   return (
     <label className="mutation-action">
       <span>Actie</span>
@@ -253,7 +261,9 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
   const visibleChangeStart = filteredChanges.length ? safeChangePage * changePageSize + 1 : 0
   const visibleChangeEnd = Math.min((safeChangePage + 1) * changePageSize, filteredChanges.length)
   const contentChanges = contentComparison?.changes ?? []
-  const selectedPeopleRemovals = changes.filter((change) => change.status === 'deactivated' && peopleActions[peopleMutationKey(change)] === 'deactivate').length
+  const selectedPeopleDeactivations = changes.filter((change) => change.status === 'deactivated' && peopleActions[peopleMutationKey(change)] === 'deactivate').length
+  const selectedPeopleRemovals = changes.filter((change) => change.status === 'deactivated' && peopleActions[peopleMutationKey(change)] === 'remove').length
+  const selectedContentDeactivations = contentChanges.filter((change) => change.status === 'missing' && contentActions[contentMutationKey(change)] === 'deactivate').length
   const selectedContentRemovals = contentChanges.filter((change) => change.status === 'missing' && contentActions[contentMutationKey(change)] === 'remove').length
   const selectedSkippedAdditions = changes.filter((change) => change.status === 'new' && peopleActions[peopleMutationKey(change)] === 'skip').length
     + contentChanges.filter((change) => change.status === 'new' && contentActions[contentMutationKey(change)] === 'skip').length
@@ -396,7 +406,7 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
                 <div className={`content-comparison${contentComparison.missing ? ' warning' : ''}`}>
                   <strong>Programma en organisatie-inhoud</strong>
                   <span>{contentComparison.new} nieuw · {contentComparison.changed} gewijzigd · {contentComparison.unchanged} ongewijzigd</span>
-                  {contentComparison.missing > 0 && <p><AlertTriangle aria-hidden="true" />{contentComparison.missing} bestaande onderdelen ontbreken in Excel. Kies hieronder per onderdeel behouden of verwijderen.</p>}
+                  {contentComparison.missing > 0 && <p><AlertTriangle aria-hidden="true" />{contentComparison.missing} bestaande onderdelen ontbreken in Excel. Kies hieronder per onderdeel behouden, inactief zetten of verwijderen.</p>}
                 </div>
               )}
 
@@ -448,7 +458,7 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
                   <div>
                     <p className="eyebrow">Programma en organisatie-inhoud</p>
                     <h4 id="content-mutation-title">Kies per inhoudsmutatie</h4>
-                    <p>Ontbrekende onderdelen blijven voor de veiligheid standaard behouden. Kies alleen verwijderen als ze echt uit de app moeten.</p>
+                    <p>Ontbrekende onderdelen blijven standaard behouden. Inactief maakt ze onzichtbaar maar herstelbaar; verwijderen haalt ze uit de actuele app-inhoud.</p>
                   </div>
                   <ul>
                     {contentChanges.map((change) => (
@@ -473,7 +483,7 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
               {!appliedImport && <div className="comparison-stop"><ShieldCheck aria-hidden="true" /><p><strong>Controlepunt</strong>Bekijk de mutaties zorgvuldig. Tot je de tweede bevestigingsknop gebruikt, is er niets opgeslagen.</p></div>}
 
               {!appliedImport && selectedPeopleRemovals > 0 && (
-                <p className="comparison-deactivation-note">Personen die je uit de app verwijdert worden veilig gedeactiveerd. Hun historie en auditgegevens blijven bewaard.</p>
+                <p className="comparison-deactivation-note">Personen die je uit de app verwijdert verdwijnen uit personenbeheer en kunnen niet meer inloggen. Hun historische koppelingen en auditgegevens blijven veilig bewaard.</p>
               )}
 
               {!appliedImport && comparison.conflicts > 0 && (
@@ -489,7 +499,7 @@ export function ImportPreviewPanel({ onApplied }: { onApplied?: () => void } = {
               {!appliedImport && comparison.conflicts === 0 && confirming && (
                 <div className="import-confirm">
                   <AlertTriangle aria-hidden="true" />
-                  <p><strong>Controleer je keuzes</strong>Hiermee worden alle gekozen acties in één transactie verwerkt. {selectedPeopleRemovals} personen worden uit de app gedeactiveerd, {selectedContentRemovals} inhoudsonderdelen worden verwijderd en {selectedSkippedAdditions} nieuwe onderdelen worden overgeslagen.</p>
+                  <p><strong>Controleer je keuzes</strong>Hiermee worden alle gekozen acties in één transactie verwerkt. {selectedPeopleDeactivations} personen en {selectedContentDeactivations} inhoudsonderdelen worden inactief, {selectedPeopleRemovals} personen en {selectedContentRemovals} inhoudsonderdelen worden uit de app verwijderd en {selectedSkippedAdditions} nieuwe onderdelen worden overgeslagen.</p>
                   <div>
                     <button onClick={() => setConfirming(false)} disabled={applying}>Annuleren</button>
                     <button className="confirm" onClick={applyConfirmedImport} disabled={applying}>{applying ? 'Verwerken…' : 'Ja, definitief verwerken'}</button>

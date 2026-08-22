@@ -99,7 +99,11 @@ declare
     )
   );
   v_preview jsonb;
-  v_conflict_preview jsonb;
+  v_changed_rows jsonb;
+  v_removed_rows jsonb;
+  v_removal_preview jsonb;
+  v_number_change_preview jsonb;
+  v_number_conflict_preview jsonb;
   v_applied jsonb;
   v_import_id uuid;
 begin
@@ -154,26 +158,42 @@ begin
     raise exception 'FAIL: niet alle 4 fictieve profielen zijn actief verwerkt.';
   end if;
 
-  v_conflict_preview := public.preview_people_import(jsonb_build_array(
+  v_changed_rows := jsonb_set(v_rows, '{3,studentNumber}', '"SMOKE-STUDENT-NEW-KEY"'::jsonb);
+  v_number_change_preview := public.preview_people_import(v_changed_rows);
+
+  if (v_number_change_preview->>'changed')::integer <> 1
+    or (v_number_change_preview->>'conflicts')::integer <> 0
+    or not (v_number_change_preview#>'{changes,0,fields}' ? 'studentnummer')
+    or v_number_change_preview#>>'{changes,0,previousValues,studentNumber}' <> 'SMOKE-STUDENT-001'
+  then
+    raise exception 'FAIL: hetzelfde e-mailadres levert geen bevestigbare studentnummerwijziging op: %.',
+      v_number_change_preview->'changes';
+  end if;
+
+  perform public.apply_people_import(v_changed_rows, v_number_change_preview->>'stateVersion');
+
+  if not exists (
+    select 1 from public.profiles
+    where email = 'codex-smoketest-student@example.invalid'
+      and student_number = 'SMOKE-STUDENT-NEW-KEY'
+  ) then
+    raise exception 'FAIL: de bevestigde studentnummerwijziging is niet verwerkt.';
+  end if;
+
+  v_number_conflict_preview := public.preview_people_import(jsonb_build_array(
     jsonb_build_object(
-      'studentNumber', 'SMOKE-STUDENT-NEW-KEY',
-      'firstName', 'Andere',
-      'namePrefix', null,
-      'lastName', 'Persoon',
-      'email', 'codex-smoketest-student@example.invalid',
-      'role', 'student',
-      'classCode', 'LM1B',
-      'active', true
+      'studentNumber', 'SMOKE-STUDENT-NEW-KEY', 'firstName', 'Andere', 'namePrefix', null,
+      'lastName', 'Persoon', 'email', 'ander-smoketest@example.invalid',
+      'role', 'student', 'classCode', 'LM1A', 'active', true
     )
   ));
 
-  if (v_conflict_preview->>'conflicts')::integer <> 1
-    or v_conflict_preview#>>'{changes,0,conflictReason}' <> 'email_in_use'
-    or v_conflict_preview#>>'{changes,0,conflictingIdentifier}' <> 'SMOKE-STUDENT-001'
-    or v_conflict_preview#>>'{changes,0,previousValues,email}' <> 'codex-smoketest-student@example.invalid'
+  if (v_number_conflict_preview->>'conflicts')::integer <> 1
+    or v_number_conflict_preview#>>'{changes,0,conflictReason}' <> 'student_number_in_use'
+    or v_number_conflict_preview#>>'{changes,0,previousValues,email}' <> 'codex-smoketest-student@example.invalid'
   then
-    raise exception 'FAIL: e-mailconflict bevat niet de concrete bestaande identiteit: %.',
-      v_conflict_preview->'changes';
+    raise exception 'FAIL: een studentnummer bij een ander e-mailadres blokkeert niet correct: %.',
+      v_number_conflict_preview->'changes';
   end if;
 
   if (
@@ -225,6 +245,28 @@ begin
       )
   ) <> 2 then
     raise exception 'FAIL: buddy en PO-er ontvingen niet allebei een melding over de nieuwe student.';
+  end if;
+
+  v_removed_rows := jsonb_set(
+    jsonb_set(v_changed_rows, '{1,active}', 'false'::jsonb),
+    '{1,removeFromApp}', 'true'::jsonb
+  );
+  v_removal_preview := public.preview_people_import(v_removed_rows);
+  perform public.apply_people_import(v_removed_rows, v_removal_preview->>'stateVersion');
+
+  if not exists (
+    select 1 from public.profiles
+    where email = 'codex-smoketest-buddy@example.invalid'
+      and active = false
+      and removed_at is not null
+  ) then
+    raise exception 'FAIL: veilig verwijderen markeert het profiel niet correct.';
+  end if;
+
+  if public.get_organizer_people() @> jsonb_build_array(jsonb_build_object(
+    'email', 'codex-smoketest-buddy@example.invalid'
+  )) then
+    raise exception 'FAIL: een veilig verwijderd profiel staat nog in personenbeheer.';
   end if;
 end
 $smoke_test$;

@@ -9,6 +9,7 @@ export type ImportPerson = {
   role: ImportRole
   classCode: string | null
   active: boolean
+  removeFromApp?: boolean
 }
 
 export type ImportIssue = {
