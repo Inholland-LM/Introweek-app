@@ -99,6 +99,7 @@ declare
     )
   );
   v_preview jsonb;
+  v_conflict_preview jsonb;
   v_applied jsonb;
   v_import_id uuid;
 begin
@@ -151,6 +152,28 @@ begin
       and p.active = true
   ) <> 4 then
     raise exception 'FAIL: niet alle 4 fictieve profielen zijn actief verwerkt.';
+  end if;
+
+  v_conflict_preview := public.preview_people_import(jsonb_build_array(
+    jsonb_build_object(
+      'studentNumber', 'SMOKE-STUDENT-NEW-KEY',
+      'firstName', 'Andere',
+      'namePrefix', null,
+      'lastName', 'Persoon',
+      'email', 'codex-smoketest-student@example.invalid',
+      'role', 'student',
+      'classCode', 'LM1B',
+      'active', true
+    )
+  ));
+
+  if (v_conflict_preview->>'conflicts')::integer <> 1
+    or v_conflict_preview#>>'{changes,0,conflictReason}' <> 'email_in_use'
+    or v_conflict_preview#>>'{changes,0,conflictingIdentifier}' <> 'SMOKE-STUDENT-001'
+    or v_conflict_preview#>>'{changes,0,previousValues,email}' <> 'codex-smoketest-student@example.invalid'
+  then
+    raise exception 'FAIL: e-mailconflict bevat niet de concrete bestaande identiteit: %.',
+      v_conflict_preview->'changes';
   end if;
 
   if (

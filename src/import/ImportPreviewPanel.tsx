@@ -105,8 +105,26 @@ function ChangeDetails({ change, incoming }: { change: ImportChange; incoming?: 
     return <p className="comparison-new-summary">Nieuwe {incoming ? roleLabels[incoming.role].toLowerCase() : 'deelnemer'}{incoming?.classCode ? ` in ${incoming.classCode}` : ''}</p>
   }
 
+  if (change.status === 'conflict') {
+    if (change.conflictReason === 'email_in_use' && change.previousValues && incoming) {
+      const existingName = [change.previousValues.firstName, change.previousValues.namePrefix, change.previousValues.lastName].filter(Boolean).join(' ')
+      return <div className="comparison-conflict-explanation">
+        <strong>Dit e-mailadres hoort al bij een ander bestaand profiel.</strong>
+        <p><b>In de app:</b> {existingName} · {roleLabels[change.previousValues.role]}{change.previousValues.classCode ? ` · ${change.previousValues.classCode}` : ''} · sleutel <code>{change.conflictingIdentifier ?? 'onbekend'}</code></p>
+        <p><b>In Excel:</b> {[incoming.firstName, incoming.namePrefix, incoming.lastName].filter(Boolean).join(' ')} · {roleLabels[incoming.role]}{incoming.classCode ? ` · ${incoming.classCode}` : ''} · sleutel <code>{incoming.studentNumber ?? incoming.email}</code></p>
+        <p>Wil je het bestaande profiel wijzigen? Gebruik dan in Excel de sleutel <code>{change.conflictingIdentifier}</code>. Is dit echt een nieuwe persoon, gebruik dan een ander, vrij e-mailadres.</p>
+      </div>
+    }
+    if (change.conflictReason === 'role_mismatch' && change.previousValues && incoming) {
+      return <div className="comparison-conflict-explanation">
+        <strong>De vaste sleutel bestaat al met een andere rol.</strong>
+        <p>In de app is <code>{change.conflictingIdentifier ?? change.identifier}</code> gekoppeld aan {roleLabels[change.previousValues.role]}; in Excel staat {roleLabels[incoming.role]}. Herstel de rol of gebruik de juiste sleutel voor deze persoon.</p>
+      </div>
+    }
+  }
+
   if (!change.previousValues || !incoming) {
-    return change.fields.length > 0 ? <p>Gewijzigde velden: {change.fields.join(', ')}</p> : null
+    return change.fields.length > 0 ? <p>{change.status === 'conflict' ? 'De vaste identiteitssleutel botst met een bestaand profiel. Controleer studentnummer, e-mailadres en rol in Excel.' : `Gewijzigde velden: ${change.fields.join(', ')}`}</p> : null
   }
 
   return (
@@ -131,7 +149,7 @@ function ChangeDetails({ change, incoming }: { change: ImportChange; incoming?: 
 }
 
 function PeopleActionSelect({ change, value, onChange }: { change: ImportChange; value?: PeopleMutationAction; onChange: (action: PeopleMutationAction) => void }) {
-  if (change.status === 'conflict') return <p className="mutation-action-conflict">Eerst oplossen in Excel</p>
+  if (change.status === 'conflict') return <p className="mutation-action-conflict">Pas de aangegeven sleutel in Excel aan en vergelijk daarna opnieuw.</p>
   const options = change.status === 'new'
     ? [{ value: 'apply', label: 'Toevoegen aan de app' }, { value: 'skip', label: 'Niet importeren' }]
     : change.status === 'changed'
