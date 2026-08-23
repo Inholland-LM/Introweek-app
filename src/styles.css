@@ -4891,6 +4891,12 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .finale-reset-control.is-locked > svg { flex: 0 0 auto; width: 22px; height: 22px; color: #047857; }
 .finale-reset-control.is-locked strong { color: #065f46; }
 .finale-reset-control.is-locked p { color: #047857; }
+.finale-reset-control.is-rehearsing { border-color: #fbbf24; background: #fffbeb; }
+.finale-reset-control.is-rehearsing > svg { flex: 0 0 auto; width: 22px; height: 22px; color: #b45309; }
+.finale-reset-control.is-rehearsing strong { color: #92400e; }
+.finale-reset-control.is-rehearsing p { color: #92400e; }
+.finale-rehearsal-actions { grid-template-columns: repeat(2, auto); gap: 8px !important; }
+.finale-rehearsal-actions button { white-space: nowrap; }
 .finale-reset-overlay { z-index: 520; }
 .finale-reset-dialog { border-color: #fecaca; }
 .finale-reset-title { display: flex; align-items: center; gap: 10px; }
@@ -4909,6 +4915,7 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 @media (max-width: 700px) {
   .finale-reset-control { align-items: stretch; flex-direction: column; }
   .finale-reset-control .danger-button { width: 100%; }
+  .finale-rehearsal-actions { grid-template-columns: 1fr; }
 }
 .finale-score-check { display: grid; gap: 8px; width: min(100%, 440px); padding: 14px; border: 1px solid rgba(255,255,255,.24); border-radius: 12px; background: rgba(255,255,255,.1); }
 .finale-score-check > b { color: #f7c94b; font-size: 1.45rem; }
