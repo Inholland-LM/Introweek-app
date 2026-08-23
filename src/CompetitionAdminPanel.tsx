@@ -189,7 +189,7 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
       setRound('pov_final')
       setResetDialogOpen(false)
       setResetConfirmation('')
-      setMessage(`Strijdtest gewist: ${result.removedEvents} gepubliceerde rondescore(s) en ${result.removedScores} invoerregel(s) verwijderd. Alle vier rondes zijn weer leeg en de finale staat op voorbereiding.`)
+      setMessage(`Strijdtest gewist: ${result.removedEvents} puntentoekenning(en), ${result.removedScores} ronde-invoerregel(s) en ${result.clearedPovAwards} POV-fotopuntentoekenning(en) opgeruimd. De stand is weer nul en de finale staat op voorbereiding.`)
       await load()
     } catch (reason) {
       setMessage(errorMessage(reason, 'De strijdtest kon niet worden gewist.'))
@@ -253,7 +253,7 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
         : finale?.phase === 'final' ? <div className="notification-state notification-success"><Trophy /> Finale afgerond: dit is de definitieve stand.</div>
           : <div className="finale-next-card"><span>Volgende onthulling</span><strong>{nextClass?.flag} {nextClass?.country}</strong><small>{nextClass?.classCode} · stap {(finale?.nextIndex ?? 0) + 1} van {order.length}</small><div className="finale-score-check"><b>{nextScore} punten</b><label><input type="checkbox" checked={revealChecked} disabled={busy} onChange={(event) => setRevealChecked(event.target.checked)} /> Ik bevestig dat dit het juiste land en puntenaantal is.</label></div><button type="button" className="primary-button" disabled={busy || !revealChecked} onClick={() => void reveal()}><Sparkles /> Onthul score voor dit land</button><p>Na de animatie start het volgende land nooit automatisch.</p></div>}
       <aside className="finale-reset-control">
-        <div><strong>Strijdrepetitie opruimen</strong><p>Wist alle teststanden van HAG, Sports Experiences, City Game en de POV-finale. Losse POV-fotopunten, foto’s, klassen en gebruikers blijven behouden.</p></div>
+        <div><strong>Strijdrepetitie opruimen</strong><p>Maakt de volledige strijdstand weer nul, inclusief testpunten op POV-foto’s. Ingezonden foto’s, klassen en gebruikers blijven behouden.</p></div>
         <button type="button" className="danger-button" disabled={busy} onClick={() => { setResetConfirmation(''); setResetDialogOpen(true) }}><RotateCcw /> Strijdtest volledig wissen</button>
       </aside>
       {resetDialogOpen && <div className="modal-overlay finale-reset-overlay" role="presentation" onClick={() => { if (!busy) setResetDialogOpen(false) }}>
@@ -263,8 +263,8 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
             <button type="button" className="close-modal-icon-btn" aria-label="Annuleren" disabled={busy} onClick={() => setResetDialogOpen(false)}><X /></button>
           </header>
           <div className="modal-dialog-body finale-reset-dialog-body">
-            <p id="finale-reset-description">Alle ingevoerde en gepubliceerde teststanden van HAG, Sports Experiences, City Game en de POV-finale worden definitief verwijderd.</p>
-            <div className="finale-reset-preserved"><strong>Blijft behouden</strong><span>Losse POV-fotopunten, ingezonden foto’s, klassen, gebruikers en alle overige app-inhoud.</span></div>
+            <p id="finale-reset-description">Alle punten worden definitief gewist: HAG, Sports Experiences, City Game, de POV-finale en testpunten op losse POV-foto’s.</p>
+            <div className="finale-reset-preserved"><strong>Blijft behouden</strong><span>Ingezonden foto’s, klassen, gebruikers en alle overige app-inhoud. Alleen de puntentoekenning op een foto wordt leeggemaakt.</span></div>
             <label htmlFor="finale-reset-confirmation">Typ exact <b>RESET STRIJD</b> om de knop vrij te geven.</label>
             <input id="finale-reset-confirmation" type="text" autoComplete="off" autoFocus disabled={busy} value={resetConfirmation} onChange={(event) => setResetConfirmation(event.target.value)} />
           </div>
