@@ -4881,6 +4881,17 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .finale-next-card > span { color: #f7c94b; font-size: .75rem; font-weight: 900; text-transform: uppercase; }
 .finale-next-card > strong { font-size: 1.45rem; }
 .finale-next-card > p { margin: 0; color: #e2e8f0; font-size: .75rem; }
+.finale-reset-control { display: flex; align-items: center; justify-content: space-between; gap: 18px; margin-top: 4px; padding: 14px; border: 1px solid #fecaca; border-radius: 14px; background: #fff7f7; }
+.finale-reset-control div { display: grid; gap: 3px; }
+.finale-reset-control strong { color: #991b1b; font-size: .86rem; }
+.finale-reset-control p { margin: 0; color: #7f1d1d; font-size: .76rem; line-height: 1.45; }
+.finale-reset-control .danger-button { flex: 0 0 auto; padding: 10px 14px; }
+.finale-reset-control .danger-button:disabled { cursor: not-allowed; opacity: .55; }
+
+@media (max-width: 700px) {
+  .finale-reset-control { align-items: stretch; flex-direction: column; }
+  .finale-reset-control .danger-button { width: 100%; }
+}
 .finale-score-check { display: grid; gap: 8px; width: min(100%, 440px); padding: 14px; border: 1px solid rgba(255,255,255,.24); border-radius: 12px; background: rgba(255,255,255,.1); }
 .finale-score-check > b { color: #f7c94b; font-size: 1.45rem; }
 .finale-score-check label { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: .78rem; font-weight: 800; }
