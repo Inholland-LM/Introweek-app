@@ -35,6 +35,8 @@ const MIN_REFRESH_INTERVAL_MS = 60_000
 const liveNotificationsEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true' && Boolean(supabase)
 const realtimeEnabled = import.meta.env.VITE_REALTIME_ENABLED === 'true'
 const SCHEDULED_READ_STORAGE_PREFIX = 'lm-you-scheduled-read:'
+const BROWSER_NOTIFICATION_SEEN_STORAGE_PREFIX = 'lm-you-browser-notification-seen:'
+const MAX_SEEN_BROWSER_NOTIFICATIONS = 100
 
 const demoNotifications: AppNotification[] = [
   {
@@ -114,6 +116,24 @@ function saveScheduledReadIds(profileKey: string, ids: Set<string>) {
   window.localStorage.setItem(`${SCHEDULED_READ_STORAGE_PREFIX}${profileKey}`, JSON.stringify([...ids]))
 }
 
+function getBrowserNotificationSeenIds(profileKey: string): Set<string> | null {
+  try {
+    const stored = window.localStorage.getItem(`${BROWSER_NOTIFICATION_SEEN_STORAGE_PREFIX}${profileKey}`)
+    if (stored === null) return null
+    const parsed = JSON.parse(stored)
+    return new Set(Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [])
+  } catch {
+    return null
+  }
+}
+
+function saveBrowserNotificationSeenIds(profileKey: string, ids: Set<string>) {
+  window.localStorage.setItem(
+    `${BROWSER_NOTIFICATION_SEEN_STORAGE_PREFIX}${profileKey}`,
+    JSON.stringify([...ids].slice(-MAX_SEEN_BROWSER_NOTIFICATIONS)),
+  )
+}
+
 const CLASS_ACCENTS: Record<string, string> = {
   LM1A: '#d7263d', LM1B: '#f28c28', LM1C: '#e0b400', LM1D: '#2e9d58',
   LM1E: '#159a9c', LM1F: '#2f6fd0', LM1G: '#6554c0', LM1H: '#a446b8',
@@ -182,12 +202,25 @@ export function useNotifications(profileId: string | null, classCode: string, pr
         setError('Meldingen konden niet worden opgehaald. Probeer het later opnieuw.')
       } else {
         const personalNotifications = ((data ?? []) as NotificationRecord[]).map(mapNotification)
+        const storedSeenIds = getBrowserNotificationSeenIds(profileKey)
+        const seenIds = storedSeenIds ?? new Set<string>()
+        const newPushNotifications = storedSeenIds === null
+          ? []
+          : personalNotifications.filter((notification) => (
+              (notification.deliveryChannel === 'push' || notification.deliveryChannel === 'both')
+              && !seenIds.has(notification.id)
+            ))
+        personalNotifications.slice().reverse().forEach((notification) => seenIds.add(notification.id))
+        saveBrowserNotificationSeenIds(profileKey, seenIds)
         setNotifications([
           ...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages, masterClasses),
           ...personalNotifications,
         ].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()))
         setError('')
         lastFetchedAt.current = Date.now()
+        newPushNotifications.slice().reverse().forEach((notification) => {
+          void showBrowserNotification(notification)
+        })
       }
       setLoading(false)
     })()
@@ -234,9 +267,12 @@ export function useNotifications(profileId: string | null, classCode: string, pr
             next,
             ...current.filter((notification) => notification.id !== next.id),
           ].slice(0, MAX_NOTIFICATIONS))
-          if (next.deliveryChannel === 'push' || next.deliveryChannel === 'both') {
+          const seenIds = getBrowserNotificationSeenIds(profileKey) ?? new Set<string>()
+          if ((next.deliveryChannel === 'push' || next.deliveryChannel === 'both') && !seenIds.has(next.id)) {
             void showBrowserNotification(next)
           }
+          seenIds.add(next.id)
+          saveBrowserNotificationSeenIds(profileKey, seenIds)
         },
       )
       .subscribe() : null
@@ -254,7 +290,7 @@ export function useNotifications(profileId: string | null, classCode: string, pr
       window.clearInterval(timer)
       if (channel) void client.removeChannel(channel)
     }
-  }, [profileId, refresh])
+  }, [profileId, profileKey, refresh])
 
   const markRead = useCallback(async (notificationId: string) => {
     setError('')
