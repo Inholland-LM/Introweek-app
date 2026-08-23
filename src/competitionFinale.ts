@@ -94,6 +94,28 @@ export async function revealNextFinalist(classCode: string, confirmed: boolean) 
   await broadcastFinaleChange(data)
 }
 
+export type FinaleResetResult = {
+  removedEvents: number
+  removedScores: number
+  scoreVersion: number
+}
+
+export async function resetCompetitionFinaleTest(confirmation: string) {
+  if (!supabase) throw new Error('De beveiligde finale-verbinding is niet beschikbaar.')
+  const { data, error } = await supabase.rpc('reset_competition_finale_test', {
+    requested_confirmation: confirmation,
+  })
+  if (error) throw error
+  const result = (data ?? {}) as Partial<FinaleResetResult>
+  const mapped: FinaleResetResult = {
+    removedEvents: Number(result.removedEvents ?? 0),
+    removedScores: Number(result.removedScores ?? 0),
+    scoreVersion: Number(result.scoreVersion ?? 0),
+  }
+  await broadcastFinaleChange({ reset: true, ...mapped })
+  return mapped
+}
+
 async function broadcastFinaleChange(payload: unknown) {
   window.dispatchEvent(new CustomEvent('competition-score-changed', { detail: payload }))
   if (!supabase) return

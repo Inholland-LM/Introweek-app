@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, CheckCircle2, Circle, LockKeyhole, RefreshCw, Sparkles, Trophy } from 'lucide-react'
+import { ArrowDown, ArrowUp, CheckCircle2, Circle, LockKeyhole, RefreshCw, RotateCcw, Sparkles, Trophy } from 'lucide-react'
 import type { MasterContent } from './import/parseWorkbook'
 import { useCompetitionStandings } from './competitionScores'
 import {
@@ -7,6 +7,7 @@ import {
   fetchRoundScores,
   lockFinaleOrder,
   revealNextFinalist,
+  resetCompetitionFinaleTest,
   saveRoundScores,
   type CompetitionRoundCode,
   type CompetitionRoundScoreInput,
@@ -174,6 +175,32 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
     }
   }
 
+  async function resetFinaleTest() {
+    if (busy) return
+    const confirmation = window.prompt(
+      'Hiermee wis je alle POV-finalescores en onthullingen. HAG, Sports Experiences en City Game blijven staan.\n\nTyp exact RESET FINALE om door te gaan.',
+    )
+    if (confirmation === null) return
+    if (confirmation !== 'RESET FINALE') {
+      setMessage('De finaletest is niet gewist: de bevestiging was niet exact RESET FINALE.')
+      return
+    }
+    if (!window.confirm('Laatste controle: de volledige POV-finaletest nu definitief wissen en terugzetten naar voorbereiding?')) return
+
+    setBusy(true)
+    setMessage('')
+    try {
+      const result = await resetCompetitionFinaleTest(confirmation)
+      setRound('pov_final')
+      setMessage(`Finaletest gewist: ${result.removedEvents} onthulling(en) en ${result.removedScores} POV-score(s) verwijderd. De finale staat weer op voorbereiding.`)
+      await load()
+    } catch (reason) {
+      setMessage(errorMessage(reason, 'De finaletest kon niet worden gewist.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const nextClassCode = finale?.revealOrder[finale.nextIndex]
   const nextClass = activeClasses.find((item) => item.classCode === nextClassCode)
   const nextScore = nextClassCode ? scores[`pov_final:${nextClassCode}`] : undefined
@@ -228,6 +255,10 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
       {finale?.phase === 'preparation' ? <button className="primary-button" type="button" disabled={busy || order.length !== activeClasses.length || !allConfirmed} onClick={() => void lock()}><CheckCircle2 /> Acht scores en volgorde definitief vastzetten</button>
         : finale?.phase === 'final' ? <div className="notification-state notification-success"><Trophy /> Finale afgerond: dit is de definitieve stand.</div>
           : <div className="finale-next-card"><span>Volgende onthulling</span><strong>{nextClass?.flag} {nextClass?.country}</strong><small>{nextClass?.classCode} · stap {(finale?.nextIndex ?? 0) + 1} van {order.length}</small><div className="finale-score-check"><b>{nextScore} punten</b><label><input type="checkbox" checked={revealChecked} disabled={busy} onChange={(event) => setRevealChecked(event.target.checked)} /> Ik bevestig dat dit het juiste land en puntenaantal is.</label></div><button type="button" className="primary-button" disabled={busy || !revealChecked} onClick={() => void reveal()}><Sparkles /> Onthul score voor dit land</button><p>Na de animatie start het volgende land nooit automatisch.</p></div>}
+      <aside className="finale-reset-control">
+        <div><strong>Finalerepetitie opruimen</strong><p>Wist uitsluitend de POV-finalescores en onthullingen. HAG, Sports Experiences, City Game, foto’s, klassen en gebruikers blijven behouden.</p></div>
+        <button type="button" className="danger-button" disabled={busy} onClick={() => void resetFinaleTest()}><RotateCcw /> Finaletest volledig wissen</button>
+      </aside>
     </div>}
   </section>
 }
