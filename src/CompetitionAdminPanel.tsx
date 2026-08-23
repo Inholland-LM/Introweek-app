@@ -198,7 +198,7 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
       await setCompetitionRehearsalMode(enabled)
       setRehearsalEnabled(enabled)
       setMessage(enabled
-        ? 'Finalerepetitie gestart. Zet bij Vandaag de tijd op “Do 16:15 · Finale” en doorloop daarna de POV-finale.'
+        ? 'Finalerepetitie gestart. Alle ingelogde testrollen worden automatisch op donderdag 16:15 gezet. Doorloop nu de POV-finale.'
         : 'Finalerepetitie gesloten. De volledige reset is weer geblokkeerd.')
     } catch (reason) {
       setMessage(errorMessage(reason, 'De repetitiemodus kon niet worden gewijzigd.'))

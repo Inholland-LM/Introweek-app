@@ -1575,7 +1575,8 @@ function App() {
   const pullDistanceRef = useRef(0)
   const refreshResetTimerRef = useRef<number | null>(null)
   const electricXHideTimerRef = useRef<number | null>(null)
-  const effectiveTime = simulatedDate ?? currentTime
+  const rehearsalSimulatedDate = finale.simulatedAt ? new Date(finale.simulatedAt) : null
+  const effectiveTime = rehearsalSimulatedDate ?? simulatedDate ?? currentTime
   const countriesRevealed = profile.profileType === 'organizer' || effectiveTime.getTime() >= COUNTRY_REVEAL_AT
   const visibleProgrammeDays = countriesRevealed ? currentProgrammeDays : hideCountryRevealDetails(currentProgrammeDays)
   const homeProgramme = getHomeProgramme(effectiveTime, visibleProgrammeDays)
@@ -1817,7 +1818,9 @@ function App() {
             {profile.profileType === 'organizer' && <div className="time-travel-bar" aria-label="Tijdsimulatie voor organisatietests">
               <div className="time-travel-label">
                 <span>Simuleer tijd:</span>
-                {simulatedDate && <small>({simulatedDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })})</small>}
+                {rehearsalSimulatedDate
+                  ? <small>(finalerepetitie voor alle rollen · {rehearsalSimulatedDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })})</small>
+                  : simulatedDate && <small>({simulatedDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })})</small>}
               </div>
               <div className="time-travel-presets">
                 <button
@@ -1872,7 +1875,7 @@ function App() {
                 </button>
                 <button
                   type="button"
-                  className={presetId === 'do-16:15' ? 'active' : ''}
+                  className={rehearsalSimulatedDate || presetId === 'do-16:15' ? 'active' : ''}
                   onClick={() => {
                     setPresetId('do-16:15')
                     setSimulatedDate(new Date('2026-08-27T16:15:00+02:00'))
