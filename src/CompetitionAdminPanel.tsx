@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, CheckCircle2, Circle, LockKeyhole, RefreshCw, Sparkles, Trophy } from 'lucide-react'
+import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Circle, LockKeyhole, RefreshCw, RotateCcw, Sparkles, Trophy, X } from 'lucide-react'
 import type { MasterContent } from './import/parseWorkbook'
 import { useCompetitionStandings } from './competitionScores'
 import {
   fetchFinaleState,
+  fetchCompetitionRehearsalStatus,
   fetchRoundScores,
   lockFinaleOrder,
   revealNextFinalist,
+  resetCompetitionTest,
   saveRoundScores,
+  setCompetitionRehearsalMode,
   type CompetitionRoundCode,
   type CompetitionRoundScoreInput,
   type FinaleState,
@@ -45,11 +48,18 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
   const [order, setOrder] = useState<string[]>([])
   const [publishChecked, setPublishChecked] = useState(false)
   const [revealChecked, setRevealChecked] = useState(false)
+  const [rehearsalEnabled, setRehearsalEnabled] = useState(false)
+  const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [resetConfirmation, setResetConfirmation] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
   async function load() {
-    const [rows, nextFinale] = await Promise.all([fetchRoundScores(), fetchFinaleState()])
+    const [rows, nextFinale, nextRehearsalEnabled] = await Promise.all([
+      fetchRoundScores(),
+      fetchFinaleState(),
+      fetchCompetitionRehearsalStatus(),
+    ])
     const nextScores: Record<string, string> = {}
     const nextConfirmed: Record<string, boolean> = {}
     const nextPublished: Record<string, boolean> = {}
@@ -66,6 +76,7 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
     setPublished(nextPublished)
     setRevisions(nextRevisions)
     setFinale(nextFinale)
+    setRehearsalEnabled(nextRehearsalEnabled)
     setPublishChecked(false)
     setRevealChecked(false)
     if (nextFinale.revealOrder.length) setOrder(nextFinale.revealOrder)
@@ -174,6 +185,49 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
     }
   }
 
+  async function changeRehearsalMode(enabled: boolean) {
+    if (busy) return
+    const warning = enabled
+      ? 'Finalerepetitie starten? Je kunt dan testscores invoeren en één volledige reset uitvoeren. Gebruik dit alleen vóór de echte introweek.'
+      : 'Finalerepetitie sluiten zonder de huidige teststanden te wissen?'
+    if (!window.confirm(warning)) return
+
+    setBusy(true)
+    setMessage('')
+    try {
+      await setCompetitionRehearsalMode(enabled)
+      setRehearsalEnabled(enabled)
+      setMessage(enabled
+        ? 'Finalerepetitie gestart. Zet bij Vandaag de tijd op “Do 16:15 · Finale” en doorloop daarna de POV-finale.'
+        : 'Finalerepetitie gesloten. De volledige reset is weer geblokkeerd.')
+    } catch (reason) {
+      setMessage(errorMessage(reason, 'De repetitiemodus kon niet worden gewijzigd.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function resetStrijdTest() {
+    if (busy || !rehearsalEnabled || resetConfirmation !== 'RESET STRIJD') return
+    if (!window.confirm('Laatste controle: alle teststanden nu definitief wissen en de repetitiemodus automatisch sluiten?')) return
+
+    setBusy(true)
+    setMessage('')
+    try {
+      const result = await resetCompetitionTest(resetConfirmation)
+      setRound('pov_final')
+      setResetDialogOpen(false)
+      setResetConfirmation('')
+      setRehearsalEnabled(false)
+      setMessage(`Repetitie afgerond en vergrendeld: ${result.removedEvents} puntentoekenning(en), ${result.removedScores} ronde-invoerregel(s) en ${result.clearedPovAwards} POV-fotopuntentoekenning(en) zijn gewist.`)
+      await load()
+    } catch (reason) {
+      setMessage(errorMessage(reason, 'De repetitiestand kon niet worden gewist.'))
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const nextClassCode = finale?.revealOrder[finale.nextIndex]
   const nextClass = activeClasses.find((item) => item.classCode === nextClassCode)
   const nextScore = nextClassCode ? scores[`pov_final:${nextClassCode}`] : undefined
@@ -228,10 +282,36 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
       {finale?.phase === 'preparation' ? <button className="primary-button" type="button" disabled={busy || order.length !== activeClasses.length || !allConfirmed} onClick={() => void lock()}><CheckCircle2 /> Acht scores en volgorde definitief vastzetten</button>
         : finale?.phase === 'final' ? <div className="notification-state notification-success"><Trophy /> Finale afgerond: dit is de definitieve stand.</div>
           : <div className="finale-next-card"><span>Volgende onthulling</span><strong>{nextClass?.flag} {nextClass?.country}</strong><small>{nextClass?.classCode} · stap {(finale?.nextIndex ?? 0) + 1} van {order.length}</small><div className="finale-score-check"><b>{nextScore} punten</b><label><input type="checkbox" checked={revealChecked} disabled={busy} onChange={(event) => setRevealChecked(event.target.checked)} /> Ik bevestig dat dit het juiste land en puntenaantal is.</label></div><button type="button" className="primary-button" disabled={busy || !revealChecked} onClick={() => void reveal()}><Sparkles /> Onthul score voor dit land</button><p>Na de animatie start het volgende land nooit automatisch.</p></div>}
-      <aside className="finale-reset-control is-locked">
+      {rehearsalEnabled ? <aside className="finale-reset-control is-rehearsing">
+        <AlertTriangle aria-hidden="true" />
+        <div><strong>Finalerepetitie actief</strong><p>Test de volledige finale. Wis daarna alle testscores; de repetitiemodus sluit dan automatisch.</p></div>
+        <div className="finale-rehearsal-actions">
+          <button type="button" className="secondary-button" disabled={busy} onClick={() => void changeRehearsalMode(false)}><LockKeyhole /> Sluiten zonder wissen</button>
+          <button type="button" className="danger-button" disabled={busy} onClick={() => { setResetConfirmation(''); setResetDialogOpen(true) }}><RotateCcw /> Repetitie wissen</button>
+        </div>
+      </aside> : <aside className="finale-reset-control is-locked">
         <LockKeyhole aria-hidden="true" />
-        <div><strong>Live-modus actief</strong><p>De testreset is vergrendeld. Punten en finale-invoer kunnen niet meer met één resetactie worden gewist.</p></div>
-      </aside>
+        <div><strong>Live-modus actief</strong><p>De volledige reset is vergrendeld. Start alleen vóór de introweek tijdelijk een finalerepetitie.</p></div>
+        <button type="button" className="secondary-button" disabled={busy} onClick={() => void changeRehearsalMode(true)}><Sparkles /> Start finalerepetitie</button>
+      </aside>}
+      {resetDialogOpen && rehearsalEnabled && <div className="modal-overlay finale-reset-overlay" role="presentation" onClick={() => { if (!busy) setResetDialogOpen(false) }}>
+        <article className="modal-dialog-card finale-reset-dialog" role="dialog" aria-modal="true" aria-labelledby="finale-reset-title" aria-describedby="finale-reset-description" onClick={(event) => event.stopPropagation()}>
+          <header className="modal-dialog-header">
+            <div className="finale-reset-title"><AlertTriangle /><h2 id="finale-reset-title">Finalerepetitie wissen?</h2></div>
+            <button type="button" className="close-modal-icon-btn" aria-label="Annuleren" disabled={busy} onClick={() => setResetDialogOpen(false)}><X /></button>
+          </header>
+          <div className="modal-dialog-body finale-reset-dialog-body">
+            <p id="finale-reset-description">Alle testpunten van HAG, Sports Experiences, City Game, de POV-finale en losse POV-foto’s worden definitief gewist.</p>
+            <div className="finale-reset-preserved"><strong>Blijft behouden</strong><span>Ingezonden foto’s, klassen, gebruikers en alle overige app-inhoud.</span></div>
+            <label htmlFor="finale-reset-confirmation">Typ exact <b>RESET STRIJD</b>. Na het wissen wordt de reset automatisch weer vergrendeld.</label>
+            <input id="finale-reset-confirmation" type="text" autoComplete="off" autoFocus disabled={busy} value={resetConfirmation} onChange={(event) => setResetConfirmation(event.target.value)} />
+          </div>
+          <footer className="modal-dialog-footer finale-reset-dialog-footer">
+            <button type="button" className="secondary-button" disabled={busy} onClick={() => setResetDialogOpen(false)}>Annuleren</button>
+            <button type="button" className="danger-button" disabled={busy || resetConfirmation !== 'RESET STRIJD'} onClick={() => void resetStrijdTest()}><RotateCcw /> Wissen en repetitie sluiten</button>
+          </footer>
+        </article>
+      </div>}
     </div>}
   </section>
 }

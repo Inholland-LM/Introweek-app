@@ -1814,7 +1814,7 @@ function App() {
               <p className="welcome-copy">Alles wat je vandaag nodig hebt, staat hier voor je klaar.</p>
             </section>
 
-            <div className="time-travel-bar" aria-label="Tijdsimulatie voor testen">
+            {profile.profileType === 'organizer' && <div className="time-travel-bar" aria-label="Tijdsimulatie voor organisatietests">
               <div className="time-travel-label">
                 <span>Simuleer tijd:</span>
                 {simulatedDate && <small>({simulatedDate.toLocaleTimeString('nl-NL', { hour: '2-digit', minute: '2-digit' })})</small>}
@@ -1872,9 +1872,19 @@ function App() {
                 </button>
                 <button
                   type="button"
+                  className={presetId === 'do-16:15' ? 'active' : ''}
+                  onClick={() => {
+                    setPresetId('do-16:15')
+                    setSimulatedDate(new Date('2026-08-27T16:15:00+02:00'))
+                  }}
+                >
+                  Do 16:15 · Finale 🏆
+                </button>
+                <button
+                  type="button"
                   className={presetId === 'do-19:30' ? 'active' : ''}
                   onClick={() => {
-                    setPresetId('do-19:30' as any)
+                    setPresetId('do-19:30')
                     setSimulatedDate(new Date('2026-08-27T19:30:00+02:00'))
                   }}
                 >
@@ -1891,7 +1901,7 @@ function App() {
                   ⏱️ Live tijd
                 </button>
               </div>
-            </div>
+            </div>}
 
             <section className="next-card" aria-labelledby="next-title">
               <div className={`card-kicker ${homeProgramme.isCurrentlyActive ? 'is-active' : homeProgramme.introweekCompleted ? 'is-completed' : homeProgramme.nextDay ? 'is-next-day' : ''}`}>

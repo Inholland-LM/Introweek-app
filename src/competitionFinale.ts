@@ -120,6 +120,23 @@ export async function revealNextFinalist(classCode: string, confirmed: boolean) 
   await broadcastFinaleChange(data)
 }
 
+export async function fetchCompetitionRehearsalStatus() {
+  if (!supabase) return false
+  const { data, error } = await supabase.rpc('get_competition_rehearsal_status')
+  if (error) throw error
+  return Boolean(data)
+}
+
+export async function setCompetitionRehearsalMode(enabled: boolean) {
+  if (!supabase) throw new Error('De beveiligde finale-verbinding is niet beschikbaar.')
+  const { data, error } = await supabase.rpc('set_competition_rehearsal_mode', {
+    requested_enabled: enabled,
+    requested_confirmation: enabled ? 'START REPETITIE' : 'SLUIT REPETITIE',
+  })
+  if (error) throw error
+  return Boolean(data)
+}
+
 export type CompetitionResetResult = {
   removedEvents: number
   removedScores: number
