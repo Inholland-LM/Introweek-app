@@ -26,6 +26,7 @@ type MembershipRecord = {
 }
 
 const authEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true'
+const demoEnabled = !authEnabled
 const pendingLoginKey = 'lm-you-pending-login'
 const pendingLoginMaxAge = 15 * 60 * 1000
 const resendDelaySeconds = 120
@@ -91,7 +92,7 @@ export function AuthGate({ children }: AuthGateProps) {
     ? Math.max(0, resendDelaySeconds - Math.floor((Date.now() - pendingLogin.requestedAt) / 1000))
     : 0)
   const [demoProfileOverride, setDemoProfileOverride] = useState<AppProfile | null>(() => {
-    if (authEnabled) return null
+    if (!demoEnabled) return null
     const requestedRole = new URLSearchParams(window.location.search).get('demo') as keyof typeof demoProfiles | null
     return requestedRole && demoProfiles[requestedRole] ? demoProfiles[requestedRole] : null
   })
@@ -243,32 +244,18 @@ export function AuthGate({ children }: AuthGateProps) {
     window.addEventListener('focus', refreshWhenVisible)
     document.addEventListener('visibilitychange', refreshWhenVisible)
 
-    const channel = supabase
-      .channel(`own-profile:${session.user.id}`)
-      .on('postgres_changes', {
-        event: 'UPDATE', schema: 'public', table: 'profiles', filter: `auth_user_id=eq.${session.user.id}`,
-      }, () => { void loadProfile() })
-      .subscribe()
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void loadProfile()
+    }, 60_000)
 
     return () => {
       window.removeEventListener('focus', refreshWhenVisible)
       document.removeEventListener('visibilitychange', refreshWhenVisible)
-      void supabase?.removeChannel(channel)
+      window.clearInterval(timer)
     }
   }, [loadProfile, session])
 
-  useEffect(() => {
-    if (!authEnabled || !supabase || !profile?.id) return
-    const channel = supabase
-      .channel(`own-class:${profile.id}`)
-      .on('postgres_changes', {
-        event: '*', schema: 'public', table: 'class_memberships', filter: `profile_id=eq.${profile.id}`,
-      }, () => { void loadProfile() })
-      .subscribe()
-    return () => { void supabase?.removeChannel(channel) }
-  }, [loadProfile, profile?.id])
-
-  if (!authEnabled || demoProfileOverride) {
+  if (!authEnabled || (demoEnabled && demoProfileOverride)) {
     return (
       <ProfileProvider
         profile={demoProfileOverride ?? demoProfile}
@@ -302,9 +289,9 @@ export function AuthGate({ children }: AuthGateProps) {
       <AuthMessage title="Nog geen toegang">
         Je bent ingelogd, maar je schoolmailadres staat nog niet in de deelnemerslijst.
         <div style={{ display: 'grid', gap: '10px', marginTop: '16px' }}>
-          <button className="auth-primary" onClick={() => setDemoProfileOverride(demoProfiles.student)}>
+          {demoEnabled && <button className="auth-primary" onClick={() => setDemoProfileOverride(demoProfiles.student)}>
             <Sparkles aria-hidden="true" /> Open demo-modus (Sofia · Australië 🇦🇺)
-          </button>
+          </button>}
           <button className="auth-secondary" onClick={() => client.auth.signOut()}>
             <LogOut aria-hidden="true" /> Uitloggen
           </button>
@@ -422,10 +409,11 @@ export function AuthGate({ children }: AuthGateProps) {
             <button className="auth-primary" disabled={submitting}>
               {submitting ? 'Code aanvragen…' : 'Stuur mij een inlogcode'}
             </button>
-            <button type="button" className="auth-secondary" onClick={() => setDemoProfileOverride(demoProfiles.student)}>
-              <Sparkles aria-hidden="true" /> Direct openen in demo-modus (Sofia · Australië 🇦🇺)
-            </button>
-            <div className="auth-role-tests" aria-label="Testprofielen">
+            {demoEnabled && <>
+              <button type="button" className="auth-secondary" onClick={() => setDemoProfileOverride(demoProfiles.student)}>
+                <Sparkles aria-hidden="true" /> Direct openen in demo-modus (Sofia · Australië 🇦🇺)
+              </button>
+              <div className="auth-role-tests" aria-label="Testprofielen">
               <span>Snel testen als</span>
               <div className="auth-role-test-grid">
                 <button type="button" onClick={() => setDemoProfileOverride(demoProfiles.poer)}>
@@ -438,7 +426,8 @@ export function AuthGate({ children }: AuthGateProps) {
                   Organisatie <small>Jacco</small>
                 </button>
               </div>
-            </div>
+              </div>
+            </>}
             <p className="auth-help">De beveiligingscontrole van je schoolmail kan de bezorging vertragen. Controleer ook je spam of ongewenste e-mail.</p>
           </form>
         ) : (

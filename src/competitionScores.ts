@@ -10,6 +10,8 @@ type ScoreRow = {
 }
 
 const cacheKey = 'lm-you-competition-scores-v1'
+const realtimeEnabled = import.meta.env.VITE_REALTIME_ENABLED === 'true'
+const scorePollIntervalMs = 30_000
 
 function parseHistory(value: unknown): TeamScoreHistory[] {
   if (!Array.isArray(value)) return []
@@ -80,17 +82,24 @@ export function useCompetitionStandings(classes: MasterContent['classes'] | unde
 
     void refresh()
     const handleLocalUpdate = () => { void refresh(true) }
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible') void refresh()
+    }
     window.addEventListener('competition-score-changed', handleLocalUpdate)
-    if (!supabase) return () => window.removeEventListener('competition-score-changed', handleLocalUpdate)
-
+    window.addEventListener('focus', handleVisible)
+    document.addEventListener('visibilitychange', handleVisible)
+    const timer = window.setInterval(handleVisible, scorePollIntervalMs)
     const client = supabase
-    const channel = client.channel('competition-score-updates')
-      .on('broadcast', { event: 'score-changed' }, handleLocalUpdate)
-      .subscribe()
+    const channel = client && realtimeEnabled
+      ? client.channel('competition-score-updates').on('broadcast', { event: 'score-changed' }, handleLocalUpdate).subscribe()
+      : null
     return () => {
       active = false
       window.removeEventListener('competition-score-changed', handleLocalUpdate)
-      void client.removeChannel(channel)
+      window.removeEventListener('focus', handleVisible)
+      document.removeEventListener('visibilitychange', handleVisible)
+      window.clearInterval(timer)
+      if (client && channel) void client.removeChannel(channel)
     }
   }, [version])
 

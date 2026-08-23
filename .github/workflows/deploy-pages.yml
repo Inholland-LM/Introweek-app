@@ -41,6 +41,7 @@ jobs:
           VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
           VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
           VITE_AUTH_ENABLED: ${{ vars.VITE_AUTH_ENABLED }}
+          VITE_REALTIME_ENABLED: 'false'
 
       - name: GitHub Pages configureren
         uses: actions/configure-pages@v5

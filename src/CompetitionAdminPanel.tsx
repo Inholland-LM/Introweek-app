@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Circle, LockKeyhole, RefreshCw, RotateCcw, Sparkles, Trophy, X } from 'lucide-react'
+import { ArrowDown, ArrowUp, CheckCircle2, Circle, LockKeyhole, RefreshCw, Sparkles, Trophy } from 'lucide-react'
 import type { MasterContent } from './import/parseWorkbook'
 import { useCompetitionStandings } from './competitionScores'
 import {
@@ -7,7 +7,6 @@ import {
   fetchRoundScores,
   lockFinaleOrder,
   revealNextFinalist,
-  resetCompetitionTest,
   saveRoundScores,
   type CompetitionRoundCode,
   type CompetitionRoundScoreInput,
@@ -46,8 +45,6 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
   const [order, setOrder] = useState<string[]>([])
   const [publishChecked, setPublishChecked] = useState(false)
   const [revealChecked, setRevealChecked] = useState(false)
-  const [resetDialogOpen, setResetDialogOpen] = useState(false)
-  const [resetConfirmation, setResetConfirmation] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -177,27 +174,6 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
     }
   }
 
-  async function resetStrijdTest() {
-    if (busy) return
-    if (resetConfirmation !== 'RESET STRIJD') return
-    if (!window.confirm('Laatste controle: alle teststanden van HAG, Sports Experiences, City Game en de POV-finale nu definitief wissen?')) return
-
-    setBusy(true)
-    setMessage('')
-    try {
-      const result = await resetCompetitionTest(resetConfirmation)
-      setRound('pov_final')
-      setResetDialogOpen(false)
-      setResetConfirmation('')
-      setMessage(`Strijdtest gewist: ${result.removedEvents} puntentoekenning(en), ${result.removedScores} ronde-invoerregel(s) en ${result.clearedPovAwards} POV-fotopuntentoekenning(en) opgeruimd. De stand is weer nul en de finale staat op voorbereiding.`)
-      await load()
-    } catch (reason) {
-      setMessage(errorMessage(reason, 'De strijdtest kon niet worden gewist.'))
-    } finally {
-      setBusy(false)
-    }
-  }
-
   const nextClassCode = finale?.revealOrder[finale.nextIndex]
   const nextClass = activeClasses.find((item) => item.classCode === nextClassCode)
   const nextScore = nextClassCode ? scores[`pov_final:${nextClassCode}`] : undefined
@@ -252,28 +228,10 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
       {finale?.phase === 'preparation' ? <button className="primary-button" type="button" disabled={busy || order.length !== activeClasses.length || !allConfirmed} onClick={() => void lock()}><CheckCircle2 /> Acht scores en volgorde definitief vastzetten</button>
         : finale?.phase === 'final' ? <div className="notification-state notification-success"><Trophy /> Finale afgerond: dit is de definitieve stand.</div>
           : <div className="finale-next-card"><span>Volgende onthulling</span><strong>{nextClass?.flag} {nextClass?.country}</strong><small>{nextClass?.classCode} · stap {(finale?.nextIndex ?? 0) + 1} van {order.length}</small><div className="finale-score-check"><b>{nextScore} punten</b><label><input type="checkbox" checked={revealChecked} disabled={busy} onChange={(event) => setRevealChecked(event.target.checked)} /> Ik bevestig dat dit het juiste land en puntenaantal is.</label></div><button type="button" className="primary-button" disabled={busy || !revealChecked} onClick={() => void reveal()}><Sparkles /> Onthul score voor dit land</button><p>Na de animatie start het volgende land nooit automatisch.</p></div>}
-      <aside className="finale-reset-control">
-        <div><strong>Strijdrepetitie opruimen</strong><p>Maakt de volledige strijdstand weer nul, inclusief testpunten op POV-foto’s. Ingezonden foto’s, klassen en gebruikers blijven behouden.</p></div>
-        <button type="button" className="danger-button" disabled={busy} onClick={() => { setResetConfirmation(''); setResetDialogOpen(true) }}><RotateCcw /> Strijdtest volledig wissen</button>
+      <aside className="finale-reset-control is-locked">
+        <LockKeyhole aria-hidden="true" />
+        <div><strong>Live-modus actief</strong><p>De testreset is vergrendeld. Punten en finale-invoer kunnen niet meer met één resetactie worden gewist.</p></div>
       </aside>
-      {resetDialogOpen && <div className="modal-overlay finale-reset-overlay" role="presentation" onClick={() => { if (!busy) setResetDialogOpen(false) }}>
-        <article className="modal-dialog-card finale-reset-dialog" role="dialog" aria-modal="true" aria-labelledby="finale-reset-title" aria-describedby="finale-reset-description" onClick={(event) => event.stopPropagation()}>
-          <header className="modal-dialog-header">
-            <div className="finale-reset-title"><AlertTriangle /><h2 id="finale-reset-title">Alle teststanden wissen?</h2></div>
-            <button type="button" className="close-modal-icon-btn" aria-label="Annuleren" disabled={busy} onClick={() => setResetDialogOpen(false)}><X /></button>
-          </header>
-          <div className="modal-dialog-body finale-reset-dialog-body">
-            <p id="finale-reset-description">Alle punten worden definitief gewist: HAG, Sports Experiences, City Game, de POV-finale en testpunten op losse POV-foto’s.</p>
-            <div className="finale-reset-preserved"><strong>Blijft behouden</strong><span>Ingezonden foto’s, klassen, gebruikers en alle overige app-inhoud. Alleen de puntentoekenning op een foto wordt leeggemaakt.</span></div>
-            <label htmlFor="finale-reset-confirmation">Typ exact <b>RESET STRIJD</b> om de knop vrij te geven.</label>
-            <input id="finale-reset-confirmation" type="text" autoComplete="off" autoFocus disabled={busy} value={resetConfirmation} onChange={(event) => setResetConfirmation(event.target.value)} />
-          </div>
-          <footer className="modal-dialog-footer finale-reset-dialog-footer">
-            <button type="button" className="secondary-button" disabled={busy} onClick={() => setResetDialogOpen(false)}>Annuleren</button>
-            <button type="button" className="danger-button" disabled={busy || resetConfirmation !== 'RESET STRIJD'} onClick={() => void resetStrijdTest()}><RotateCcw /> Definitief wissen</button>
-          </footer>
-        </article>
-      </div>}
     </div>}
   </section>
 }
