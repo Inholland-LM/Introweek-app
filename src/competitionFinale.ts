@@ -97,6 +97,7 @@ export async function revealNextFinalist(classCode: string, confirmed: boolean) 
 export type CompetitionResetResult = {
   removedEvents: number
   removedScores: number
+  clearedPovAwards: number
   scoreVersion: number
 }
 
@@ -110,6 +111,7 @@ export async function resetCompetitionTest(confirmation: string) {
   const mapped: CompetitionResetResult = {
     removedEvents: Number(result.removedEvents ?? 0),
     removedScores: Number(result.removedScores ?? 0),
+    clearedPovAwards: Number(result.clearedPovAwards ?? 0),
     scoreVersion: Number(result.scoreVersion ?? 0),
   }
   await broadcastFinaleChange({ reset: true, ...mapped })
