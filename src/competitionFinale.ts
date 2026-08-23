@@ -24,9 +24,10 @@ export type FinaleState = {
   lastRevealedPoints: number | null
   revealSequence: number
   revealedAt: string | null
+  simulatedAt: string | null
 }
 
-const emptyFinale: FinaleState = { phase: 'preparation', revealOrder: [], nextIndex: 0, lastRevealedClassCode: null, lastRevealedPoints: null, revealSequence: 0, revealedAt: null }
+const emptyFinale: FinaleState = { phase: 'preparation', revealOrder: [], nextIndex: 0, lastRevealedClassCode: null, lastRevealedPoints: null, revealSequence: 0, revealedAt: null, simulatedAt: null }
 const realtimeEnabled = import.meta.env.VITE_REALTIME_ENABLED === 'true'
 const finalePollIntervalMs = 10_000
 
@@ -41,6 +42,7 @@ function mapFinale(value: unknown): FinaleState {
     lastRevealedPoints: item.lastRevealedPoints === null || item.lastRevealedPoints === undefined ? null : Number(item.lastRevealedPoints),
     revealSequence: Number(item.revealSequence ?? 0),
     revealedAt: item.revealedAt ? String(item.revealedAt) : null,
+    simulatedAt: item.simulatedAt ? String(item.simulatedAt) : null,
   }
 }
 
