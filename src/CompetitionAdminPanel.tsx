@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { ArrowDown, ArrowUp, CheckCircle2, Circle, LockKeyhole, RefreshCw, RotateCcw, Sparkles, Trophy } from 'lucide-react'
+import { AlertTriangle, ArrowDown, ArrowUp, CheckCircle2, Circle, LockKeyhole, RefreshCw, RotateCcw, Sparkles, Trophy, X } from 'lucide-react'
 import type { MasterContent } from './import/parseWorkbook'
 import { useCompetitionStandings } from './competitionScores'
 import {
@@ -46,6 +46,8 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
   const [order, setOrder] = useState<string[]>([])
   const [publishChecked, setPublishChecked] = useState(false)
   const [revealChecked, setRevealChecked] = useState(false)
+  const [resetDialogOpen, setResetDialogOpen] = useState(false)
+  const [resetConfirmation, setResetConfirmation] = useState('')
   const [busy, setBusy] = useState(false)
   const [message, setMessage] = useState('')
 
@@ -177,21 +179,16 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
 
   async function resetFinaleTest() {
     if (busy) return
-    const confirmation = window.prompt(
-      'Hiermee wis je alle POV-finalescores en onthullingen. HAG, Sports Experiences en City Game blijven staan.\n\nTyp exact RESET FINALE om door te gaan.',
-    )
-    if (confirmation === null) return
-    if (confirmation !== 'RESET FINALE') {
-      setMessage('De finaletest is niet gewist: de bevestiging was niet exact RESET FINALE.')
-      return
-    }
+    if (resetConfirmation !== 'RESET FINALE') return
     if (!window.confirm('Laatste controle: de volledige POV-finaletest nu definitief wissen en terugzetten naar voorbereiding?')) return
 
     setBusy(true)
     setMessage('')
     try {
-      const result = await resetCompetitionFinaleTest(confirmation)
+      const result = await resetCompetitionFinaleTest(resetConfirmation)
       setRound('pov_final')
+      setResetDialogOpen(false)
+      setResetConfirmation('')
       setMessage(`Finaletest gewist: ${result.removedEvents} onthulling(en) en ${result.removedScores} POV-score(s) verwijderd. De finale staat weer op voorbereiding.`)
       await load()
     } catch (reason) {
@@ -257,8 +254,26 @@ export function CompetitionAdminPanel({ classes }: { classes: MasterContent['cla
           : <div className="finale-next-card"><span>Volgende onthulling</span><strong>{nextClass?.flag} {nextClass?.country}</strong><small>{nextClass?.classCode} · stap {(finale?.nextIndex ?? 0) + 1} van {order.length}</small><div className="finale-score-check"><b>{nextScore} punten</b><label><input type="checkbox" checked={revealChecked} disabled={busy} onChange={(event) => setRevealChecked(event.target.checked)} /> Ik bevestig dat dit het juiste land en puntenaantal is.</label></div><button type="button" className="primary-button" disabled={busy || !revealChecked} onClick={() => void reveal()}><Sparkles /> Onthul score voor dit land</button><p>Na de animatie start het volgende land nooit automatisch.</p></div>}
       <aside className="finale-reset-control">
         <div><strong>Finalerepetitie opruimen</strong><p>Wist uitsluitend de POV-finalescores en onthullingen. HAG, Sports Experiences, City Game, foto’s, klassen en gebruikers blijven behouden.</p></div>
-        <button type="button" className="danger-button" disabled={busy} onClick={() => void resetFinaleTest()}><RotateCcw /> Finaletest volledig wissen</button>
+        <button type="button" className="danger-button" disabled={busy} onClick={() => { setResetConfirmation(''); setResetDialogOpen(true) }}><RotateCcw /> Finaletest volledig wissen</button>
       </aside>
+      {resetDialogOpen && <div className="modal-overlay finale-reset-overlay" role="presentation" onClick={() => { if (!busy) setResetDialogOpen(false) }}>
+        <article className="modal-dialog-card finale-reset-dialog" role="dialog" aria-modal="true" aria-labelledby="finale-reset-title" aria-describedby="finale-reset-description" onClick={(event) => event.stopPropagation()}>
+          <header className="modal-dialog-header">
+            <div className="finale-reset-title"><AlertTriangle /><h2 id="finale-reset-title">Finaletest volledig wissen?</h2></div>
+            <button type="button" className="close-modal-icon-btn" aria-label="Annuleren" disabled={busy} onClick={() => setResetDialogOpen(false)}><X /></button>
+          </header>
+          <div className="modal-dialog-body finale-reset-dialog-body">
+            <p id="finale-reset-description">Alle POV-finalescores en onthullingen worden definitief verwijderd. De finale gaat terug naar voorbereiding.</p>
+            <div className="finale-reset-preserved"><strong>Blijft behouden</strong><span>HAG, Sports Experiences, City Game, POV-foto’s, klassen en gebruikers.</span></div>
+            <label htmlFor="finale-reset-confirmation">Typ exact <b>RESET FINALE</b> om de knop vrij te geven.</label>
+            <input id="finale-reset-confirmation" type="text" autoComplete="off" autoFocus disabled={busy} value={resetConfirmation} onChange={(event) => setResetConfirmation(event.target.value)} />
+          </div>
+          <footer className="modal-dialog-footer finale-reset-dialog-footer">
+            <button type="button" className="secondary-button" disabled={busy} onClick={() => setResetDialogOpen(false)}>Annuleren</button>
+            <button type="button" className="danger-button" disabled={busy || resetConfirmation !== 'RESET FINALE'} onClick={() => void resetFinaleTest()}><RotateCcw /> Definitief wissen</button>
+          </footer>
+        </article>
+      </div>}
     </div>}
   </section>
 }
