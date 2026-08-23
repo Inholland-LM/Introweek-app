@@ -36,6 +36,7 @@ const liveNotificationsEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true' &&
 const realtimeEnabled = import.meta.env.VITE_REALTIME_ENABLED === 'true'
 const SCHEDULED_READ_STORAGE_PREFIX = 'lm-you-scheduled-read:'
 const BROWSER_NOTIFICATION_SEEN_STORAGE_PREFIX = 'lm-you-browser-notification-seen:'
+const SCHEDULED_BROWSER_NOTIFICATION_SEEN_STORAGE_PREFIX = 'lm-you-scheduled-browser-notification-seen:'
 const MAX_SEEN_BROWSER_NOTIFICATIONS = 100
 
 const demoNotifications: AppNotification[] = [
@@ -134,6 +135,24 @@ function saveBrowserNotificationSeenIds(profileKey: string, ids: Set<string>) {
   )
 }
 
+function getScheduledBrowserNotificationSeenIds(profileKey: string): Set<string> | null {
+  try {
+    const stored = window.localStorage.getItem(`${SCHEDULED_BROWSER_NOTIFICATION_SEEN_STORAGE_PREFIX}${profileKey}`)
+    if (stored === null) return null
+    const parsed = JSON.parse(stored)
+    return new Set(Array.isArray(parsed) ? parsed.filter((value): value is string => typeof value === 'string') : [])
+  } catch {
+    return null
+  }
+}
+
+function saveScheduledBrowserNotificationSeenIds(profileKey: string, ids: Set<string>) {
+  window.localStorage.setItem(
+    `${SCHEDULED_BROWSER_NOTIFICATION_SEEN_STORAGE_PREFIX}${profileKey}`,
+    JSON.stringify([...ids].slice(-MAX_SEEN_BROWSER_NOTIFICATIONS)),
+  )
+}
+
 const CLASS_ACCENTS: Record<string, string> = {
   LM1A: '#d7263d', LM1B: '#f28c28', LM1C: '#e0b400', LM1D: '#2e9d58',
   LM1E: '#159a9c', LM1F: '#2f6fd0', LM1G: '#6554c0', LM1H: '#a446b8',
@@ -164,6 +183,7 @@ function mapScheduledNotifications(classCode: string, profileKey: string, profil
     body: message.body,
     createdAt: message.scheduledAt,
     readAt: readIds.has(message.id) ? message.scheduledAt : null,
+    deliveryChannel: 'channel' in message ? message.channel : 'both',
     sourceClassCode: message.classCodes === 'all' ? null : classCode,
     sourceAudienceLabel: message.classCodes === 'all' ? 'Ontvangen als deelnemer' : `Ontvangen als lid van ${classCode}`,
     accentColor: message.classCodes === 'all' ? null : classAccent(classCode, masterClasses),
@@ -236,10 +256,23 @@ export function useNotifications(profileId: string | null, classCode: string, pr
 
   useEffect(() => {
     const mergeReleasedMessages = () => {
+      const scheduledNotifications = mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages, masterClasses)
+      const storedSeenIds = getScheduledBrowserNotificationSeenIds(profileKey)
+      const seenIds = storedSeenIds ?? new Set<string>()
+      const newPushNotifications = storedSeenIds === null
+        ? []
+        : scheduledNotifications.filter((notification) => (
+            notification.deliveryChannel === 'both' && !seenIds.has(notification.id)
+          ))
+      scheduledNotifications.slice().reverse().forEach((notification) => seenIds.add(notification.id))
+      saveScheduledBrowserNotificationSeenIds(profileKey, seenIds)
       setNotifications((current) => [
-        ...mapScheduledNotifications(classCode, profileKey, profileRole, masterMessages, masterClasses),
+        ...scheduledNotifications,
         ...current.filter((notification) => notification.kind !== 'scheduled'),
       ].sort((left, right) => new Date(right.createdAt).getTime() - new Date(left.createdAt).getTime()))
+      newPushNotifications.slice().reverse().forEach((notification) => {
+        void showBrowserNotification(notification)
+      })
     }
 
     mergeReleasedMessages()
@@ -282,7 +315,7 @@ export function useNotifications(profileId: string | null, classCode: string, pr
     }
     document.addEventListener('visibilitychange', handleVisibility)
     const timer = window.setInterval(() => {
-      if (document.visibilityState === 'visible') void refresh()
+      void refresh()
     }, MIN_REFRESH_INTERVAL_MS)
 
     return () => {

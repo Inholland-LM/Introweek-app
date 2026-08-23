@@ -1108,7 +1108,9 @@ function MoreView({
 }: MoreViewProps) {
   const profile = useAppProfile()
   const logout = useProfileLogout()
-  const [notificationPreview, setNotificationPreview] = useState(true)
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission | 'unsupported'>(() => (
+    typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported'
+  ))
   const [vibrationEnabled, setVibrationEnabled] = useState(true)
   const resolvedContent = content ?? FALLBACK_MASTER_CONTENT
   const classItems = Array.isArray(resolvedContent.classes) ? resolvedContent.classes : []
@@ -1411,20 +1413,27 @@ function MoreView({
               <button
                 className="settings-item"
                 role="switch"
-                aria-checked={notificationPreview}
-                onClick={() => {
-                  const nextValue = !notificationPreview
-                  setNotificationPreview(nextValue)
-                  if (nextValue && typeof window !== 'undefined' && 'Notification' in window) {
-                    void Notification.requestPermission()
+                aria-checked={notificationPermission === 'granted'}
+                onClick={async () => {
+                  if (notificationPermission !== 'default' || !('Notification' in window)) return
+                  const permission = await Notification.requestPermission()
+                  setNotificationPermission(permission)
+                  if (permission === 'granted' && 'setAppBadge' in navigator) {
+                    void (navigator as any).setAppBadge(unreadCount).catch(() => {})
                   }
                 }}
               >
                 <div className="settings-copy">
-                  <strong>Pushmeldingen op vergrendelscherm</strong>
-                  <small>Ontvang live waarschuwingen en programma-updates</small>
+                  <strong>Meldingen en cijferbadge</strong>
+                  <small>{notificationPermission === 'granted'
+                    ? 'Toegestaan op dit apparaat'
+                    : notificationPermission === 'denied'
+                      ? 'Geblokkeerd; wijzig dit in de instellingen van je telefoon of browser'
+                      : notificationPermission === 'unsupported'
+                        ? 'Voeg de app op iPhone eerst toe aan je beginscherm'
+                        : 'Tik om meldingen en de badge met ongelezen aantallen toe te staan'}</small>
                 </div>
-                <i className={notificationPreview ? 'toggle active' : 'toggle'}><b /></i>
+                <i className={notificationPermission === 'granted' ? 'toggle active' : 'toggle'}><b /></i>
               </button>
 
               <button
