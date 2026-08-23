@@ -11,6 +11,7 @@ type CachedContent = { version: number; content: MasterContent }
 // daarna blijven de egresszuinige versienummercontroles actief.
 const CACHE_KEY = 'lm-you-master-content:v3'
 const MIN_VERSION_CHECK_MS = 5 * 60 * 1000
+const realtimeEnabled = import.meta.env.VITE_REALTIME_ENABLED === 'true'
 
 function readCache(): CachedContent | null {
   try {
@@ -30,7 +31,7 @@ export function saveMasterContent(nextContent: MasterContent) {
 }
 
 async function broadcastContentVersion(version: number) {
-  if (!supabase) return
+  if (!supabase || !realtimeEnabled) return
   const channel = supabase.channel('app-content-updates')
   await new Promise<void>((resolve) => {
     const fallback = window.setTimeout(resolve, 1_500)
@@ -75,7 +76,7 @@ export function useMasterContent() {
     }
 
     // 2. Fetch from Supabase if auth enabled
-    if (!supabase || import.meta.env.VITE_AUTH_ENABLED !== 'true') return
+    if (!supabase || import.meta.env.VITE_AUTH_ENABLED !== 'true' || !realtimeEnabled) return
     if (!force && Date.now() - lastCheckedAt < MIN_VERSION_CHECK_MS) return
     const { data: version, error: versionError } = await supabase.rpc('get_app_content_version')
     setLastCheckedAt(Date.now())

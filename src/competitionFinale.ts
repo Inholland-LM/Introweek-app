@@ -27,6 +27,8 @@ export type FinaleState = {
 }
 
 const emptyFinale: FinaleState = { phase: 'preparation', revealOrder: [], nextIndex: 0, lastRevealedClassCode: null, lastRevealedPoints: null, revealSequence: 0, revealedAt: null }
+const realtimeEnabled = import.meta.env.VITE_REALTIME_ENABLED === 'true'
+const finalePollIntervalMs = 10_000
 
 function mapFinale(value: unknown): FinaleState {
   const item = (value ?? {}) as Record<string, unknown>
@@ -53,12 +55,36 @@ export function useCompetitionFinale() {
   const [state, setState] = useState<FinaleState>(emptyFinale)
   useEffect(() => {
     let active = true
-    const refresh = () => fetchFinaleState().then((next) => { if (active) setState(next) }).catch(() => undefined)
+    const refresh = () => fetchFinaleState().then((next) => {
+      if (!active) return
+      setState((current) => {
+        if (next.revealSequence !== current.revealSequence) {
+          window.dispatchEvent(new CustomEvent('competition-score-changed', { detail: next }))
+        }
+        return next
+      })
+    }).catch(() => undefined)
     void refresh()
-    if (!supabase) return () => { active = false }
+    const handleVisible = () => {
+      if (document.visibilityState === 'visible') void refresh()
+    }
+    const handleLocalUpdate = () => { void refresh() }
+    window.addEventListener('focus', handleVisible)
+    window.addEventListener('competition-finale-changed', handleLocalUpdate)
+    document.addEventListener('visibilitychange', handleVisible)
+    const timer = window.setInterval(handleVisible, finalePollIntervalMs)
     const client = supabase
-    const channel = client.channel('competition-finale-updates').on('broadcast', { event: 'finale-changed' }, refresh).subscribe()
-    return () => { active = false; void client.removeChannel(channel) }
+    const channel = client && realtimeEnabled
+      ? client.channel('competition-finale-updates').on('broadcast', { event: 'finale-changed' }, refresh).subscribe()
+      : null
+    return () => {
+      active = false
+      window.removeEventListener('focus', handleVisible)
+      window.removeEventListener('competition-finale-changed', handleLocalUpdate)
+      document.removeEventListener('visibilitychange', handleVisible)
+      window.clearInterval(timer)
+      if (client && channel) void client.removeChannel(channel)
+    }
   }, [])
   return state
 }
@@ -120,7 +146,8 @@ export async function resetCompetitionTest(confirmation: string) {
 
 async function broadcastFinaleChange(payload: unknown) {
   window.dispatchEvent(new CustomEvent('competition-score-changed', { detail: payload }))
-  if (!supabase) return
+  window.dispatchEvent(new CustomEvent('competition-finale-changed', { detail: payload }))
+  if (!supabase || !realtimeEnabled) return
   const scoreChannel = supabase.channel('competition-score-updates')
   const finaleChannel = supabase.channel('competition-finale-updates')
   await scoreChannel.send({ type: 'broadcast', event: 'score-changed', payload })

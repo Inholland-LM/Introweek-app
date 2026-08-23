@@ -31,8 +31,9 @@ type NotificationRecord = {
 }
 
 const MAX_NOTIFICATIONS = 20
-const MIN_REFRESH_INTERVAL_MS = 5 * 60 * 1000
+const MIN_REFRESH_INTERVAL_MS = 60_000
 const liveNotificationsEnabled = import.meta.env.VITE_AUTH_ENABLED === 'true' && Boolean(supabase)
+const realtimeEnabled = import.meta.env.VITE_REALTIME_ENABLED === 'true'
 const SCHEDULED_READ_STORAGE_PREFIX = 'lm-you-scheduled-read:'
 
 const demoNotifications: AppNotification[] = [
@@ -217,7 +218,7 @@ export function useNotifications(profileId: string | null, classCode: string, pr
     if (!liveNotificationsEnabled || !supabase || !profileId) return
 
     const client = supabase
-    const channel = client
+    const channel = realtimeEnabled ? client
       .channel(`personal-notifications:${profileId}`)
       .on(
         'postgres_changes',
@@ -238,16 +239,20 @@ export function useNotifications(profileId: string | null, classCode: string, pr
           }
         },
       )
-      .subscribe()
+      .subscribe() : null
 
     const handleVisibility = () => {
       if (document.visibilityState === 'visible') void refresh()
     }
     document.addEventListener('visibilitychange', handleVisibility)
+    const timer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') void refresh()
+    }, MIN_REFRESH_INTERVAL_MS)
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility)
-      void client.removeChannel(channel)
+      window.clearInterval(timer)
+      if (channel) void client.removeChannel(channel)
     }
   }, [profileId, refresh])
 

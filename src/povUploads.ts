@@ -190,6 +190,7 @@ export async function approvePovSubmissionWithPoints(id: string, points: number)
 
   const result = data as { scoreVersion?: number }
   window.dispatchEvent(new CustomEvent('competition-score-changed', { detail: result }))
+  if (import.meta.env.VITE_REALTIME_ENABLED !== 'true') return result
   const channel = supabase.channel('competition-score-updates')
   await channel.send({ type: 'broadcast', event: 'score-changed', payload: result })
   await supabase.removeChannel(channel)

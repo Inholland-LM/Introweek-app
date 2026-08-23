@@ -4887,6 +4887,10 @@ main::-webkit-scrollbar-thumb { border-radius: 999px; background: rgba(227, 0, 7
 .finale-reset-control p { margin: 0; color: #7f1d1d; font-size: .76rem; line-height: 1.45; }
 .finale-reset-control .danger-button { flex: 0 0 auto; padding: 10px 14px; }
 .finale-reset-control .danger-button:disabled { cursor: not-allowed; opacity: .55; }
+.finale-reset-control.is-locked { justify-content: flex-start; border-color: #a7f3d0; background: #ecfdf5; }
+.finale-reset-control.is-locked > svg { flex: 0 0 auto; width: 22px; height: 22px; color: #047857; }
+.finale-reset-control.is-locked strong { color: #065f46; }
+.finale-reset-control.is-locked p { color: #047857; }
 .finale-reset-overlay { z-index: 520; }
 .finale-reset-dialog { border-color: #fecaca; }
 .finale-reset-title { display: flex; align-items: center; gap: 10px; }

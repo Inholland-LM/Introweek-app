@@ -26,7 +26,7 @@ import {
 } from 'lucide-react'
 import { getDefaultIntroDayId, type ProgrammeDay, type RouteDay, type Standing, type TeamScoreHistory } from './data'
 import { useCompetitionStandings } from './competitionScores'
-import { useCompetitionFinale } from './competitionFinale'
+import { useCompetitionFinale, type FinaleState } from './competitionFinale'
 import { buildProgrammeDays, buildRouteDays, createInitialMasterContent, useMasterContent } from './content'
 import { ImportPreviewPanel } from './import/ImportPreviewPanel'
 import { type AppNotification, useNotifications } from './notifications'
@@ -706,6 +706,7 @@ type CompetitionViewProps = {
   standings: Standing[]
   programmeDays: ProgrammeDay[]
   povAssignments: MasterContent['povAssignments']
+  finale: FinaleState
 }
 
 type OpportunityId = 'pov' | 'experiences' | 'city_game'
@@ -726,9 +727,8 @@ function hideCountryRevealDetails(programmeDays: ProgrammeDay[]): ProgrammeDay[]
   }))
 }
 
-function CompetitionView({ referenceDate, standings, programmeDays, povAssignments }: CompetitionViewProps) {
+function CompetitionView({ referenceDate, standings, programmeDays, povAssignments, finale }: CompetitionViewProps) {
   const profile = useAppProfile()
-  const finale = useCompetitionFinale()
   const [selectedTeam, setSelectedTeam] = useState<Standing | null>(null)
   const [selectedOpportunity, setSelectedOpportunity] = useState<OpportunityId | null>(null)
   const opportunityCloseRef = useRef<HTMLButtonElement | null>(null)
@@ -2023,6 +2023,7 @@ function App() {
           standings={standings}
           programmeDays={currentProgrammeDays}
           povAssignments={(masterContent.content ?? FALLBACK_MASTER_CONTENT).povAssignments}
+          finale={finale}
         />}
 
         {active === 'Meer' && (
